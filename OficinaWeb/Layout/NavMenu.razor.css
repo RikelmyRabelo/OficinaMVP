@@ -39,7 +39,6 @@
         border-right: 4px solid white;
     }
 
-        /* Ícone quando ativo */
         .nav-item ::deep a.active .bi {
             color: black;
         }

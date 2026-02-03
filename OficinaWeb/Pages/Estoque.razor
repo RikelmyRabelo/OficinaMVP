@@ -1,118 +1,166 @@
 ﻿@page "/estoque"
 @inject HttpClient Http
 @using System.Net.Http.Json
+@using System.Text.Json
 
-<h3>📦 Controle de Estoque (Sem Scanner)</h3>
+<PageTitle>Estoque - FJ Centro Automotivo</PageTitle>
 
-<div class="card mb-4 shadow-sm">
-    <div class="card-header bg-primary text-white">Novo Produto</div>
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-3">
-                <label>Código Manual</label>
-                <input class="form-control" @bind="novoProduto.code" placeholder="Ex: OLEO123" />
-            </div>
-            <div class="col-md-4">
-                <label>Nome da Peça</label>
-                <input class="form-control" @bind="novoProduto.name" placeholder="Ex: Filtro de Ar" />
-            </div>
-            <div class="col-md-2">
-                <label>Preço (R$)</label>
-                <input type="number" class="form-control" @bind="novoProduto.salePrice" />
-            </div>
-            <div class="col-md-2">
-                <label>Qtd Estoque</label>
-                <input type="number" class="form-control" @bind="novoProduto.stockQuantity" />
-            </div>
-            <div class="col-md-1 d-flex align-items-end">
-                <button class="btn btn-success w-100" @onclick="SalvarProduto">Salvar</button>
+<div class="container py-4">
+
+    <div class="row align-items-center mb-5 position-relative">
+        <div class="col-md-3 text-start">
+            <a href="/" class="btn btn-outline-secondary border-0 text-white">
+                <i class="bi bi-arrow-left me-2"></i>Voltar para o painel
+            </a>
+        </div>
+        <div class="col-md-6 text-center">
+            <h2 class="fw-bold text-uppercase mb-0" style="color: #ff6600;">
+                <i class="bi bi-box-seam-fill me-2"></i>Controle de Estoque
+            </h2>
+        </div>
+        <div class="col-md-3"></div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-5" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
+        <div class="card-body p-4">
+            <h5 class="mb-3 fw-bold" style="color: #ffeb3b;">Novo Produto</h5>
+
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <input class="form-control bg-dark text-white border-secondary"
+                           @bind="novoProduto.code"
+                           placeholder="Código (Ex: OLEO123)" />
+                </div>
+
+                <div class="col-md-4">
+                    <input class="form-control bg-dark text-white border-secondary"
+                           @bind="novoProduto.name"
+                           placeholder="Nome da Peça" />
+                </div>
+
+                <div class="col-md-2">
+                    <input type="number" class="form-control bg-dark text-white border-secondary"
+                           @bind="novoProduto.salePrice"
+                           placeholder="Preço (R$)" />
+                </div>
+
+                <div class="col-md-2">
+                    <input type="number" class="form-control bg-dark text-white border-secondary"
+                           @bind="novoProduto.stockQuantity"
+                           placeholder="Qtd. Estoque" />
+                </div>
+
+                <div class="col-md-2">
+                    <button class="btn w-100 fw-bold"
+                            style="background-color: #ffeb3b; color: #000000;"
+                            @onclick="SalvarProduto">
+                        ADICIONAR <i class="bi bi-plus-lg ms-1"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
+
+    @if (produtos != null)
+    {
+        <div class="table-responsive">
+            <table class="table table-dark table-hover" style="border-color: #333;">
+                <thead style="border-bottom: 2px solid #ffeb3b;">
+                    <tr>
+                        <th style="color: #ffeb3b;">Código</th>
+                        <th style="color: #ffeb3b;">Nome da Peça</th>
+                        <th style="color: #ffeb3b;">Preço</th>
+                        <th style="color: #ffeb3b;" class="text-center">Estoque</th>
+                        <th style="color: #ffeb3b;" class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in produtos)
+                    {
+                        var rowColor = (p.stockQuantity ?? 0) <= p.minimumStock ? "#ff4444" : "#fff";
+
+                        <tr>
+                            <td style="color: @rowColor;"><strong>@p.code</strong></td>
+                            <td style="color: @rowColor;">@p.name</td>
+                            <td style="color: @rowColor;">R$ @(p.salePrice?.ToString("F2") ?? "0.00")</td>
+                            <td class="text-center" style="color: @rowColor;">
+                                @if ((p.stockQuantity ?? 0) <= p.minimumStock)
+                                {
+                                    <span class="badge bg-danger me-2" style="color: white;">BAIXO</span>
+                                }
+                                @p.stockQuantity
+                            </td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger border-0" title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border text-warning" role="status"></div>
+            <p class="text-muted mt-2">Carregando estoque...</p>
+        </div>
+    }
 </div>
 
-@if (produtos == null)
-{
-    <div class="alert alert-info">Carregando estoque da API...</div>
-}
-else
-{
-    <table class="table table-hover">
-        <thead class="table-light">
-            <tr>
-                <th>Código</th>
-                <th>Nome</th>
-                <th>Preço</th>
-                <th>Estoque</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var p in produtos)
-            {
-                // Pinta de vermelho se o estoque estiver baixo
-                <tr class="@(p.stockQuantity <= p.minimumStock ? "table-danger" : "")">
-                    <td><strong>@p.code</strong></td>
-                    <td>@p.name</td>
-                    <td>R$ @p.salePrice</td>
-                    <td>@p.stockQuantity</td>
-                    <td>
-                        @if (p.stockQuantity <= p.minimumStock)
-                        {
-                            <span class="badge bg-danger">Baixo!</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-success">OK</span>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+<style>
+    /* Estilo dos Inputs Padrão */
+    .form-control::placeholder {
+        color: #b0b0b0 !important;
+        opacity: 1;
+    }
+
+    .form-control:focus {
+        background-color: #222 !important;
+        color: #fff !important;
+        border-color: #ffeb3b !important;
+        box-shadow: 0 0 5px rgba(255, 235, 59, 0.5);
+    }
+
+    .table-dark {
+        --bs-table-bg: #000;
+        background-color: #000;
+    }
+</style>
 
 @code {
+    private string ApiUrl = "https://localhost:7082";
+
     public class ProductDTO
     {
         public int id { get; set; }
         public string code { get; set; } = "";
         public string name { get; set; } = "";
-        public decimal salePrice { get; set; }
-        public int stockQuantity { get; set; }
+        // MUDANÇA: Usei '?' para permitir que comecem vazios (null)
+        public decimal? salePrice { get; set; }
+        public int? stockQuantity { get; set; }
         public int minimumStock { get; set; } = 5;
     }
 
     private List<ProductDTO>? produtos;
     private ProductDTO novoProduto = new ProductDTO();
 
-   
- private string ApiUrl = "https://localhost:7082";
+    protected override async Task OnInitializedAsync() { await Carregar(); }
 
-    protected override async Task OnInitializedAsync()
+    private async Task Carregar()
     {
-        try
-        {
-            await CarregarProdutos();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao conectar: {ex.Message}");
-        }
-    }
-
-    private async Task CarregarProdutos()
-    {
-        produtos = await Http.GetFromJsonAsync<List<ProductDTO>>($"{ApiUrl}/api/products");
+        try { produtos = await Http.GetFromJsonAsync<List<ProductDTO>>($"{ApiUrl}/api/products"); } catch { }
     }
 
     private async Task SalvarProduto()
     {
-        var response = await Http.PostAsJsonAsync($"{ApiUrl}/api/products", novoProduto);
-        if (response.IsSuccessStatusCode)
-        {
-            await CarregarProdutos();
-            novoProduto = new ProductDTO();
-        }
+        // Enviar 0 se estiver vazio para não quebrar o backend
+        if (novoProduto.salePrice == null) novoProduto.salePrice = 0;
+        if (novoProduto.stockQuantity == null) novoProduto.stockQuantity = 0;
+
+        var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/products", novoProduto);
+        if (res.IsSuccessStatusCode) { await Carregar(); novoProduto = new ProductDTO(); }
     }
 }
