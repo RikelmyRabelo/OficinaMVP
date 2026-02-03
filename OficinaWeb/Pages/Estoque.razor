@@ -1,5 +1,6 @@
 ﻿@page "/estoque"
 @inject HttpClient Http
+@inject IJSRuntime JS
 @using System.Net.Http.Json
 @using System.Text.Json
 
@@ -31,25 +32,21 @@
                            @bind="novoProduto.code"
                            placeholder="Código (Ex: OLEO123)" />
                 </div>
-
                 <div class="col-md-4">
                     <input class="form-control bg-dark text-white border-secondary"
                            @bind="novoProduto.name"
                            placeholder="Nome da Peça" />
                 </div>
-
                 <div class="col-md-2">
-                    <input type="number" class="form-control bg-dark text-white border-secondary"
+                    <input type="number" min="0" step="0.01" class="form-control bg-dark text-white border-secondary"
                            @bind="novoProduto.salePrice"
                            placeholder="Preço (R$)" />
                 </div>
-
                 <div class="col-md-2">
-                    <input type="number" class="form-control bg-dark text-white border-secondary"
+                    <input type="number" min="0" class="form-control bg-dark text-white border-secondary"
                            @bind="novoProduto.stockQuantity"
                            placeholder="Qtd. Estoque" />
                 </div>
-
                 <div class="col-md-2">
                     <button class="btn w-100 fw-bold"
                             style="background-color: #ffeb3b; color: #000000;"
@@ -64,14 +61,14 @@
     @if (produtos != null)
     {
         <div class="table-responsive">
-            <table class="table table-dark table-hover" style="border-color: #333;">
+            <table class="table table-dark table-hover align-middle" style="border-color: #333;">
                 <thead style="border-bottom: 2px solid #ffeb3b;">
                     <tr>
                         <th style="color: #ffeb3b;">Código</th>
                         <th style="color: #ffeb3b;">Nome da Peça</th>
                         <th style="color: #ffeb3b;">Preço</th>
                         <th style="color: #ffeb3b;" class="text-center">Estoque</th>
-                        <th style="color: #ffeb3b;" class="text-end">Ações</th>
+                        <th class="text-end" style="color: #ffeb3b; width: 120px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -91,8 +88,10 @@
                                 @p.stockQuantity
                             </td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-outline-danger border-0" title="Excluir">
-                                    <i class="bi bi-trash"></i>
+                                <button class="btn btn-danger btn-sm text-white"
+                                        @onclick="() => ExcluirProduto(p)"
+                                        title="Apagar item">
+                                    <i class="bi bi-trash-fill"></i>
                                 </button>
                             </td>
                         </tr>
@@ -111,7 +110,6 @@
 </div>
 
 <style>
-    /* Estilo dos Inputs Padrão */
     .form-control::placeholder {
         color: #b0b0b0 !important;
         opacity: 1;
@@ -138,7 +136,6 @@
         public int id { get; set; }
         public string code { get; set; } = "";
         public string name { get; set; } = "";
-        // MUDANÇA: Usei '?' para permitir que comecem vazios (null)
         public decimal? salePrice { get; set; }
         public int? stockQuantity { get; set; }
         public int minimumStock { get; set; } = 5;
@@ -156,11 +153,59 @@
 
     private async Task SalvarProduto()
     {
-        // Enviar 0 se estiver vazio para não quebrar o backend
+        if (string.IsNullOrWhiteSpace(novoProduto.name))
+        {
+            await JS.InvokeVoidAsync("alert", "O nome da peça é obrigatório!");
+            return;
+        }
+
+        // --- TRAVA PARA NEGATIVOS ---
+        if (novoProduto.salePrice.HasValue && novoProduto.salePrice.Value < 0)
+        {
+            novoProduto.salePrice = 0;
+            await JS.InvokeVoidAsync("alert", "O Preço não pode ser negativo.");
+            return;
+        }
+
+        if (novoProduto.stockQuantity.HasValue && novoProduto.stockQuantity.Value < 0)
+        {
+            novoProduto.stockQuantity = 0;
+            await JS.InvokeVoidAsync("alert", "A Quantidade não pode ser negativa.");
+            return;
+        }
+
         if (novoProduto.salePrice == null) novoProduto.salePrice = 0;
         if (novoProduto.stockQuantity == null) novoProduto.stockQuantity = 0;
 
         var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/products", novoProduto);
         if (res.IsSuccessStatusCode) { await Carregar(); novoProduto = new ProductDTO(); }
+        else { await JS.InvokeVoidAsync("alert", "Erro ao salvar. Verifique se o código já existe."); }
+    }
+
+    private async Task ExcluirProduto(ProductDTO produto)
+    {
+        bool confirmado = await JS.InvokeAsync<bool>("confirm", $"Tem certeza que deseja apagar '{produto.name}'?");
+
+        if (confirmado)
+        {
+            try
+            {
+                var res = await Http.DeleteAsync($"{ApiUrl}/api/products/{produto.id}");
+
+                if (res.IsSuccessStatusCode)
+                {
+                    await Carregar();
+                }
+                else
+                {
+                    // Mostra o Status Code para debugarmos
+                    await JS.InvokeVoidAsync("alert", $"ERRO: Status {res.StatusCode}. Pode haver vínculo com OS.");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JS.InvokeVoidAsync("alert", $"Erro de conexão: {ex.Message}");
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 ﻿@page "/rh"
 @inject HttpClient Http
+@inject IJSRuntime JS
 @using System.Net.Http.Json
 @using System.Text.Json
 
@@ -27,20 +28,16 @@
             <div class="card border-0 shadow-sm mb-4" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
                 <div class="card-body p-4">
                     <h5 class="mb-3 fw-bold" style="color: #ffeb3b;">Novo Funcionário</h5>
-
                     <div class="d-flex flex-column gap-3">
                         <input class="form-control bg-dark text-white border-secondary"
-                               @bind="novo.name" placeholder="Nome Completo" />
-
+                               @bind="novo.Name" placeholder="Nome Completo" />
                         <input class="form-control bg-dark text-white border-secondary"
-                               @bind="novo.role" placeholder="Cargo (Ex: Mecânico)" />
-
+                               @bind="novo.Role" placeholder="Cargo (Ex: Mecânico)" />
                         <div class="input-group">
                             <span class="input-group-text bg-dark text-secondary border-secondary">R$</span>
                             <input type="number" class="form-control bg-dark text-white border-secondary"
-                                   @bind="novo.baseSalary" placeholder="Salário Base" />
+                                   @bind="novo.BaseSalary" placeholder="Salário Base" />
                         </div>
-
                         <button class="btn fw-bold w-100"
                                 style="background-color: #ffeb3b; color: #000;"
                                 @onclick="Contratar">
@@ -56,22 +53,29 @@
                 {
                     foreach (var f in funcionarios)
                     {
-                        // Lógica para destacar o selecionado
-                        var isActive = sel?.id == f.id;
+                        var isActive = sel?.Id == f.Id;
                         var bgClass = isActive ? "border-start border-4 border-warning" : "";
                         var bgStyle = isActive ? "background-color: #222;" : "background-color: #111;";
 
-                        <button class="list-group-item list-group-item-action border-secondary text-white @bgClass"
-                                style="@bgStyle transition: 0.2s;"
-                                @onclick="() => Sel(f)">
-                            <div class="d-flex w-100 justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1 fw-bold">@f.name</h6>
-                                    <small class="text-white-50">@f.role</small>
-                                </div>
-                                <span class="badge bg-secondary text-dark fw-bold">R$ @f.baseSalary.ToString("N2")</span>
+                        <div class="list-group-item list-group-item-action border-secondary text-white d-flex justify-content-between align-items-center @bgClass"
+                             style="@bgStyle transition: 0.2s; cursor: pointer;"
+                             @onclick="() => Sel(f)">
+
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold">@f.Name</h6>
+                                <small class="text-white-50">@f.Role</small>
                             </div>
-                        </button>
+
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="badge bg-secondary text-dark fw-bold">R$ @f.BaseSalary.ToString("N2")</span>
+                                <button class="btn btn-sm text-danger p-0 border-0"
+                                        title="Demitir/Excluir"
+                                        @onclick:stopPropagation="true"
+                                        @onclick="() => ExcluirFuncionario(f)">
+                                    <i class="bi bi-trash-fill fs-5"></i>
+                                </button>
+                            </div>
+                        </div>
                     }
                 }
                 else
@@ -89,12 +93,12 @@
 
                         <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
                             <div>
-                                <h3 class="fw-bold text-white mb-0">@sel.name</h3>
-                                <span class="text-warning">@sel.role</span>
+                                <h3 class="fw-bold text-white mb-0">@sel.Name</h3>
+                                <span class="text-warning">@sel.Role</span>
                             </div>
                             <div class="text-end">
                                 <small class="text-white-50 d-block">Salário Base</small>
-                                <h4 class="text-success fw-bold mb-0">R$ @sel.baseSalary.ToString("N2")</h4>
+                                <h4 class="text-success fw-bold mb-0">R$ @sel.BaseSalary.ToString("N2")</h4>
                             </div>
                         </div>
 
@@ -105,7 +109,7 @@
                                     <div class="input-group">
                                         <span class="input-group-text bg-dark text-secondary border-secondary">R$</span>
                                         <input type="number" class="form-control bg-dark text-white border-secondary"
-                                               @bind="pag.amount" placeholder="Valor do Pagamento" />
+                                               @bind="pag.Amount" placeholder="Valor do Pagamento" />
                                     </div>
                                 </div>
                                 <div class="col-md-4">
@@ -124,19 +128,32 @@
                                 <thead style="border-bottom: 2px solid #ff6600;">
                                     <tr>
                                         <th style="color: #ff6600;">ID</th>
+                                        <th style="color: #ff6600;">Data da Baixa</th>
                                         <th style="color: #ff6600;">Valor</th>
                                         <th style="color: #ff6600;">Status</th>
                                         <th style="color: #ff6600;" class="text-end">Ação</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var p in sel.payments.OrderByDescending(x => x.id))
+                                    @foreach (var p in sel.Payments.OrderByDescending(x => x.Id))
                                     {
                                         <tr>
-                                            <td class="text-secondary">#@p.id</td>
-                                            <td class="text-white fw-bold">R$ @p.amount.ToString("N2")</td>
+                                            <td class="text-secondary">#@p.Id</td>
+
+                                            <td class="text-white">
+                                                @if (p.PaymentDate.HasValue)
+                                                {
+                                                    @p.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm")
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted" style="font-size: 0.8rem;">(Aguardando Confirmação)</span>
+                                                }
+                                            </td>
+
+                                            <td class="text-white fw-bold">R$ @p.Amount.ToString("N2")</td>
                                             <td>
-                                                @if (p.isPaid)
+                                                @if (p.IsPaid)
                                                 {
                                                     <span class="badge bg-success text-white">PAGO</span>
                                                 }
@@ -146,9 +163,9 @@
                                                 }
                                             </td>
                                             <td class="text-end">
-                                                @if (!p.isPaid)
+                                                @if (!p.IsPaid)
                                                 {
-                                                    <button class="btn btn-sm btn-outline-success" @onclick="() => Confirmar(p.id)">
+                                                    <button class="btn btn-sm btn-outline-success" @onclick="() => Confirmar(p.Id)">
                                                         <i class="bi bi-check-lg"></i> Confirmar
                                                     </button>
                                                 }
@@ -157,7 +174,7 @@
                                     }
                                 </tbody>
                             </table>
-                            @if (sel.payments.Count == 0)
+                            @if (sel.Payments.Count == 0)
                             {
                                 <p class="text-muted text-center mt-3 small">Nenhum pagamento registrado.</p>
                             }
@@ -179,7 +196,6 @@
 </div>
 
 <style>
-    /* Reaproveitando os estilos do Estoque para consistência */
     .form-control::placeholder {
         color: #b0b0b0 !important;
         opacity: 1;
@@ -192,10 +208,6 @@
         box-shadow: 0 0 5px rgba(255, 235, 59, 0.5);
     }
 
-    .list-group-item:hover {
-        background-color: #1f1f1f !important;
-    }
-
     .table-dark {
         --bs-table-bg: #000;
         background-color: #000;
@@ -203,36 +215,41 @@
 </style>
 
 @code {
-    private string ApiUrl = "https://localhost:7082"; // CONFIRA SUA PORTA
+    private string ApiUrl = "https://localhost:7082";
 
-    // DTOs ajustados com Nullable para os Inputs ficarem limpos
+    // USING PASCALCASE TO MATCH C# BACKEND
     public class Emp
     {
-        public int id { get; set; }
-        public string name { get; set; } = "";
-        public string role { get; set; } = "";
-        public decimal baseSalary { get; set; } // Mantive decimal normal pois vem da API preenchido
-        public List<Pay> payments { get; set; } = new();
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Role { get; set; } = "";
+        public decimal BaseSalary { get; set; }
+        public List<Pay> Payments { get; set; } = new();
     }
 
-    // Classe separada para o INPUT de criação (para permitir nulo e placeholder aparecer)
     public class NewEmpDTO
     {
-        public string name { get; set; } = "";
-        public string role { get; set; } = "";
-        public decimal? baseSalary { get; set; }
+        public string Name { get; set; } = "";
+        public string Role { get; set; } = "";
+        public decimal? BaseSalary { get; set; }
     }
 
-    public class Pay { public int id { get; set; } public decimal amount { get; set; } public bool isPaid { get; set; } }
+    public class Pay
+    {
+        public int Id { get; set; }
+        public decimal Amount { get; set; }
+        public bool IsPaid { get; set; }
+        // THIS MUST MATCH THE BACKEND PROPERTY EXACTLY
+        public DateTime? PaymentDate { get; set; }
+    }
 
-    // Classe para o INPUT de pagamento
-    public class NewPayDTO { public decimal? amount { get; set; } }
+    public class NewPayDTO { public decimal? Amount { get; set; } }
 
     List<Emp>? funcionarios;
     Emp? sel;
 
-    NewEmpDTO novo = new(); // Usando o DTO que aceita nulo
-    NewPayDTO pag = new();  // Usando o DTO que aceita nulo
+    NewEmpDTO novo = new();
+    NewPayDTO pag = new();
 
     protected override async Task OnInitializedAsync() { await Load(); }
 
@@ -241,22 +258,20 @@
         try
         {
             funcionarios = await Http.GetFromJsonAsync<List<Emp>>($"{ApiUrl}/api/employees");
-            // Atualiza o selecionado se existir
-            if (sel != null && funcionarios != null) sel = funcionarios.FirstOrDefault(f => f.id == sel.id);
+            // Refresh selected employee if one is already selected
+            if (sel != null && funcionarios != null) sel = funcionarios.FirstOrDefault(f => f.Id == sel.Id);
         }
         catch { }
     }
 
     async Task Contratar()
     {
-        // Converte o DTO visual para o DTO da API (trocando null por 0 se necessário)
         var empToSend = new Emp
         {
-            name = novo.name,
-            role = novo.role,
-            baseSalary = novo.baseSalary ?? 0
+            Name = novo.Name,
+            Role = novo.Role,
+            BaseSalary = novo.BaseSalary ?? 0
         };
-
         await Http.PostAsJsonAsync($"{ApiUrl}/api/employees", empToSend);
         novo = new();
         await Load();
@@ -265,15 +280,14 @@
     void Sel(Emp f)
     {
         sel = f;
-        pag.amount = f.baseSalary; // Sugere o salário base automaticamente
+        pag.Amount = f.BaseSalary;
     }
 
     async Task Lancar()
     {
-        if (pag.amount == null || pag.amount == 0) return;
-
-        var payToSend = new Pay { amount = pag.amount.Value };
-        await Http.PostAsJsonAsync($"{ApiUrl}/api/employees/{sel.id}/payments", payToSend);
+        if (pag.Amount == null || pag.Amount == 0) return;
+        var payToSend = new Pay { Amount = pag.Amount.Value };
+        await Http.PostAsJsonAsync($"{ApiUrl}/api/employees/{sel.Id}/payments", payToSend);
         await Load();
     }
 
@@ -281,5 +295,23 @@
     {
         await Http.PutAsync($"{ApiUrl}/api/employees/payments/{id}/confirm", null);
         await Load();
+    }
+
+    async Task ExcluirFuncionario(Emp f)
+    {
+        bool confirmado = await JS.InvokeAsync<bool>("confirm", $"Demitir/Excluir '{f.Name}'?");
+        if (confirmado)
+        {
+            var res = await Http.DeleteAsync($"{ApiUrl}/api/employees/{f.Id}");
+            if (res.IsSuccessStatusCode)
+            {
+                if (sel?.Id == f.Id) sel = null;
+                await Load();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Não é possível excluir este funcionário pois existem pagamentos registrados no histórico.");
+            }
+        }
     }
 }
