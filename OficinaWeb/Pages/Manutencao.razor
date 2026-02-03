@@ -1,215 +1,330 @@
 ﻿@page "/manutencao"
 @inject HttpClient Http
 @using System.Net.Http.Json
+@using System.Text.Json
 
-<h3>🔧 Oficina: Ordens de Serviço</h3>
+<PageTitle>Oficina - FJ Centro Automotivo</PageTitle>
 
-<div class="row">
-    <div class="col-md-4">
-        <div class="card shadow-sm mb-3">
-            <div class="card-header bg-dark text-white">🚗 Chegada de Cliente</div>
-            <div class="card-body">
-                <label>Placa do Veículo</label>
-                <input class="form-control mb-2" @bind="novaOS.vehicle.licensePlate" placeholder="ABC-1234" />
+<div class="container-fluid py-4 px-4">
 
-                <label>Modelo</label>
-                <input class="form-control mb-2" @bind="novaOS.vehicle.model" placeholder="Ex: Civic 2020" />
+    <div class="row align-items-center mb-5 position-relative">
+        <div class="col-md-3 text-start">
+            <a href="/" class="btn btn-outline-secondary border-0 text-white">
+                <i class="bi bi-arrow-left me-2"></i>Voltar para o painel
+            </a>
+        </div>
+        <div class="col-md-6 text-center">
+            <h2 class="fw-bold text-uppercase mb-0" style="color: #ff6600;">
+                <i class="bi bi-wrench-adjustable me-2"></i>Gestão de Oficina
+            </h2>
+        </div>
+        <div class="col-md-3"></div>
+    </div>
 
-                <label>Nome do Cliente</label>
-                <input class="form-control mb-2" @bind="novaOS.vehicle.customerName" placeholder="Nome" />
+    <div class="row g-4">
 
-                <button class="btn btn-primary w-100 mt-2" @onclick="AbrirOS">Abrir Ordem de Serviço</button>
+        <div class="col-md-4">
+
+            <div class="card border-0 shadow-sm mb-4" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
+                <div class="card-body p-4">
+                    <h5 class="mb-3 fw-bold" style="color: #ffeb3b;">Nova Ordem de Serviço</h5>
+                    <div class="d-flex flex-column gap-3">
+                        <input class="form-control bg-dark text-white border-secondary"
+                               @bind="novaOs.ClientName" placeholder="Nome do Cliente" />
+
+                        <input class="form-control bg-dark text-white border-secondary"
+                               @bind="novaOs.Vehicle" placeholder="Veículo / Placa" />
+
+                        <button class="btn fw-bold w-100"
+                                style="background-color: #ffeb3b; color: #000;"
+                                @onclick="AbrirOS">
+                            ABRIR ORDEM <i class="bi bi-file-earmark-plus ms-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex mb-3 gap-2">
+                <button class="btn btn-sm flex-grow-1 fw-bold @(mostrarFinalizadas ? "btn-outline-secondary text-white" : "btn-primary")"
+                        @onclick="() => mostrarFinalizadas = false">
+                    EM ANDAMENTO
+                </button>
+                <button class="btn btn-sm flex-grow-1 fw-bold @(mostrarFinalizadas ? "btn-primary" : "btn-outline-secondary text-white")"
+                        @onclick="() => mostrarFinalizadas = true">
+                    FINALIZADAS
+                </button>
+            </div>
+
+            <div class="list-group shadow-sm" style="max-height: 60vh; overflow-y: auto;">
+                @if (listaFiltrada != null)
+                {
+                    foreach (var os in listaFiltrada)
+                    {
+                        var isActive = sel?.Id == os.Id;
+                        var bgStyle = isActive ? "background-color: #222; border-left: 4px solid #ff6600;" : "background-color: #111; border-left: 4px solid transparent;";
+
+                        <button class="list-group-item list-group-item-action border-secondary text-white mb-2 rounded-0"
+                                style="@bgStyle transition: 0.2s;"
+                                @onclick="() => Selecionar(os)">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1 fw-bold">@os.ClientName</h6>
+                                    <small class="text-warning">@os.Vehicle</small>
+                                </div>
+                                <span class="badge bg-dark border border-secondary">#@os.Id</span>
+                            </div>
+                        </button>
+                    }
+                }
+                else
+                {
+
+                    <div class="text-center text-muted">Carregando...</div>
+                }
             </div>
         </div>
 
-        <div class="list-group">
-            @if (listaOS != null)
+        <div class="col-md-8">
+            @if (sel != null)
             {
-                <div class="list-group-item active">OS em Andamento</div>
-                @foreach (var os in listaOS.Where(o => o.status != "Completed"))
-                {
-                    <button class="list-group-item list-group-item-action @(osSelecionada?.id == os.id ? "bg-light border-primary" : "")"
-                            @onclick="() => SelecionarOS(os.id)">
-                        <strong>@os.vehicle?.model</strong> (@os.vehicle?.licensePlate)<br />
-                        <small>Entrada: @os.entryDate</small>
-                    </button>
-                }
+                <div class="card border-0 shadow-sm h-100" style="background-color: #111; border-top: 4px solid #ff6600 !important;">
+                    <div class="card-body p-4">
+
+                        <div class="d-flex justify-content-between align-items-start mb-4 border-bottom border-secondary pb-3">
+                            <div>
+                                <small class="text-white-50">Veículo</small>
+                                <h2 class="fw-bold text-white mb-0">@sel.Vehicle</h2>
+                                <span class="text-warning">Cliente: @sel.ClientName</span>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-white-50 d-block">Total Atual</small>
+                                <h1 class="text-success fw-bold mb-0">R$ @sel.TotalAmount.ToString("N2")</h1>
+                                <span class="badge @(sel.Status == "Completed" ? "bg-success" : "bg-warning text-dark")">
+                                    @(sel.Status == "Completed" ? "FINALIZADO" : "EM ANDAMENTO")
+                                </span>
+                            </div>
+                        </div>
+
+                        @if (sel.Status != "Completed")
+                        {
+                            <div class="p-3 rounded-3 mb-4" style="background-color: #0a0a0a; border: 1px solid #333;">
+                                <h6 class="text-white mb-3">Adicionar Peça ou Serviço</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <select class="form-select bg-dark text-white border-secondary" @bind="novoItem.ProductId">
+                                            <option value="0" selected>Selecione um item...</option>
+                                            @if (produtos != null)
+                                            {
+                                                foreach (var p in produtos)
+                                                {
+                                                    <option value="@p.id">@p.name (R$ @p.salePrice)</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="number" class="form-control bg-dark text-white border-secondary"
+                                               @bind="novoItem.Quantity" placeholder="Qtd" min="1" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button class="btn w-100 fw-bold" style="background-color: #ffeb3b; color: #000;" @onclick="AdicionarItem">
+                                            <i class="bi bi-plus-lg"></i> ADD
+                                        </button>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button class="btn btn-success w-100 fw-bold" @onclick="FinalizarOS">
+                                            <i class="bi bi-check-lg"></i> FIM
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover mb-0" style="background-color: #000;">
+                                <thead style="border-bottom: 2px solid #ff6600;">
+                                    <tr>
+                                        <th style="color: #ff6600;">Item</th>
+                                        <th style="color: #ff6600;" class="text-center">Qtd</th>
+                                        <th style="color: #ff6600;" class="text-end">Unitário</th>
+                                        <th style="color: #ff6600;" class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (sel.Items != null && sel.Items.Any())
+                                    {
+                                        foreach (var item in sel.Items)
+                                        {
+                                            <tr>
+                                                <td class="text-white">@item.ProductName</td>
+                                                <td class="text-center text-white">@item.Quantity</td>
+                                                <td class="text-end text-white-50">R$ @item.UnitPrice.ToString("N2")</td>
+                                                <td class="text-end text-white fw-bold">R$ @((item.Quantity * item.UnitPrice).ToString("N2"))</td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted py-4">Nenhum item adicionado ainda.</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted p-5 rounded-3"
+                     style="border: 2px dashed #333; min-height: 400px;">
+                    <i class="bi bi-wrench display-1 mb-3" style="color: #333;"></i>
+                    <p>Selecione uma Ordem de Serviço ou abra uma nova.</p>
+                </div>
             }
         </div>
     </div>
-
-    <div class="col-md-8">
-        @if (osSelecionada != null)
-        {
-            <div class="card shadow-sm">
-                <div class="card-header bg-secondary text-white d-flex justify-content-between">
-                    <span>OS #@osSelecionada.id - @osSelecionada.vehicle?.customerName</span>
-                    <span class="badge bg-light text-dark">Status: @osSelecionada.status</span>
-                </div>
-                <div class="card-body">
-
-                    <div class="p-3 border rounded bg-light mb-3">
-                        <h6>➕ Adicionar Serviço/Peça</h6>
-                        <div class="row g-2">
-                            <div class="col-md-4">
-                                <select class="form-select" @bind="novoItem.productId">
-                                    <option value="">Selecione Peça (Opcional)</option>
-                                    @if (produtos != null)
-                                    {
-                                        @foreach (var p in produtos)
-                                        {
-                                            <option value="@p.id">@p.name (Est: @p.stockQuantity)</option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <select class="form-select" @bind="novoItem.mechanicId">
-                                    <option value="">Selecione Mecânico</option>
-                                    @if (mecanicos != null)
-                                    {
-                                        @foreach (var m in mecanicos)
-                                        {
-                                            <option value="@m.id">@m.name</option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <input class="form-control" @bind="novoItem.description" placeholder="Descrição (Ex: Mão de Obra)" />
-                            </div>
-                            <div class="col-md-3">
-                                <input type="number" class="form-control" @bind="novoItem.price" placeholder="Preço" />
-                            </div>
-                            <div class="col-md-3">
-                                <button class="btn btn-success w-100" @onclick="AdicionarItem">Adicionar</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <table class="table table-sm">
-                        <thead><tr><th>Item</th><th>Mecânico</th><th>Garantia Prevista</th><th>Valor</th></tr></thead>
-                        <tbody>
-                            @foreach (var item in osSelecionada.items)
-                            {
-                                <tr>
-                                    <td>@item.description @(item.product != null ? $"(Peça: {item.product.name})" : "")</td>
-                                    <td>@(item.mechanic != null ? item.mechanic.name : "--")</td>
-                                    <td>90 Dias</td>
-                                    <td>R$ @item.price</td>
-                                </tr>
-                            }
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="3" class="text-end"><strong>Total:</strong></td>
-                                <td><strong>R$ @osSelecionada.items.Sum(i => i.price)</strong></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-
-                    @if (osSelecionada.status != "Completed")
-                    {
-                        <div class="alert alert-warning mt-3">
-                            <small>⚠️ Ao finalizar: O estoque será baixado e a garantia de 90 dias será gerada.</small>
-                            <button class="btn btn-danger w-100 mt-2" @onclick="FinalizarServico">✅ Finalizar Serviço e Entregar Veículo</button>
-                        </div>
-                    }
-                </div>
-            </div>
-        }
-        else
-        {
-            <div class="alert alert-info mt-5 text-center">
-                ⬅️ Selecione ou abra uma Ordem de Serviço para começar.
-            </div>
-        }
-    </div>
 </div>
 
-@code {
-    private string ApiUrl = "https://localhost:7082";
+<style>
+    /* Estilos globais para manter consistência */
+    .form-control::placeholder {
+        color: #b0b0b0 !important;
+        opacity: 1;
+    }
 
+    .form-control:focus, .form-select:focus {
+        background-color: #222 !important;
+        color: #fff !important;
+        border-color: #ffeb3b !important;
+        box-shadow: 0 0 5px rgba(255, 235, 59, 0.5);
+    }
+    /* Scrollbar estilizada para a lista */
+    .list-group::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .list-group::-webkit-scrollbar-track {
+        background: #111;
+    }
+
+    .list-group::-webkit-scrollbar-thumb {
+        background: #333;
+        border-radius: 4px;
+    }
+
+        .list-group::-webkit-scrollbar-thumb:hover {
+            background: #ff6600;
+        }
+
+    .table-dark {
+        --bs-table-bg: #000;
+        background-color: #000;
+    }
+</style>
+
+@code {
+    private string ApiUrl = "https://localhost:7082"; // CONFIRA SUA PORTA
+
+    // CLASSES DE DADOS (DTOs)
     public class ServiceOrderDTO
     {
+        public int Id { get; set; }
+        public string ClientName { get; set; } = "";
+        public string Vehicle { get; set; } = "";
+        public string Status { get; set; } = "Pending";
+        public decimal TotalAmount { get; set; }
+        public List<OrderItemDTO> Items { get; set; } = new();
+    }
+
+    public class OrderItemDTO
+    {
+        public int ProductId { get; set; }
+        public string ProductName { get; set; } = "";
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+    }
+
+    public class ProductListDTO
+    {
         public int id { get; set; }
-        public VehicleDTO vehicle { get; set; } = new();
-        public List<ServiceItemDTO> items { get; set; } = new();
-        public string status { get; set; } = "";
-        public DateTime entryDate { get; set; }
+        public string name { get; set; } = "";
+        public decimal salePrice { get; set; }
     }
-    public class VehicleDTO
-    {
-        public string licensePlate { get; set; } = "";
-        public string model { get; set; } = "";
-        public string customerName { get; set; } = "";
-    }
-    public class ServiceItemDTO
-    {
-        public string description { get; set; } = "";
-        public decimal price { get; set; }
-        public int? productId { get; set; }
-        public ProductDTO? product { get; set; }
-        public int? mechanicId { get; set; }
-        public MechanicDTO? mechanic { get; set; }
-    }
-    public class ProductDTO { public int id { get; set; } public string name { get; set; } = ""; public int stockQuantity { get; set; } }
-    public class MechanicDTO { public int id { get; set; } public string name { get; set; } = ""; }
 
-    private List<ProductDTO>? produtos;
-    private List<MechanicDTO>? mecanicos;
-    private List<ServiceOrderDTO>? listaOS;
+    // INPUTS
+    public class NewOsInput { public string ClientName { get; set; } = ""; public string Vehicle { get; set; } = ""; }
+    public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; }
 
-    private ServiceOrderDTO novaOS = new ServiceOrderDTO();
-    private ServiceOrderDTO? osSelecionada;
-    private ServiceItemDTO novoItem = new ServiceItemDTO();
+    // VARIÁVEIS
+    List<ServiceOrderDTO>? todasOS;
+    List<ServiceOrderDTO>? listaFiltrada => mostrarFinalizadas
+        ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList()
+        : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList();
 
+    List<ProductListDTO>? produtos;
+    ServiceOrderDTO? sel;
+
+    NewOsInput novaOs = new();
+    AddItemInput novoItem = new();
+    bool mostrarFinalizadas = false;
+
+    // INICIALIZAÇÃO
     protected override async Task OnInitializedAsync()
     {
-        await CarregarTudo();
+        await CarregarProdutos();
+        await CarregarOS();
     }
 
-    private async Task CarregarTudo()
+    async Task CarregarOS()
     {
-        try
+        try { todasOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders"); } catch { }
+    }
+
+    async Task CarregarProdutos()
+    {
+        try { produtos = await Http.GetFromJsonAsync<List<ProductListDTO>>($"{ApiUrl}/api/products"); } catch { }
+    }
+
+    void Selecionar(ServiceOrderDTO os)
+    {
+        sel = os;
+        novoItem = new AddItemInput(); // Reseta o form de adicionar item
+    }
+
+    // AÇÕES
+    async Task AbrirOS()
+    {
+        if (string.IsNullOrEmpty(novaOs.ClientName) || string.IsNullOrEmpty(novaOs.Vehicle)) return;
+
+        var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOs);
+        if (res.IsSuccessStatusCode)
         {
-            listaOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders");
-            produtos = await Http.GetFromJsonAsync<List<ProductDTO>>($"{ApiUrl}/api/products");
-            mecanicos = await Http.GetFromJsonAsync<List<MechanicDTO>>($"{ApiUrl}/api/employees");
-        }
-        catch (Exception ex) { Console.WriteLine(ex.Message); }
-    }
-
-    private async Task AbrirOS()
-    {
-        var response = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOS);
-        if (response.IsSuccessStatusCode)
-        {
-            novaOS = new ServiceOrderDTO();
-            await CarregarTudo();
+            novaOs = new();
+            await CarregarOS();
         }
     }
 
-    private async Task SelecionarOS(int id)
+    async Task AdicionarItem()
     {
-        osSelecionada = await Http.GetFromJsonAsync<ServiceOrderDTO>($"{ApiUrl}/api/serviceorders/{id}");
+        if (sel == null || novoItem.ProductId == 0 || novoItem.Quantity <= 0) return;
+
+        await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem);
+
+        // Recarrega tudo para atualizar o total e a lista
+        await CarregarOS();
+        // Atualiza o selecionado na memória
+        sel = todasOS?.FirstOrDefault(o => o.Id == sel.Id);
+        novoItem = new AddItemInput(); // Limpa form
     }
 
-    private async Task AdicionarItem()
+    async Task FinalizarOS()
     {
-        if (osSelecionada == null) return;
-
-        await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{osSelecionada.id}/items", novoItem);
-        novoItem = new ServiceItemDTO();
-        await SelecionarOS(osSelecionada.id);
-    }
-
-    private async Task FinalizarServico()
-    {
-        if (osSelecionada == null) return;
-
-        await Http.PutAsync($"{ApiUrl}/api/serviceorders/{osSelecionada.id}/finish", null);
-        await SelecionarOS(osSelecionada.id);
-        await CarregarTudo();
+        if (sel == null) return;
+        await Http.PutAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/complete", null);
+        await CarregarOS();
+        sel = null; // Desmarca pois foi finalizada
     }
 }
