@@ -16,6 +16,7 @@ namespace OficinaAPI.Controllers
             _context = context;
         }
 
+        // --- AQUI ESTAVA O POSSÍVEL ERRO (FALTA DO HTTPPOST) ---
         [HttpPost]
         public async Task<ActionResult<ServiceOrder>> OpenServiceOrder(ServiceOrder order)
         {
@@ -26,6 +27,14 @@ namespace OficinaAPI.Controllers
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetServiceOrder", new { id = order.Id }, order);
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetServiceOrders()
+        {
+            return await _context.ServiceOrders
+                .Include(o => o.Vehicle)
+                .ToListAsync();
         }
 
         [HttpGet("{id}")]
@@ -60,27 +69,19 @@ namespace OficinaAPI.Controllers
         [HttpPut("{id}/finish")]
         public async Task<IActionResult> FinishOrder(int id)
         {
-            var order = await _context.ServiceOrders
-                .Include(o => o.Items)
-                .FirstOrDefaultAsync(o => o.Id == id);
-
+            var order = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (order == null) return NotFound();
 
             decimal total = 0;
-
             foreach (var item in order.Items)
             {
                 total += item.Price;
-
                 item.WarrantyExpirationDate = DateTime.Now.AddDays(90);
 
                 if (item.ProductId != null)
                 {
                     var product = await _context.Products.FindAsync(item.ProductId);
-                    if (product != null)
-                    {
-                        product.StockQuantity -= 1;
-                    }
+                    if (product != null) product.StockQuantity -= 1;
                 }
             }
 
@@ -89,8 +90,7 @@ namespace OficinaAPI.Controllers
             order.CompletionDate = DateTime.Now;
 
             await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Serviço finalizado! Estoque atualizado e Garantia gerada.", order });
+            return Ok(new { message = "Finalizado", order });
         }
     }
 }

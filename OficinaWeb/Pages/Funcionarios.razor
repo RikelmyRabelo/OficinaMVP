@@ -1,0 +1,218 @@
+﻿@page "/rh"
+@inject HttpClient Http
+@using System.Net.Http.Json
+
+<h3>👥 Gestão de RH e Pagamentos</h3>
+
+<div class="row">
+    <div class="col-md-5">
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-success text-white">Nova Contratação</div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <input class="form-control mb-2" @bind="novoFuncionario.name" placeholder="Nome Completo" />
+                    <input class="form-control mb-2" @bind="novoFuncionario.role" placeholder="Cargo (Ex: Mecânico)" />
+                    <div class="input-group">
+                        <span class="input-group-text">R$</span>
+                        <input type="number" class="form-control" @bind="novoFuncionario.baseSalary" placeholder="Salário Base" />
+                        <button class="btn btn-dark" @onclick="ContratarFuncionario">Salvar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">Equipe</div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    @if (funcionarios == null)
+                    {
+                        <li class="list-group-item">Carregando...</li>
+                    }
+                    else if (funcionarios.Count == 0)
+                    {
+                        <li class="list-group-item">Nenhum funcionário cadastrado.</li>
+                    }
+                    else
+                    {
+                        @foreach (var func in funcionarios)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center"
+                                @onclick="() => SelecionarFuncionario(func)"
+                                style="cursor: pointer; background-color: @(funcionarioSelecionado == func ? "#f0f8ff" : "white")">
+                                <div>
+                                    <strong>@func.name</strong><br />
+                                    <small class="text-muted">@func.role</small>
+                                </div>
+                                <span class="badge bg-primary">R$ @func.baseSalary</span>
+                            </li>
+                        }
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        @if (funcionarioSelecionado != null)
+        {
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    Pagamentos: <strong>@funcionarioSelecionado.name</strong>
+                </div>
+                <div class="card-body">
+                    <label class="form-label">Lançar Pagamento / Comissão</label>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">R$</span>
+                        <input type="number" class="form-control" @bind="novoPagamento.amount" placeholder="Valor" />
+                        <input type="text" class="form-control" @bind="novoPagamento.referenceMonth" placeholder="Ref (Ex: 02/2026)" />
+                        <button class="btn btn-success" @onclick="LancarPagamento">Lançar</button>
+                    </div>
+
+                    <hr />
+
+                    <h6 class="text-muted">Histórico Financeiro</h6>
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Mês</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pag in funcionarioSelecionado.payments)
+                            {
+                                <tr>
+                                    <td>@pag.referenceMonth</td>
+                                    <td>R$ @pag.amount</td>
+                                    <td>
+                                        @if (pag.isPaid)
+                                        {
+                                            <span class="badge bg-success">PAGO</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">PENDENTE</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!pag.isPaid)
+                                        {
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmarPagamento(pag.id)">
+                                                Confirmar
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-success">✔</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-secondary mt-3 text-center">
+                ⬅️ Selecione um funcionário na lista para gerenciar os pagamentos.
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    // --- IMPORTANTE: Verifique se este número é o mesmo que funcionou no Estoque ---
+    private string ApiUrl = "https://localhost:7082";
+
+    // DTOs
+    public class EmployeeDTO
+    {
+        public int id { get; set; }
+        public string name { get; set; } = "";
+        public string role { get; set; } = "";
+        public decimal baseSalary { get; set; }
+        public List<PaymentDTO> payments { get; set; } = new();
+    }
+
+    public class PaymentDTO
+    {
+        public int id { get; set; }
+        public decimal amount { get; set; }
+        public string referenceMonth { get; set; } = "";
+        public bool isPaid { get; set; }
+        public string adminNotes { get; set; } = "";
+    }
+
+    private List<EmployeeDTO>? funcionarios;
+    private EmployeeDTO? funcionarioSelecionado;
+
+    // Objetos para os formulários
+    private EmployeeDTO novoFuncionario = new EmployeeDTO();
+    private PaymentDTO novoPagamento = new PaymentDTO();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarFuncionarios();
+    }
+
+    private async Task CarregarFuncionarios()
+    {
+        try
+        {
+            funcionarios = await Http.GetFromJsonAsync<List<EmployeeDTO>>($"{ApiUrl}/api/employees");
+
+            // Atualiza a seleção se ela existir
+            if (funcionarioSelecionado != null)
+            {
+                var atualizado = funcionarios?.FirstOrDefault(f => f.id == funcionarioSelecionado.id);
+                if (atualizado != null) funcionarioSelecionado = atualizado;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro: {ex.Message}");
+        }
+    }
+
+    private void SelecionarFuncionario(EmployeeDTO func)
+    {
+        funcionarioSelecionado = func;
+        // Prepara o formulário de pagamento com o salário base
+        novoPagamento.amount = func.baseSalary;
+        novoPagamento.referenceMonth = DateTime.Now.ToString("MM/yyyy");
+    }
+
+    private async Task ContratarFuncionario()
+    {
+        // Envia para a API
+        var response = await Http.PostAsJsonAsync($"{ApiUrl}/api/employees", novoFuncionario);
+
+        if (response.IsSuccessStatusCode)
+        {
+            // Limpa o formulário e recarrega
+            novoFuncionario = new EmployeeDTO();
+            await CarregarFuncionarios();
+        }
+    }
+
+    private async Task LancarPagamento()
+    {
+        if (funcionarioSelecionado == null) return;
+
+        novoPagamento.isPaid = false;
+        await Http.PostAsJsonAsync($"{ApiUrl}/api/employees/{funcionarioSelecionado.id}/payments", novoPagamento);
+        await CarregarFuncionarios();
+    }
+
+    private async Task ConfirmarPagamento(int paymentId)
+    {
+        await Http.PutAsync($"{ApiUrl}/api/employees/payments/{paymentId}/confirm", null);
+        await CarregarFuncionarios();
+    }
+}
