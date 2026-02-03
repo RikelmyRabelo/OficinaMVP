@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="OficinaAPI/OficinaAPI.csproj" />
+  <Project Path="OficinaWeb/OficinaWeb.csproj" />
 </Solution>

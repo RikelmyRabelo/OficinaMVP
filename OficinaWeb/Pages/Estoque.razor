@@ -1,0 +1,118 @@
+﻿@page "/estoque"
+@inject HttpClient Http
+@using System.Net.Http.Json
+
+<h3>📦 Controle de Estoque (Sem Scanner)</h3>
+
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-primary text-white">Novo Produto</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label>Código Manual</label>
+                <input class="form-control" @bind="novoProduto.code" placeholder="Ex: OLEO123" />
+            </div>
+            <div class="col-md-4">
+                <label>Nome da Peça</label>
+                <input class="form-control" @bind="novoProduto.name" placeholder="Ex: Filtro de Ar" />
+            </div>
+            <div class="col-md-2">
+                <label>Preço (R$)</label>
+                <input type="number" class="form-control" @bind="novoProduto.salePrice" />
+            </div>
+            <div class="col-md-2">
+                <label>Qtd Estoque</label>
+                <input type="number" class="form-control" @bind="novoProduto.stockQuantity" />
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button class="btn btn-success w-100" @onclick="SalvarProduto">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (produtos == null)
+{
+    <div class="alert alert-info">Carregando estoque da API...</div>
+}
+else
+{
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Preço</th>
+                <th>Estoque</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in produtos)
+            {
+                // Pinta de vermelho se o estoque estiver baixo
+                <tr class="@(p.stockQuantity <= p.minimumStock ? "table-danger" : "")">
+                    <td><strong>@p.code</strong></td>
+                    <td>@p.name</td>
+                    <td>R$ @p.salePrice</td>
+                    <td>@p.stockQuantity</td>
+                    <td>
+                        @if (p.stockQuantity <= p.minimumStock)
+                        {
+                            <span class="badge bg-danger">Baixo!</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">OK</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    public class ProductDTO
+    {
+        public int id { get; set; }
+        public string code { get; set; } = "";
+        public string name { get; set; } = "";
+        public decimal salePrice { get; set; }
+        public int stockQuantity { get; set; }
+        public int minimumStock { get; set; } = 5;
+    }
+
+    private List<ProductDTO>? produtos;
+    private ProductDTO novoProduto = new ProductDTO();
+
+   
+ private string ApiUrl = "https://localhost:7082";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await CarregarProdutos();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao conectar: {ex.Message}");
+        }
+    }
+
+    private async Task CarregarProdutos()
+    {
+        produtos = await Http.GetFromJsonAsync<List<ProductDTO>>($"{ApiUrl}/api/products");
+    }
+
+    private async Task SalvarProduto()
+    {
+        var response = await Http.PostAsJsonAsync($"{ApiUrl}/api/products", novoProduto);
+        if (response.IsSuccessStatusCode)
+        {
+            await CarregarProdutos();
+            novoProduto = new ProductDTO();
+        }
+    }
+}

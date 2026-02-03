@@ -39,8 +39,6 @@ namespace OficinaAPI.Controllers
             if (employee == null) return NotFound("Funcionário não encontrado.");
 
             payment.EmployeeId = id;
-            payment.IsPaid = false;
-
             _context.PaymentRecords.Add(payment);
             await _context.SaveChangesAsync();
 
@@ -51,15 +49,14 @@ namespace OficinaAPI.Controllers
         public async Task<IActionResult> ConfirmPayment(int paymentId)
         {
             var payment = await _context.PaymentRecords.FindAsync(paymentId);
-
             if (payment == null) return NotFound("Pagamento não encontrado.");
 
             payment.IsPaid = true;
-            payment.AdminNotes += $" | Confirmado em {DateTime.Now}";
+            payment.AdminNotes += " | Confirmado via Web";
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Pagamento confirmado com sucesso!", status = "PAGO" });
+            return Ok(payment);
         }
     }
 }
