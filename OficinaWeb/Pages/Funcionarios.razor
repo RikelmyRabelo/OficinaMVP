@@ -68,12 +68,7 @@
 
                             <div class="d-flex align-items-center gap-3">
                                 <span class="badge bg-secondary text-dark fw-bold">R$ @f.BaseSalary.ToString("N2")</span>
-                                <button class="btn btn-sm text-danger p-0 border-0"
-                                        title="Demitir/Excluir"
-                                        @onclick:stopPropagation="true"
-                                        @onclick="() => ExcluirFuncionario(f)">
-                                    <i class="bi bi-trash-fill fs-5"></i>
-                                </button>
+                                <i class="bi bi-chevron-right text-secondary"></i>
                             </div>
                         </div>
                     }
@@ -123,7 +118,7 @@
                         </div>
 
                         <h6 class="fw-bold text-white mb-3">Histórico Financeiro</h6>
-                        <div class="table-responsive">
+                        <div class="table-responsive mb-4">
                             <table class="table table-dark table-hover mb-0" style="background-color: #000;">
                                 <thead style="border-bottom: 2px solid #ff6600;">
                                     <tr>
@@ -139,7 +134,6 @@
                                     {
                                         <tr>
                                             <td class="text-secondary">#@p.Id</td>
-
                                             <td class="text-white">
                                                 @if (p.PaymentDate.HasValue)
                                                 {
@@ -147,10 +141,9 @@
                                                 }
                                                 else
                                                 {
-                                                    <span class="text-muted" style="font-size: 0.8rem;">(Aguardando Confirmação)</span>
+                                                    <span class="text-muted" style="font-size: 0.8rem;">(Aguardando)</span>
                                                 }
                                             </td>
-
                                             <td class="text-white fw-bold">R$ @p.Amount.ToString("N2")</td>
                                             <td>
                                                 @if (p.IsPaid)
@@ -166,7 +159,7 @@
                                                 @if (!p.IsPaid)
                                                 {
                                                     <button class="btn btn-sm btn-outline-success" @onclick="() => Confirmar(p.Id)">
-                                                        <i class="bi bi-check-lg"></i> Confirmar
+                                                        <i class="bi bi-check-lg"></i>
                                                     </button>
                                                 }
                                             </td>
@@ -178,6 +171,15 @@
                             {
                                 <p class="text-muted text-center mt-3 small">Nenhum pagamento registrado.</p>
                             }
+                        </div>
+
+                        <hr class="border-secondary my-4">
+                        <div class="text-center">
+                            <button class="btn btn-outline-danger w-100 py-2 fw-bold"
+                                    @onclick="() => ExcluirFuncionario(sel)">
+                                <i class="bi bi-trash-fill me-2"></i> DEMITIR / EXCLUIR FUNCIONÁRIO
+                            </button>
+                            <small class="text-muted mt-2 d-block">Atenção: Essa ação removerá o cadastro do sistema.</small>
                         </div>
 
                     </div>
@@ -217,7 +219,6 @@
 @code {
     private string ApiUrl = "https://localhost:7082";
 
-    // USING PASCALCASE TO MATCH C# BACKEND
     public class Emp
     {
         public int Id { get; set; }
@@ -239,7 +240,6 @@
         public int Id { get; set; }
         public decimal Amount { get; set; }
         public bool IsPaid { get; set; }
-        // THIS MUST MATCH THE BACKEND PROPERTY EXACTLY
         public DateTime? PaymentDate { get; set; }
     }
 
@@ -258,7 +258,6 @@
         try
         {
             funcionarios = await Http.GetFromJsonAsync<List<Emp>>($"{ApiUrl}/api/employees");
-            // Refresh selected employee if one is already selected
             if (sel != null && funcionarios != null) sel = funcionarios.FirstOrDefault(f => f.Id == sel.Id);
         }
         catch { }
@@ -299,18 +298,18 @@
 
     async Task ExcluirFuncionario(Emp f)
     {
-        bool confirmado = await JS.InvokeAsync<bool>("confirm", $"Demitir/Excluir '{f.Name}'?");
+        bool confirmado = await JS.InvokeAsync<bool>("confirm", $"ATENÇÃO: Deseja realmente excluir o funcionário '{f.Name}'?\n\nIsso apagará o cadastro do sistema.");
         if (confirmado)
         {
             var res = await Http.DeleteAsync($"{ApiUrl}/api/employees/{f.Id}");
             if (res.IsSuccessStatusCode)
             {
-                if (sel?.Id == f.Id) sel = null;
-                await Load();
+                sel = null; // Limpa a seleção
+                await Load(); // Recarrega a lista
             }
             else
             {
-                await JS.InvokeVoidAsync("alert", "Não é possível excluir este funcionário pois existem pagamentos registrados no histórico.");
+                await JS.InvokeVoidAsync("alert", "ERRO: Não é possível excluir este funcionário pois ele possui histórico de pagamentos registrados.");
             }
         }
     }
