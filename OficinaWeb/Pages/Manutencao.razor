@@ -30,15 +30,15 @@
                     <h5 class="mb-3 fw-bold" style="color: #ffeb3b;">Nova Ordem de Serviço</h5>
                     <div class="d-flex flex-column gap-3">
                         <input class="form-control bg-dark text-white border-secondary"
-                               @bind="novaOs.ClientName" placeholder="Nome do Cliente" />
+                               @bind="novaOsRequest.ClientName" placeholder="Nome do Cliente" />
 
                         <input class="form-control bg-dark text-white border-secondary"
-                               @bind="novaOs.Vehicle" placeholder="Veículo / Placa" />
+                               @bind="novaOsRequest.VehicleModel" placeholder="Veículo (Modelo)" />
 
                         <button class="btn fw-bold w-100"
                                 style="background-color: #ffeb3b; color: #000;"
                                 @onclick="AbrirOS">
-                            ABRIR ORDEM <i class="bi bi-file-earmark-plus ms-2"></i>
+                            ABRIR OS <i class="bi bi-file-earmark-plus ms-2"></i>
                         </button>
                     </div>
                 </div>
@@ -68,8 +68,8 @@
                                 @onclick="() => Selecionar(os)">
                             <div class="d-flex w-100 justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="mb-1 fw-bold">@os.ClientName</h6>
-                                    <small class="text-warning">@os.Vehicle</small>
+                                    <h6 class="mb-1 fw-bold">@(os.Vehicle?.CustomerName ?? "Cliente N/A")</h6>
+                                    <small class="text-warning">@(os.Vehicle?.Model ?? "Veículo N/A")</small>
                                 </div>
                                 <span class="badge bg-dark border border-secondary">#@os.Id</span>
                             </div>
@@ -93,8 +93,8 @@
                         <div class="d-flex justify-content-between align-items-start mb-4 border-bottom border-secondary pb-3">
                             <div>
                                 <small class="text-white-50">Veículo</small>
-                                <h2 class="fw-bold text-white mb-0">@sel.Vehicle</h2>
-                                <span class="text-warning">Cliente: @sel.ClientName</span>
+                                <h2 class="fw-bold text-white mb-0">@(sel.Vehicle?.Model ?? "-")</h2>
+                                <span class="text-warning">Cliente: @(sel.Vehicle?.CustomerName ?? "-")</span>
                             </div>
                             <div class="text-end">
                                 <small class="text-white-50 d-block">Total Atual</small>
@@ -108,7 +108,7 @@
                         @if (sel.Status != "Completed")
                         {
                             <div class="p-3 rounded-3 mb-4" style="background-color: #0a0a0a; border: 1px solid #333;">
-                                <h6 class="text-white mb-3">Adicionar Peça ou Serviço</h6>
+                                <h6 class="text-white mb-3">Adicionar Peça/Serviço</h6>
                                 <div class="row g-2">
                                     <div class="col-md-6">
                                         <select class="form-select bg-dark text-white border-secondary" @bind="novoItem.ProductId">
@@ -144,10 +144,8 @@
                             <table class="table table-dark table-hover mb-0" style="background-color: #000;">
                                 <thead style="border-bottom: 2px solid #ff6600;">
                                     <tr>
-                                        <th style="color: #ff6600;">Item</th>
-                                        <th style="color: #ff6600;" class="text-center">Qtd</th>
-                                        <th style="color: #ff6600;" class="text-end">Unitário</th>
-                                        <th style="color: #ff6600;" class="text-end">Subtotal</th>
+                                        <th style="color: #ff6600;">Descrição</th>
+                                        <th style="color: #ff6600;" class="text-end">Valor</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -156,18 +154,14 @@
                                         foreach (var item in sel.Items)
                                         {
                                             <tr>
-                                                <td class="text-white">@item.ProductName</td>
-                                                <td class="text-center text-white">@item.Quantity</td>
-                                                <td class="text-end text-white-50">R$ @item.UnitPrice.ToString("N2")</td>
-                                                <td class="text-end text-white fw-bold">R$ @((item.Quantity * item.UnitPrice).ToString("N2"))</td>
+                                                <td class="text-white">@item.Description</td>
+                                                <td class="text-end text-white fw-bold">R$ @item.Price.ToString("N2")</td>
                                             </tr>
                                         }
                                     }
                                     else
                                     {
-                                        <tr>
-                                            <td colspan="4" class="text-center text-muted py-4">Nenhum item adicionado ainda.</td>
-                                        </tr>
+                                        <tr><td colspan="2" class="text-center text-muted py-4">Nenhum item adicionado.</td></tr>
                                     }
                                 </tbody>
                             </table>
@@ -189,7 +183,6 @@
 </div>
 
 <style>
-    /* Estilos globais para manter consistência */
     .form-control::placeholder {
         color: #b0b0b0 !important;
         opacity: 1;
@@ -201,7 +194,7 @@
         border-color: #ffeb3b !important;
         box-shadow: 0 0 5px rgba(255, 235, 59, 0.5);
     }
-    /* Scrollbar estilizada para a lista */
+
     .list-group::-webkit-scrollbar {
         width: 8px;
     }
@@ -215,10 +208,6 @@
         border-radius: 4px;
     }
 
-        .list-group::-webkit-scrollbar-thumb:hover {
-            background: #ff6600;
-        }
-
     .table-dark {
         --bs-table-bg: #000;
         background-color: #000;
@@ -226,25 +215,29 @@
 </style>
 
 @code {
-    private string ApiUrl = "https://localhost:7082"; // CONFIRA SUA PORTA
+    private string ApiUrl = "https://localhost:7082";
 
-    // CLASSES DE DADOS (DTOs)
+    // DTOs DO FRONTEND (Espelhos do que o Backend retorna)
+    public class VehicleDTO
+    {
+        public string Model { get; set; } = "";
+        public string CustomerName { get; set; } = "";
+    }
+
     public class ServiceOrderDTO
     {
         public int Id { get; set; }
-        public string ClientName { get; set; } = "";
-        public string Vehicle { get; set; } = "";
+        public int VehicleId { get; set; }
+        public VehicleDTO? Vehicle { get; set; } // Agora tem o objeto aninhado
         public string Status { get; set; } = "Pending";
         public decimal TotalAmount { get; set; }
-        public List<OrderItemDTO> Items { get; set; } = new();
+        public List<ServiceItemDTO> Items { get; set; } = new();
     }
 
-    public class OrderItemDTO
+    public class ServiceItemDTO
     {
-        public int ProductId { get; set; }
-        public string ProductName { get; set; } = "";
-        public int Quantity { get; set; }
-        public decimal UnitPrice { get; set; }
+        public string Description { get; set; } = "";
+        public decimal Price { get; set; }
     }
 
     public class ProductListDTO
@@ -254,11 +247,15 @@
         public decimal salePrice { get; set; }
     }
 
-    // INPUTS
-    public class NewOsInput { public string ClientName { get; set; } = ""; public string Vehicle { get; set; } = ""; }
+    // DTOs DE ENVIO (Input)
+    public class CreateOsInput
+    {
+        public string ClientName { get; set; } = "";
+        public string VehicleModel { get; set; } = "";
+    }
+
     public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; }
 
-    // VARIÁVEIS
     List<ServiceOrderDTO>? todasOS;
     List<ServiceOrderDTO>? listaFiltrada => mostrarFinalizadas
         ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList()
@@ -267,11 +264,10 @@
     List<ProductListDTO>? produtos;
     ServiceOrderDTO? sel;
 
-    NewOsInput novaOs = new();
+    CreateOsInput novaOsRequest = new();
     AddItemInput novoItem = new();
     bool mostrarFinalizadas = false;
 
-    // INICIALIZAÇÃO
     protected override async Task OnInitializedAsync()
     {
         await CarregarProdutos();
@@ -291,18 +287,17 @@
     void Selecionar(ServiceOrderDTO os)
     {
         sel = os;
-        novoItem = new AddItemInput(); // Reseta o form de adicionar item
+        novoItem = new AddItemInput();
     }
 
-    // AÇÕES
     async Task AbrirOS()
     {
-        if (string.IsNullOrEmpty(novaOs.ClientName) || string.IsNullOrEmpty(novaOs.Vehicle)) return;
+        if (string.IsNullOrEmpty(novaOsRequest.ClientName) || string.IsNullOrEmpty(novaOsRequest.VehicleModel)) return;
 
-        var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOs);
+        var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOsRequest);
         if (res.IsSuccessStatusCode)
         {
-            novaOs = new();
+            novaOsRequest = new();
             await CarregarOS();
         }
     }
@@ -313,11 +308,9 @@
 
         await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem);
 
-        // Recarrega tudo para atualizar o total e a lista
         await CarregarOS();
-        // Atualiza o selecionado na memória
         sel = todasOS?.FirstOrDefault(o => o.Id == sel.Id);
-        novoItem = new AddItemInput(); // Limpa form
+        novoItem = new AddItemInput();
     }
 
     async Task FinalizarOS()
@@ -325,6 +318,6 @@
         if (sel == null) return;
         await Http.PutAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/complete", null);
         await CarregarOS();
-        sel = null; // Desmarca pois foi finalizada
+        sel = null;
     }
 }

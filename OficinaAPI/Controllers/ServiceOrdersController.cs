@@ -16,81 +16,119 @@ namespace OficinaAPI.Controllers
             _context = context;
         }
 
-        // --- AQUI ESTAVA O POSSÍVEL ERRO (FALTA DO HTTPPOST) ---
-        [HttpPost]
-        public async Task<ActionResult<ServiceOrder>> OpenServiceOrder(ServiceOrder order)
-        {
-            order.EntryDate = DateTime.Now;
-            order.Status = "Pending";
-
-            _context.ServiceOrders.Add(order);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetServiceOrder", new { id = order.Id }, order);
-        }
-
+        // GET: api/serviceorders
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetServiceOrders()
         {
             return await _context.ServiceOrders
                 .Include(o => o.Vehicle)
+                .Include(o => o.Items)
+                .OrderByDescending(o => o.Id)
                 .ToListAsync();
         }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<ServiceOrder>> GetServiceOrder(int id)
+        // POST: api/serviceorders
+        [HttpPost]
+        public async Task<ActionResult<ServiceOrder>> PostServiceOrder(CreateOSDTO request)
         {
-            var order = await _context.ServiceOrders
-                .Include(o => o.Vehicle)
-                .Include(o => o.Items)
-                    .ThenInclude(i => i.Product)
-                .Include(o => o.Items)
-                    .ThenInclude(i => i.Mechanic)
-                .FirstOrDefaultAsync(o => o.Id == id);
-
-            if (order == null) return NotFound();
-
-            return order;
-        }
-
-        [HttpPost("{orderId}/items")]
-        public async Task<ActionResult<ServiceItem>> AddItem(int orderId, ServiceItem item)
-        {
-            var order = await _context.ServiceOrders.FindAsync(orderId);
-            if (order == null) return NotFound("OS não encontrada.");
-
-            item.ServiceOrderId = orderId;
-            _context.ServiceItems.Add(item);
-            await _context.SaveChangesAsync();
-
-            return Ok(item);
-        }
-
-        [HttpPut("{id}/finish")]
-        public async Task<IActionResult> FinishOrder(int id)
-        {
-            var order = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
-            if (order == null) return NotFound();
-
-            decimal total = 0;
-            foreach (var item in order.Items)
+            // 1. Cria o Veículo
+            var newVehicle = new Vehicle
             {
-                total += item.Price;
-                item.WarrantyExpirationDate = DateTime.Now.AddDays(90);
+                CustomerName = request.ClientName,
+                Model = request.VehicleModel,
+                LicensePlate = "SEM-PLACA",
+                CustomerPhone = ""
+            };
 
-                if (item.ProductId != null)
-                {
-                    var product = await _context.Products.FindAsync(item.ProductId);
-                    if (product != null) product.StockQuantity -= 1;
-                }
-            }
+            _context.Vehicles.Add(newVehicle);
+            await _context.SaveChangesAsync();
 
-            order.TotalAmount = total;
-            order.Status = "Completed";
-            order.CompletionDate = DateTime.Now;
+            // 2. Cria a OS
+            var serviceOrder = new ServiceOrder
+            {
+                VehicleId = newVehicle.Id,
+                EntryDate = DateTime.Now,
+                Status = "Pending",
+                TotalAmount = 0
+            };
+
+            _context.ServiceOrders.Add(serviceOrder);
+            await _context.SaveChangesAsync();
+
+            serviceOrder.Vehicle = newVehicle;
+
+            return CreatedAtAction("GetServiceOrders", new { id = serviceOrder.Id }, serviceOrder);
+        }
+
+        // POST: api/serviceorders/5/items
+        [HttpPost("{id}/items")]
+        public async Task<ActionResult<ServiceItem>> AddItem(int id, AddItemDTO itemDto)
+        {
+            var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
+            if (os == null) return NotFound("Ordem de Serviço não encontrada.");
+
+            var product = await _context.Products.FindAsync(itemDto.ProductId);
+            if (product == null) return BadRequest("Produto não encontrado.");
+
+            // --- CORREÇÃO 1: Removido '?? 0' ---
+            // Como StockQuantity é obrigatório, usamos direto.
+            if (product.StockQuantity < itemDto.Quantity)
+                return BadRequest($"Estoque insuficiente.");
+
+            // Cria o Item
+            var newItem = new ServiceItem
+            {
+                ServiceOrderId = id,
+                ProductId = product.Id,
+                Description = product.Name,
+
+                // --- CORREÇÃO 2: Removido '?? 0' ---
+                // Multiplicação direta. Se SalePrice for decimal, funciona.
+                // Se der erro aqui, me avise, mas deve passar agora.
+                Price = product.SalePrice * itemDto.Quantity,
+
+                WarrantyExpirationDate = DateTime.Now.AddMonths(3)
+            };
+
+            // Baixa no estoque
+            product.StockQuantity -= itemDto.Quantity;
+
+            // Atualiza total da OS
+            os.TotalAmount += newItem.Price;
+
+            // ATENÇÃO: Certifique-se que no OficinaContext.cs você adicionou:
+            // public DbSet<ServiceItem> ServiceItems { get; set; }
+            _context.ServiceItems.Add(newItem);
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Finalizado", order });
+
+            return Ok(newItem);
         }
+
+        // PUT: api/serviceorders/5/complete
+        [HttpPut("{id}/complete")]
+        public async Task<IActionResult> CompleteOrder(int id)
+        {
+            var os = await _context.ServiceOrders.FindAsync(id);
+            if (os == null) return NotFound();
+
+            os.Status = "Completed";
+            os.CompletionDate = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+    }
+
+    public class CreateOSDTO
+    {
+        public string ClientName { get; set; } = string.Empty;
+        public string VehicleModel { get; set; } = string.Empty;
+    }
+
+    public class AddItemDTO
+    {
+        public int ProductId { get; set; }
+        public int Quantity { get; set; }
     }
 }
