@@ -83,7 +83,6 @@
             {
                 <div class="card border-0 shadow-sm h-100" style="background-color: #111; border-top: 4px solid #ff6600 !important;">
                     <div class="card-body p-4">
-
                         <div class="d-flex justify-content-between align-items-start mb-4 border-bottom border-secondary pb-3">
                             <div>
                                 <small class="text-white-50">Veículo</small>
@@ -165,7 +164,6 @@
                                         </div>
                                         <div class="col-md-2">
                                             <label class="text-white-50 small mb-1">Valor (R$)</label>
-                                            @* Adicionado min="0" para travar visualmente *@
                                             <input type="number" step="0.01" min="0" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" />
                                         </div>
                                         <div class="col-md-3">
@@ -247,78 +245,33 @@
     </div>
 </div>
 
-@* SEÇÃO DE IMPRESSÃO - FICA ESCONDIDA NA TELA, APARECE SÓ NO PAPEL *@
 @if (sel != null)
 {
-    <div id="print-section" class="d-none d-print-block p-5 bg-white text-black" style="font-family: Arial, sans-serif;">
-        <div class="d-flex justify-content-between border-bottom border-dark pb-3 mb-4">
-            <div>
-                <h1 class="fw-bold mb-0">FJ CENTRO AUTOMOTIVO</h1>
-                <p class="mb-0">Mecânica de Precisão | (11) 99999-9999</p>
-                <p class="mb-0">Rua da Oficina, 123 - São Paulo/SP</p>
-            </div>
-            <div class="text-end">
-                <h2 class="fw-bold text-uppercase">@(sel.Status == "Completed" ? "Nota de Serviço" : "Orçamento")</h2>
-                <h4 class="mb-0">OS #@sel.Id</h4>
-                <p>Data: @DateTime.Now.ToString("dd/MM/yyyy")</p>
-            </div>
-        </div>
+    @* Imagem forçada via Inline Style *@
+    <div id="print-section" class="d-none d-print-block"
+         style="background-image: url('images/OrdemServico.png'); background-size: 210mm 297mm; background-repeat: no-repeat;">
 
-        <div class="row mb-4">
-            <div class="col-6">
-                <h6 class="fw-bold text-uppercase border-bottom">Dados do Cliente</h6>
-                <p class="mb-1"><strong>Nome:</strong> @sel.Vehicle?.CustomerName</p>
-            </div>
-            <div class="col-6">
-                <h6 class="fw-bold text-uppercase border-bottom">Dados do Veículo</h6>
-                <p class="mb-1"><strong>Modelo:</strong> @sel.Vehicle?.Model</p>
-            </div>
-        </div>
+        <div class="print-data" style="top: 10.3%; left: 81.5%; font-size: 14pt;">#@sel.Id</div>
+        <div class="print-data" style="top: 15.2%; left: 19.5%;">@sel.Vehicle?.CustomerName</div>
+        <div class="print-data" style="top: 18.8%; left: 19.5%;">@sel.Vehicle?.Model</div>
+        <div class="print-data" style="top: 25.8%; left: 13.5%;">@DateTime.Now.ToString("dd/MM/yyyy")</div>
 
-        <h6 class="fw-bold text-uppercase border-bottom mb-3">Itens e Serviços</h6>
-        <table class="table table-sm table-bordered border-dark mb-4">
-            <thead class="bg-light">
-                <tr>
-                    <th>Descrição</th>
-                    <th>Tipo</th>
-                    <th class="text-end">Preço Unit.</th>
-                    <th class="text-end">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in sel.Items)
-                {
-                    <tr>
-                        <td>@item.Description</td>
-                        <td>@(item.ProductId != null ? "Peça" : "Mão de Obra")</td>
-                        <td class="text-end">R$ @item.Price.ToString("N2")</td>
-                        <td class="text-end fw-bold">R$ @item.Price.ToString("N2")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-
-        <div class="row justify-content-end">
-            <div class="col-4 text-end">
-                <div class="border border-dark p-2">
-                    <h4 class="fw-bold mb-0">TOTAL: R$ @sel.TotalAmount.ToString("N2")</h4>
+        <div class="print-data" style="top: 40.5%; left: 13.5%; width: 73%;">
+            @foreach (var item in sel.Items)
+            {
+                <div style="display: flex; justify-content: space-between; margin-bottom: 9px;">
+                    <span style="flex: 1;">@item.Description</span>
+                    <span style="width: 130px; text-align: right;">R$ @item.Price.ToString("N2")</span>
                 </div>
-            </div>
+            }
         </div>
 
-        <div class="mt-5 pt-5">
-            <div class="row text-center">
-                <div class="col-6">
-                    <div class="border-top border-dark mx-4 pt-2">Assinatura da Oficina</div>
-                </div>
-                <div class="col-6">
-                    <div class="border-top border-dark mx-4 pt-2">Assinatura do Cliente</div>
-                </div>
-            </div>
+        <div class="print-data" style="top: 88.5%; left: 74%; font-size: 18pt; font-weight: bold;">
+            R$ @sel.TotalAmount.ToString("N2")
         </div>
 
-        <div class="mt-5 small text-muted text-center">
-            <p>Este documento é apenas um comprovante de prestação de serviço ou orçamento válido por 7 dias.</p>
+        <div class="print-data" style="top: 92.5%; left: 13.5%; font-size: 10pt; width: 73%; text-align: center;">
+            @(sel.Status == "Completed" ? "DOCUMENTO FINALIZADO" : "ORÇAMENTO VÁLIDO POR 7 DIAS")
         </div>
     </div>
 }
@@ -455,8 +408,6 @@
     async Task AdicionarServico()
     {
         if (sel == null || string.IsNullOrEmpty(novoServico.Description) || novoServico.MechanicId == 0) return;
-
-        // VALIDAÇÃO FRONTEND: Impede valor negativo antes do envio
         if (novoServico.Price < 0)
         {
             await JS.InvokeVoidAsync("alert", "O valor da mão de obra não pode ser negativo!");

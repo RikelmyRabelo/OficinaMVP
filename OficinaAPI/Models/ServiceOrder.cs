@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OficinaAPI.Models
 {
@@ -30,7 +31,7 @@ namespace OficinaAPI.Models
 
     public class ServiceItem
     {
-        private decimal _price; // Variável interna para controle
+        private decimal _price;
 
         public int Id { get; set; }
         public int ServiceOrderId { get; set; }
@@ -48,7 +49,6 @@ namespace OficinaAPI.Models
         public decimal Price
         {
             get => _price;
-            // Regra de Arquiteto: Impede valores negativos no banco
             set => _price = value < 0 ? 0 : value;
         }
 

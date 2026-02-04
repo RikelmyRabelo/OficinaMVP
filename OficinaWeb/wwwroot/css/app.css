@@ -59,51 +59,49 @@ input, select, .form-control, .form-select {
     background-color: #1a1a1a;
 }
 
-/* --- REGRAS DE IMPRESSÃO (NOTA FISCAL / ORÇAMENTO) --- */
-
 @media print {
-    /* Esconde tudo o que for do sistema (sidebar, botões, menus) */
-    body * {
-        visibility: hidden;
+    @page {
+        size: A4;
+        margin: 0;
     }
 
-    /* Torna visível apenas a seção de impressão */
+    body {
+        background-color: #ffffff !important;
+        margin: 0;
+        padding: 0;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+        body * {
+            visibility: hidden;
+        }
+
     #print-section, #print-section * {
         visibility: visible;
     }
 
-    /* Reposiciona a seção para o topo da página impressa */
     #print-section {
         position: absolute;
         left: 0;
         top: 0;
-        width: 100%;
-        margin: 0;
-        padding: 20px;
+        width: 210mm;
+        height: 297mm;
+        display: block !important;
         background-color: #ffffff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .print-data {
+        position: absolute;
         color: #000000 !important;
-        font-size: 12pt;
+        font-family: Arial, sans-serif;
+        font-size: 11pt;
+        white-space: nowrap;
     }
 
-    /* Força cores de fundo a aparecerem (como badges ou listras de tabela) */
-    #print-section {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    /* Reseta o fundo do HTML/Body apenas para a impressão */
-    html, body {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-    }
-
-    /* Remove links, botões e elementos indesejados no papel */
-    .no-print, .btn, .nav, .sidebar, .input-group, select, input {
+    .no-print {
         display: none !important;
-    }
-
-    /* Garante que tabelas na impressão fiquem com bordas nítidas */
-    .table-bordered border-dark {
-        border: 1px solid #000 !important;
     }
 }
