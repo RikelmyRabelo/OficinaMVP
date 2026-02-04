@@ -61,7 +61,7 @@ input, select, .form-control, .form-select {
 
 @media print {
     @page {
-        size: A4;
+        size: executive;
         margin: 0;
     }
 
@@ -85,8 +85,8 @@ input, select, .form-control, .form-select {
         position: absolute;
         left: 0;
         top: 0;
-        width: 210mm;
-        height: 297mm;
+        width: 184mm;
+        height: 267mm;
         display: block !important;
         background-color: #ffffff !important;
         -webkit-print-color-adjust: exact !important;
