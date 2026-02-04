@@ -88,10 +88,10 @@
                                 @p.stockQuantity
                             </td>
                             <td class="text-end">
-                                <button class="btn btn-danger btn-sm text-white"
+                                <button class="btn btn-outline-danger btn-sm border-0"
                                         @onclick="() => ExcluirProduto(p)"
-                                        title="Apagar item">
-                                    <i class="bi bi-trash-fill"></i>
+                                        title="Excluir Produto">
+                                    <i class="bi bi-trash3-fill fs-5"></i>
                                 </button>
                             </td>
                         </tr>
@@ -126,6 +126,11 @@
         --bs-table-bg: #000;
         background-color: #000;
     }
+
+    .btn-outline-danger:hover {
+        background-color: rgba(255, 68, 68, 0.1) !important;
+        color: #ff4444 !important;
+    }
 </style>
 
 @code {
@@ -159,7 +164,6 @@
             return;
         }
 
-        // --- TRAVA PARA NEGATIVOS ---
         if (novoProduto.salePrice.HasValue && novoProduto.salePrice.Value < 0)
         {
             novoProduto.salePrice = 0;
@@ -198,7 +202,6 @@
                 }
                 else
                 {
-                    // Mostra o Status Code para debugarmos
                     await JS.InvokeVoidAsync("alert", $"ERRO: Status {res.StatusCode}. Pode haver vínculo com OS.");
                 }
             }
