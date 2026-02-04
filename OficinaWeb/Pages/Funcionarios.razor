@@ -47,11 +47,11 @@
                 </div>
             </div>
 
-            <h5 class="fw-bold mb-3" style="color: #ff6600;">Equipe</h5>
-            <div class="list-group shadow-sm">
+            <h5 class="fw-bold mb-3" style="color: #ff6600;">Equipe Ativa</h5>
+            <div class="list-group shadow-sm mb-5">
                 @if (funcionarios != null)
                 {
-                    foreach (var f in funcionarios)
+                    foreach (var f in funcionarios.Where(x => x.Active))
                     {
                         var isActive = sel?.Id == f.Id;
                         var bgClass = isActive ? "border-start border-4 border-warning" : "";
@@ -60,12 +60,10 @@
                         <div class="list-group-item list-group-item-action border-secondary text-white d-flex justify-content-between align-items-center @bgClass"
                              style="@bgStyle transition: 0.2s; cursor: pointer;"
                              @onclick="() => Sel(f)">
-
                             <div class="flex-grow-1">
                                 <h6 class="mb-1 fw-bold">@f.Name</h6>
                                 <small class="text-white-50">@f.Role</small>
                             </div>
-
                             <div class="d-flex align-items-center gap-3">
                                 <span class="badge bg-secondary text-dark fw-bold">R$ @f.BaseSalary.ToString("N2")</span>
                                 <i class="bi bi-chevron-right text-secondary"></i>
@@ -73,9 +71,27 @@
                         </div>
                     }
                 }
-                else
+            </div>
+
+            <h5 class="fw-bold mb-3" style="color: #ff6600;">Antigos Funcionários</h5>
+            <div class="list-group shadow-sm opacity-75">
+                @if (funcionarios != null)
                 {
-                    <div class="text-center text-muted">Carregando equipe...</div>
+                    foreach (var f in funcionarios.Where(x => !x.Active))
+                    {
+                        var isActive = sel?.Id == f.Id;
+                        var bgStyle = isActive ? "background-color: #222;" : "background-color: #0a0a0a;";
+
+                        <div class="list-group-item list-group-item-action border-secondary text-white d-flex justify-content-between align-items-center"
+                             style="@bgStyle cursor: pointer;"
+                             @onclick="() => Sel(f)">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold text-secondary text-decoration-line-through">@f.Name</h6>
+                                <small class="text-muted">Desativado</small>
+                            </div>
+                            <i class="bi bi-archive text-secondary"></i>
+                        </div>
+                    }
                 }
             </div>
         </div>
@@ -83,46 +99,51 @@
         <div class="col-md-7">
             @if (sel != null)
             {
-                <div class="card border-0 shadow-sm h-100" style="background-color: #111; border-top: 4px solid #ff6600 !important;">
+                <div class="card border-0 shadow-sm h-100" style="background-color: #111; border-top: 4px solid @(sel.Active ? "#ff6600" : "#666") !important;">
                     <div class="card-body p-4">
 
                         <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
                             <div>
                                 <h3 class="fw-bold text-white mb-0">@sel.Name</h3>
-                                <span class="text-warning">@sel.Role</span>
+                                <span class="@(sel.Active ? "text-warning" : "text-secondary")">@sel.Role @(sel.Active ? "" : "(Inativo)")</span>
                             </div>
-                            <div class="text-end">
-                                <small class="text-white-50 d-block">Salário Base</small>
-                                <h4 class="text-success fw-bold mb-0">R$ @sel.BaseSalary.ToString("N2")</h4>
-                            </div>
+                            @if (sel.Active)
+                            {
+                                <div class="text-end">
+                                    <small class="text-white-50 d-block">Salário Base</small>
+                                    <h4 class="text-success fw-bold mb-0">R$ @sel.BaseSalary.ToString("N2")</h4>
+                                </div>
+                            }
                         </div>
 
-                        <div class="p-3 rounded-3 mb-4" style="background-color: #0a0a0a; border: 1px solid #333;">
-                            <h6 class="text-white mb-3">Lançar Novo Pagamento</h6>
-                            <div class="row g-2">
-                                <div class="col-md-8">
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-dark text-secondary border-secondary">R$</span>
-                                        <input type="number" class="form-control bg-dark text-white border-secondary"
-                                               @bind="pag.Amount" placeholder="Valor do Pagamento" />
+                        @if (sel.Active)
+                        {
+                            <div class="p-3 rounded-3 mb-4" style="background-color: #0a0a0a; border: 1px solid #333;">
+                                <h6 class="text-white mb-3">Lançar Novo Pagamento</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-8">
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-dark text-secondary border-secondary">R$</span>
+                                            <input type="number" class="form-control bg-dark text-white border-secondary"
+                                                   @bind="pag.Amount" placeholder="Valor do Pagamento" />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button class="btn w-100 fw-bold"
+                                                style="background-color: #ff6600; color: #fff;"
+                                                @onclick="Lancar">
+                                            LANÇAR <i class="bi bi-cash-stack ms-1"></i>
+                                        </button>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <button class="btn w-100 fw-bold"
-                                            style="background-color: #ff6600; color: #fff;"
-                                            @onclick="Lancar">
-                                        LANÇAR <i class="bi bi-cash-stack ms-1"></i>
-                                    </button>
-                                </div>
                             </div>
-                        </div>
+                        }
 
                         <h6 class="fw-bold text-white mb-3">Histórico Financeiro</h6>
                         <div class="table-responsive mb-4">
                             <table class="table table-dark table-hover mb-0" style="background-color: #000;">
                                 <thead style="border-bottom: 2px solid #ff6600;">
                                     <tr>
-                                        <th style="color: #ff6600;">ID</th>
                                         <th style="color: #ff6600;">Data da Baixa</th>
                                         <th style="color: #ff6600;">Valor</th>
                                         <th style="color: #ff6600;">Status</th>
@@ -133,30 +154,17 @@
                                     @foreach (var p in sel.Payments.OrderByDescending(x => x.Id))
                                     {
                                         <tr>
-                                            <td class="text-secondary">#@p.Id</td>
                                             <td class="text-white">
-                                                @if (p.PaymentDate.HasValue)
-                                                {
-                                                    @p.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm")
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted" style="font-size: 0.8rem;">(Aguardando)</span>
-                                                }
+                                                @(p.PaymentDate.HasValue? p.PaymentDate.Value.ToString("dd/MM/yyyy HH:mm") : "(Aguardando)")
                                             </td>
                                             <td class="text-white fw-bold">R$ @p.Amount.ToString("N2")</td>
                                             <td>
-                                                @if (p.IsPaid)
-                                                {
-                                                    <span class="badge bg-success text-white">PAGO</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-warning text-dark">PENDENTE</span>
-                                                }
+                                                <span class="badge @(p.IsPaid ? "bg-success" : "bg-warning text-dark")">
+                                                    @(p.IsPaid ? "PAGO" : "PENDENTE")
+                                                </span>
                                             </td>
                                             <td class="text-end">
-                                                @if (!p.IsPaid)
+                                                @if (!p.IsPaid && sel.Active)
                                                 {
                                                     <button class="btn btn-sm btn-outline-success" @onclick="() => Confirmar(p.Id)">
                                                         <i class="bi bi-check-lg"></i>
@@ -167,21 +175,19 @@
                                     }
                                 </tbody>
                             </table>
-                            @if (sel.Payments.Count == 0)
-                            {
-                                <p class="text-muted text-center mt-3 small">Nenhum pagamento registrado.</p>
-                            }
                         </div>
 
-                        <hr class="border-secondary my-4">
-                        <div class="text-center">
-                            <button class="btn btn-outline-danger w-100 py-2 fw-bold"
-                                    @onclick="() => ExcluirFuncionario(sel)">
-                                <i class="bi bi-trash-fill me-2"></i> DEMITIR / EXCLUIR FUNCIONÁRIO
-                            </button>
-                            <small class="text-muted mt-2 d-block">Atenção: Essa ação removerá o cadastro do sistema.</small>
-                        </div>
-
+                        @if (sel.Active)
+                        {
+                            <hr class="border-secondary my-4">
+                            <div class="text-center">
+                                <button class="btn btn-outline-danger w-100 py-2 fw-bold"
+                                        @onclick="() => ExcluirFuncionario(sel)">
+                                    <i class="bi bi-trash-fill me-2"></i> DEMITIR / DESATIVAR FUNCIONÁRIO
+                                </button>
+                                <small class="text-muted mt-2 d-block">O histórico de pagamentos será preservado na área de antigos.</small>
+                            </div>
+                        }
                     </div>
                 </div>
             }
@@ -190,7 +196,7 @@
                 <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted p-5 rounded-3"
                      style="border: 2px dashed #333;">
                     <i class="bi bi-person-bounding-box display-1 mb-3" style="color: #333;"></i>
-                    <p>Selecione um funcionário na lista ao lado<br>para ver detalhes e pagamentos.</p>
+                    <p>Selecione um funcionário na lista ao lado.</p>
                 </div>
             }
         </div>
@@ -224,15 +230,9 @@
         public int Id { get; set; }
         public string Name { get; set; } = "";
         public string Role { get; set; } = "";
+        public bool Active { get; set; }
         public decimal BaseSalary { get; set; }
         public List<Pay> Payments { get; set; } = new();
-    }
-
-    public class NewEmpDTO
-    {
-        public string Name { get; set; } = "";
-        public string Role { get; set; } = "";
-        public decimal? BaseSalary { get; set; }
     }
 
     public class Pay
@@ -243,11 +243,11 @@
         public DateTime? PaymentDate { get; set; }
     }
 
+    public class NewEmpDTO { public string Name { get; set; } = ""; public string Role { get; set; } = ""; public decimal? BaseSalary { get; set; } }
     public class NewPayDTO { public decimal? Amount { get; set; } }
 
     List<Emp>? funcionarios;
     Emp? sel;
-
     NewEmpDTO novo = new();
     NewPayDTO pag = new();
 
@@ -265,22 +265,13 @@
 
     async Task Contratar()
     {
-        var empToSend = new Emp
-        {
-            Name = novo.Name,
-            Role = novo.Role,
-            BaseSalary = novo.BaseSalary ?? 0
-        };
+        var empToSend = new Emp { Name = novo.Name, Role = novo.Role, BaseSalary = novo.BaseSalary ?? 0, Active = true };
         await Http.PostAsJsonAsync($"{ApiUrl}/api/employees", empToSend);
         novo = new();
         await Load();
     }
 
-    void Sel(Emp f)
-    {
-        sel = f;
-        pag.Amount = f.BaseSalary;
-    }
+    void Sel(Emp f) { sel = f; pag.Amount = f.BaseSalary; }
 
     async Task Lancar()
     {
@@ -298,18 +289,14 @@
 
     async Task ExcluirFuncionario(Emp f)
     {
-        bool confirmado = await JS.InvokeAsync<bool>("confirm", $"ATENÇÃO: Deseja realmente excluir o funcionário '{f.Name}'?\n\nIsso apagará o cadastro do sistema.");
+        bool confirmado = await JS.InvokeAsync<bool>("confirm", $"Deseja realmente desativar '{f.Name}'?\n\nEle será movido para a lista de antigos funcionários.");
         if (confirmado)
         {
             var res = await Http.DeleteAsync($"{ApiUrl}/api/employees/{f.Id}");
             if (res.IsSuccessStatusCode)
             {
-                sel = null; // Limpa a seleção
-                await Load(); // Recarrega a lista
-            }
-            else
-            {
-                await JS.InvokeVoidAsync("alert", "ERRO: Não é possível excluir este funcionário pois ele possui histórico de pagamentos registrados.");
+                sel = null;
+                await Load();
             }
         }
     }
