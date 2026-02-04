@@ -1,6 +1,19 @@
-﻿<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+﻿<Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        <PageTitle>404 - Não Encontrado</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <div class="container text-center py-5">
+                <h1 class="display-1 fw-bold" style="color: #ff6600;">404</h1>
+                <h3 class="text-white mb-4">Página não encontrada</h3>
+                <p class="text-white-50">O caminho que você tentou acessar não existe no sistema da oficina.</p>
+                <a href="/" class="btn btn-primary mt-3">
+                    <i class="bi bi-house-door-fill me-2"></i>VOLTAR AO PAINEL
+                </a>
+            </div>
+        </LayoutView>
+    </NotFound>
 </Router>

@@ -6,8 +6,7 @@
 
 <PageTitle>Oficina - FJ Centro Automotivo</PageTitle>
 
-<div class="container-fluid py-4 px-4">
-
+<div class="container-fluid py-4 px-4 no-print">
     <div class="row align-items-center mb-5 position-relative">
         <div class="col-md-3 text-start">
             <a href="/" class="btn btn-outline-secondary border-0 text-white">
@@ -23,7 +22,6 @@
     </div>
 
     <div class="row g-4">
-
         <div class="col-md-4">
             <div class="card border-0 shadow-sm mb-4" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
                 <div class="card-body p-4">
@@ -93,7 +91,9 @@
                                 <span class="text-warning">Cliente: @(sel.Vehicle?.CustomerName ?? "-")</span>
                             </div>
                             <div class="text-end">
-                                <small class="text-white-50 d-block">Total Atual</small>
+                                <button class="btn btn-light btn-sm fw-bold mb-3" @onclick="ImprimirNota">
+                                    <i class="bi bi-printer-fill me-2"></i>IMPRIMIR NOTA / PDF
+                                </button>
                                 <h1 class="text-success fw-bold mb-0">R$ @sel.TotalAmount.ToString("N2")</h1>
                                 <span class="badge @(sel.Status == "Completed" ? "bg-success" : "bg-warning text-dark")">
                                     @(sel.Status == "Completed" ? "FINALIZADO" : "EM ANDAMENTO")
@@ -104,7 +104,6 @@
                         @if (sel.Status != "Completed")
                         {
                             <div class="p-3 rounded-3 mb-4" style="background-color: #0a0a0a; border: 1px solid #333;">
-
                                 <ul class="nav nav-pills mb-3 gap-2">
                                     <li class="nav-item">
                                         <button class="nav-link btn-sm fw-bold @(tipoItem == "peca" ? "active bg-warning text-dark" : "text-white border border-secondary")"
@@ -204,6 +203,7 @@
                                                     }
                                                     else
                                                     {
+
                                                         <span class="badge bg-warning text-dark">SERVIÇO</span>
                                                     }
                                                 </td>
@@ -216,6 +216,7 @@
                                                     }
                                                     else
                                                     {
+
                                                         <span>-</span>
                                                     }
                                                 </td>
@@ -230,7 +231,6 @@
                                 </tbody>
                             </table>
                         </div>
-
                     </div>
                 </div>
             }
@@ -245,6 +245,82 @@
         </div>
     </div>
 </div>
+
+@* SEÇÃO DE IMPRESSÃO - FICA ESCONDIDA NA TELA, APARECE SÓ NO PAPEL *@
+@if (sel != null)
+{
+    <div id="print-section" class="d-none d-print-block p-5 bg-white text-black" style="font-family: Arial, sans-serif;">
+        <div class="d-flex justify-content-between border-bottom border-dark pb-3 mb-4">
+            <div>
+                <h1 class="fw-bold mb-0">FJ CENTRO AUTOMOTIVO</h1>
+                <p class="mb-0">Mecânica de Precisão | (11) 99999-9999</p>
+                <p class="mb-0">Rua da Oficina, 123 - São Paulo/SP</p>
+            </div>
+            <div class="text-end">
+                <h2 class="fw-bold text-uppercase">@(sel.Status == "Completed" ? "Nota de Serviço" : "Orçamento")</h2>
+                <h4 class="mb-0">OS #@sel.Id</h4>
+                <p>Data: @DateTime.Now.ToString("dd/MM/yyyy")</p>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-6">
+                <h6 class="fw-bold text-uppercase border-bottom">Dados do Cliente</h6>
+                <p class="mb-1"><strong>Nome:</strong> @sel.Vehicle?.CustomerName</p>
+            </div>
+            <div class="col-6">
+                <h6 class="fw-bold text-uppercase border-bottom">Dados do Veículo</h6>
+                <p class="mb-1"><strong>Modelo:</strong> @sel.Vehicle?.Model</p>
+            </div>
+        </div>
+
+        <h6 class="fw-bold text-uppercase border-bottom mb-3">Itens e Serviços</h6>
+        <table class="table table-sm table-bordered border-dark mb-4">
+            <thead class="bg-light">
+                <tr>
+                    <th>Descrição</th>
+                    <th>Tipo</th>
+                    <th class="text-end">Preço Unit.</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in sel.Items)
+                {
+                    <tr>
+                        <td>@item.Description</td>
+                        <td>@(item.ProductId != null ? "Peça" : "Mão de Obra")</td>
+                        <td class="text-end">R$ @item.Price.ToString("N2")</td>
+                        <td class="text-end fw-bold">R$ @item.Price.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="row justify-content-end">
+            <div class="col-4 text-end">
+                <div class="border border-dark p-2">
+                    <h4 class="fw-bold mb-0">TOTAL: R$ @sel.TotalAmount.ToString("N2")</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-5 pt-5">
+            <div class="row text-center">
+                <div class="col-6">
+                    <div class="border-top border-dark mx-4 pt-2">Assinatura da Oficina</div>
+                </div>
+                <div class="col-6">
+                    <div class="border-top border-dark mx-4 pt-2">Assinatura do Cliente</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-5 small text-muted text-center">
+            <p>Este documento é apenas um comprovante de prestação de serviço ou orçamento válido por 7 dias.</p>
+        </div>
+    </div>
+}
 
 <style>
     .form-control::placeholder {
@@ -281,7 +357,6 @@
 @code {
     private string ApiUrl = "https://localhost:7082";
 
-    // DTOs
     public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; }
     public class ServiceOrderDTO
     {
@@ -301,14 +376,11 @@
     public class ProductListDTO { public int id { get; set; } public string name { get; set; } = ""; public decimal salePrice { get; set; } }
     public class EmployeeListDTO { public int id { get; set; } public string name { get; set; } = ""; }
 
-    // Inputs
     public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; }
     public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; }
     public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public decimal Price { get; set; } }
 
     List<ServiceOrderDTO>? todasOS;
-
-    // Filtro
     List<ServiceOrderDTO>? listaFiltrada => mostrarFinalizadas
         ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList()
         : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList();
@@ -342,12 +414,15 @@
         novoServico = new AddLaborInput();
     }
 
+    async Task ImprimirNota()
+    {
+        await JS.InvokeVoidAsync("print");
+    }
+
     async Task AbrirOS()
     {
         if (string.IsNullOrEmpty(novaOsRequest.ClientName)) return;
-
         var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOsRequest);
-
         if (res.IsSuccessStatusCode)
         {
             novaOsRequest = new();
@@ -356,36 +431,30 @@
         }
         else
         {
-            // Mostra erro caso falhe
-            await JS.InvokeVoidAsync("alert", "Erro ao criar OS. Verifique se o backend está rodando.");
+            await JS.InvokeVoidAsync("alert", "Erro ao criar OS.");
         }
     }
 
     async Task AdicionarItem()
     {
         if (sel == null || novoItem.ProductId == 0) return;
-
         var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem);
-
         if (res.IsSuccessStatusCode)
         {
             await AtualizarTela();
-            novoItem.Quantity = 1; // Reseta a quantidade para 1 (Boa prática)
+            novoItem.Quantity = 1;
         }
         else
         {
-            // Lê o erro que vem do backend (ex: Estoque Insuficiente)
             var msg = await res.Content.ReadAsStringAsync();
-            await JS.InvokeVoidAsync("alert", $"Erro ao adicionar peça: {msg}");
+            await JS.InvokeVoidAsync("alert", $"Erro: {msg}");
         }
     }
 
     async Task AdicionarServico()
     {
         if (sel == null || string.IsNullOrEmpty(novoServico.Description) || novoServico.MechanicId == 0) return;
-
         var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoServico);
-
         if (res.IsSuccessStatusCode)
         {
             novoServico = new AddLaborInput();
@@ -394,7 +463,7 @@
         else
         {
             var msg = await res.Content.ReadAsStringAsync();
-            await JS.InvokeVoidAsync("alert", $"Erro ao adicionar serviço: {msg}");
+            await JS.InvokeVoidAsync("alert", $"Erro: {msg}");
         }
     }
 
@@ -408,9 +477,7 @@
     async Task FinalizarOS()
     {
         if (sel == null) return;
-
         var res = await Http.PutAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/complete", null);
-
         if (res.IsSuccessStatusCode)
         {
             mostrarFinalizadas = true;
@@ -420,7 +487,7 @@
         }
         else
         {
-            await JS.InvokeVoidAsync("alert", "Erro ao finalizar a Ordem de Serviço.");
+            await JS.InvokeVoidAsync("alert", "Erro ao finalizar.");
         }
     }
 }
