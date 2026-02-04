@@ -165,7 +165,8 @@
                                         </div>
                                         <div class="col-md-2">
                                             <label class="text-white-50 small mb-1">Valor (R$)</label>
-                                            <input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" />
+                                            @* Adicionado min="0" para travar visualmente *@
+                                            <input type="number" step="0.01" min="0" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" />
                                         </div>
                                         <div class="col-md-3">
                                             <button class="btn w-100 fw-bold" style="background-color: #ffeb3b; color: #000;" @onclick="AdicionarServico">ADD SERVIÇO</button>
@@ -454,6 +455,14 @@
     async Task AdicionarServico()
     {
         if (sel == null || string.IsNullOrEmpty(novoServico.Description) || novoServico.MechanicId == 0) return;
+
+        // VALIDAÇÃO FRONTEND: Impede valor negativo antes do envio
+        if (novoServico.Price < 0)
+        {
+            await JS.InvokeVoidAsync("alert", "O valor da mão de obra não pode ser negativo!");
+            return;
+        }
+
         var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoServico);
         if (res.IsSuccessStatusCode)
         {

@@ -30,6 +30,8 @@ namespace OficinaAPI.Models
 
     public class ServiceItem
     {
+        private decimal _price; // Variável interna para controle
+
         public int Id { get; set; }
         public int ServiceOrderId { get; set; }
         public ServiceOrder? ServiceOrder { get; set; }
@@ -43,7 +45,12 @@ namespace OficinaAPI.Models
         public Employee? Mechanic { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
-        public decimal Price { get; set; }
+        public decimal Price
+        {
+            get => _price;
+            // Regra de Arquiteto: Impede valores negativos no banco
+            set => _price = value < 0 ? 0 : value;
+        }
 
         public DateTime? WarrantyExpirationDate { get; set; }
     }
