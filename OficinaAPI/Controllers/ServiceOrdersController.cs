@@ -27,7 +27,7 @@ namespace OficinaAPI.Controllers
                 .ToListAsync();
         }
 
-        // POST: api/serviceorders
+        // POST: api/serviceorders (Cria OS + Veículo)
         [HttpPost]
         public async Task<ActionResult<ServiceOrder>> PostServiceOrder(CreateOSDTO request)
         {
@@ -60,7 +60,7 @@ namespace OficinaAPI.Controllers
             return CreatedAtAction("GetServiceOrders", new { id = serviceOrder.Id }, serviceOrder);
         }
 
-        // POST: api/serviceorders/5/items
+        // POST: api/serviceorders/5/items (Adiciona PEÇA)
         [HttpPost("{id}/items")]
         public async Task<ActionResult<ServiceItem>> AddItem(int id, AddItemDTO itemDto)
         {
@@ -70,8 +70,9 @@ namespace OficinaAPI.Controllers
             var product = await _context.Products.FindAsync(itemDto.ProductId);
             if (product == null) return BadRequest("Produto não encontrado.");
 
-            // --- CORREÇÃO 1: Removido '?? 0' ---
-            // Como StockQuantity é obrigatório, usamos direto.
+            // --- CORREÇÃO: Uso direto das variáveis sem '??' ---
+
+            // Verifica Estoque
             if (product.StockQuantity < itemDto.Quantity)
                 return BadRequest($"Estoque insuficiente.");
 
@@ -81,12 +82,8 @@ namespace OficinaAPI.Controllers
                 ServiceOrderId = id,
                 ProductId = product.Id,
                 Description = product.Name,
-
-                // --- CORREÇÃO 2: Removido '?? 0' ---
-                // Multiplicação direta. Se SalePrice for decimal, funciona.
-                // Se der erro aqui, me avise, mas deve passar agora.
+                // Multiplicação direta (assumindo que SalePrice não é nulo)
                 Price = product.SalePrice * itemDto.Quantity,
-
                 WarrantyExpirationDate = DateTime.Now.AddMonths(3)
             };
 
@@ -96,10 +93,38 @@ namespace OficinaAPI.Controllers
             // Atualiza total da OS
             os.TotalAmount += newItem.Price;
 
-            // ATENÇÃO: Certifique-se que no OficinaContext.cs você adicionou:
-            // public DbSet<ServiceItem> ServiceItems { get; set; }
             _context.ServiceItems.Add(newItem);
+            await _context.SaveChangesAsync();
 
+            return Ok(newItem);
+        }
+
+        // POST: api/serviceorders/5/labor (Adiciona SERVIÇO / MÃO DE OBRA)
+        [HttpPost("{id}/labor")]
+        public async Task<ActionResult<ServiceItem>> AddLabor(int id, AddLaborDTO laborDto)
+        {
+            var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
+            if (os == null) return NotFound("Ordem de Serviço não encontrada.");
+
+            // Verifica se o mecânico existe
+            var mechanic = await _context.Employees.FindAsync(laborDto.MechanicId);
+            if (mechanic == null) return BadRequest("Mecânico não encontrado.");
+
+            // Cria o Item de Serviço
+            var newItem = new ServiceItem
+            {
+                ServiceOrderId = id,
+                ProductId = null, // É serviço, não peça
+                MechanicId = mechanic.Id,
+                Description = laborDto.Description,
+                Price = laborDto.Price,
+                WarrantyExpirationDate = DateTime.Now.AddMonths(3)
+            };
+
+            // Atualiza total da OS
+            os.TotalAmount += newItem.Price;
+
+            _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
 
             return Ok(newItem);
@@ -120,6 +145,7 @@ namespace OficinaAPI.Controllers
         }
     }
 
+    // --- DTOs ---
     public class CreateOSDTO
     {
         public string ClientName { get; set; } = string.Empty;
@@ -130,5 +156,12 @@ namespace OficinaAPI.Controllers
     {
         public int ProductId { get; set; }
         public int Quantity { get; set; }
+    }
+
+    public class AddLaborDTO
+    {
+        public int MechanicId { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public decimal Price { get; set; }
     }
 }
