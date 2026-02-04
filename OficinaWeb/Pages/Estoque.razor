@@ -28,9 +28,9 @@
 
             <div class="row g-3">
                 <div class="col-md-2">
-                    <input class="form-control bg-dark text-white border-secondary"
+                    <input class="form-control bg-dark text-white border-secondary text-uppercase"
                            @bind="novoProduto.code"
-                           placeholder="Código (Ex: OLEO123)" />
+                           placeholder="Código" />
                 </div>
                 <div class="col-md-4">
                     <input class="form-control bg-dark text-white border-secondary"
@@ -77,7 +77,7 @@
                         var rowColor = (p.stockQuantity ?? 0) <= p.minimumStock ? "#ff4444" : "#fff";
 
                         <tr>
-                            <td style="color: @rowColor;"><strong>@p.code</strong></td>
+                            <td style="color: @rowColor;"><strong>@p.code.ToUpper()</strong></td>
                             <td style="color: @rowColor;">@p.name</td>
                             <td style="color: @rowColor;">R$ @(p.salePrice?.ToString("F2") ?? "0.00")</td>
                             <td class="text-center" style="color: @rowColor;">
@@ -127,9 +127,8 @@
         background-color: #000;
     }
 
-    .btn-outline-danger:hover {
-        background-color: rgba(255, 68, 68, 0.1) !important;
-        color: #ff4444 !important;
+    .text-uppercase {
+        text-transform: uppercase;
     }
 </style>
 
@@ -164,51 +163,20 @@
             return;
         }
 
-        if (novoProduto.salePrice.HasValue && novoProduto.salePrice.Value < 0)
-        {
-            novoProduto.salePrice = 0;
-            await JS.InvokeVoidAsync("alert", "O Preço não pode ser negativo.");
-            return;
-        }
-
-        if (novoProduto.stockQuantity.HasValue && novoProduto.stockQuantity.Value < 0)
-        {
-            novoProduto.stockQuantity = 0;
-            await JS.InvokeVoidAsync("alert", "A Quantidade não pode ser negativa.");
-            return;
-        }
-
-        if (novoProduto.salePrice == null) novoProduto.salePrice = 0;
-        if (novoProduto.stockQuantity == null) novoProduto.stockQuantity = 0;
+        novoProduto.code = novoProduto.code.ToUpper();
 
         var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/products", novoProduto);
         if (res.IsSuccessStatusCode) { await Carregar(); novoProduto = new ProductDTO(); }
-        else { await JS.InvokeVoidAsync("alert", "Erro ao salvar. Verifique se o código já existe."); }
+        else { await JS.InvokeVoidAsync("alert", "Erro ao salvar."); }
     }
 
     private async Task ExcluirProduto(ProductDTO produto)
     {
-        bool confirmado = await JS.InvokeAsync<bool>("confirm", $"Tem certeza que deseja apagar '{produto.name}'?");
-
+        bool confirmado = await JS.InvokeAsync<bool>("confirm", $"Deseja apagar '{produto.name}'?");
         if (confirmado)
         {
-            try
-            {
-                var res = await Http.DeleteAsync($"{ApiUrl}/api/products/{produto.id}");
-
-                if (res.IsSuccessStatusCode)
-                {
-                    await Carregar();
-                }
-                else
-                {
-                    await JS.InvokeVoidAsync("alert", $"ERRO: Status {res.StatusCode}. Pode haver vínculo com OS.");
-                }
-            }
-            catch (Exception ex)
-            {
-                await JS.InvokeVoidAsync("alert", $"Erro de conexão: {ex.Message}");
-            }
+            var res = await Http.DeleteAsync($"{ApiUrl}/api/products/{produto.id}");
+            if (res.IsSuccessStatusCode) await Carregar();
         }
     }
 }

@@ -5,10 +5,16 @@ namespace OficinaAPI.Models
 {
     public class Product
     {
+        private string _code = string.Empty;
+
         public int Id { get; set; }
 
         [Required]
-        public string Code { get; set; } = string.Empty;
+        public string Code
+        {
+            get => _code;
+            set => _code = value?.ToUpper() ?? string.Empty;
+        }
 
         [Required]
         public string Name { get; set; } = string.Empty;
