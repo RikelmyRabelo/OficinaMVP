@@ -9,114 +9,101 @@
 <div class="container-fluid py-4 px-4 no-print">
     <div class="row align-items-center mb-5 position-relative">
         <div class="col-md-3 text-start">
-            <a href="/" class="btn btn-outline-secondary border-0 text-white">
-                <i class="bi bi-arrow-left me-2"></i>Voltar para o painel
-            </a>
+            <a href="/" class="btn btn-outline-secondary border-0 text-white"><i class="bi bi-arrow-left me-2"></i>Voltar</a>
         </div>
         <div class="col-md-6 text-center">
-            <h2 class="fw-bold text-uppercase mb-0" style="color: #ff6600;">
-                <i class="bi bi-wrench-adjustable me-2"></i>Gestão de Oficina
-            </h2>
+            <h2 class="fw-bold text-uppercase mb-0" style="color: #ff6600;"><i class="bi bi-wrench-adjustable me-2"></i>Gestão de Oficina</h2>
         </div>
-        <div class="col-md-3"></div>
+        <div class="col-md-3 text-end">
+            <button class="btn @(verLixeira ? "btn-danger" : "btn-outline-danger") fw-bold" @onclick="AlternarLixeira">
+                <i class="bi @(verLixeira ? "bi-arrow-left-circle" : "bi-trash") me-2"></i>@(verLixeira ? "VOLTAR" : "LIXEIRA")
+            </button>
+        </div>
     </div>
 
     <div class="row g-4">
         <div class="col-md-4">
-            <div class="card border-0 shadow-sm mb-4" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
-                <div class="card-body p-4">
-                    <h5 class="mb-3 fw-bold" style="color: #ffeb3b;">Nova Ordem de Serviço</h5>
-                    <div class="d-flex flex-column gap-3">
-                        <input class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.ClientName" placeholder="Nome do Cliente" />
-                        <input class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.VehicleModel" placeholder="Veículo (Modelo)" />
-                        <button class="btn fw-bold w-100" style="background-color: #ffeb3b; color: #000;" @onclick="AbrirOS">ABRIR OS</button>
+            @if (!verLixeira) {
+                <div class="card border-0 shadow-sm mb-4" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
+                    <div class="card-body p-4">
+                        <h5 class="mb-3 fw-bold" style="color: #ffeb3b;">Nova Ordem de Serviço</h5>
+                        <div class="d-flex flex-column gap-3">
+                            <input class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.ClientName" placeholder="Nome do Cliente" />
+                            <input class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.VehicleModel" placeholder="Veículo (Modelo)" />
+                            <button class="btn fw-bold w-100" style="background-color: #ffeb3b; color: #000;" @onclick="AbrirOS">ABRIR OS</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="d-flex mb-3 gap-2">
-                <button class="btn btn-sm flex-grow-1 fw-bold @(mostrarFinalizadas ? "btn-outline-secondary text-white" : "btn-primary")" @onclick="() => mostrarFinalizadas = false">EM ANDAMENTO</button>
-                <button class="btn btn-sm flex-grow-1 fw-bold @(mostrarFinalizadas ? "btn-primary" : "btn-outline-secondary text-white")" @onclick="() => mostrarFinalizadas = true">FINALIZADAS</button>
-            </div>
+                <div class="d-flex mb-3 gap-2">
+                    <button class="btn btn-sm flex-grow-1 fw-bold @(mostrarFinalizadas ? "btn-outline-secondary text-white" : "btn-primary")" @onclick="() => mostrarFinalizadas = false">EM ANDAMENTO</button>
+                    <button class="btn btn-sm flex-grow-1 fw-bold @(mostrarFinalizadas ? "btn-primary" : "btn-outline-secondary text-white")" @onclick="() => mostrarFinalizadas = true">FINALIZADAS</button>
+                </div>
+            }
 
             <div class="list-group shadow-sm" style="max-height: 60vh; overflow-y: auto;">
-                @if (listaFiltrada != null)
-                {
-                    foreach (var os in listaFiltrada)
-                    {
-                        var isActive = sel?.Id == os.Id;
-                        <button class="list-group-item list-group-item-action border-secondary text-white mb-2 rounded-0" style="@(isActive ? "background-color: #222; border-left: 4px solid #ff6600;" : "background-color: #111;")" @onclick="() => Selecionar(os)">
-                            <div class="d-flex w-100 justify-content-between align-items-center">
-                                <div><h6>@(os.Vehicle?.CustomerName)</h6><small class="text-warning">@(os.Vehicle?.Model)</small></div>
-                                <span class="badge bg-dark border border-secondary">#@os.Id</span>
-                            </div>
-                        </button>
-                    }
-                }
+                @if (listaExibicao != null) { foreach (var os in listaExibicao) {
+                    var isActive = sel?.Id == os.Id;
+                    <button class="list-group-item list-group-item-action border-secondary text-white mb-2 rounded-0" style="@(isActive ? "background-color: #222; border-left: 4px solid #ff6600;" : "background-color: #111;")" @onclick="() => Selecionar(os)">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div><h6>@(os.Vehicle?.CustomerName)</h6><small class="text-warning">@(os.Vehicle?.Model)</small></div>
+                            <span class="badge bg-dark border border-secondary">#@os.Id</span>
+                        </div>
+                    </button>
+                } }
             </div>
         </div>
 
         <div class="col-md-8">
-            @if (sel != null)
-            {
+            @if (sel != null) {
                 <div class="card border-0 shadow-sm h-100" style="background-color: #111; border-top: 4px solid #ff6600 !important;">
                     <div class="card-body p-4">
-                        <div class="d-flex justify-content-between align-items-start mb-4 border-bottom border-secondary pb-3">
+                        <div class="d-flex justify-content-between mb-4 border-bottom border-secondary pb-3">
                             <div><h2 class="fw-bold text-white mb-0">@(sel.Vehicle?.Model)</h2><span class="text-warning">Cliente: @(sel.Vehicle?.CustomerName)</span></div>
                             <div class="text-end">
                                 <div class="d-flex gap-2 justify-content-end mb-3">
-                                    <button class="btn btn-light btn-sm fw-bold" @onclick="ImprimirNota">IMPRIMIR</button>
-                                    @if (sel.Status != "Completed") { <button class="btn btn-outline-danger btn-sm fw-bold" @onclick="ExcluirOS">EXCLUIR</button> }
+                                    @if (verLixeira) {
+                                        <button class="btn btn-success btn-sm fw-bold" @onclick="RestaurarOS">RESTAURAR</button>
+                                    } else {
+                                        <button class="btn btn-light btn-sm fw-bold" @onclick="ImprimirNota">IMPRIMIR</button>
+                                        <button class="btn btn-outline-danger btn-sm fw-bold" @onclick="ExcluirOS">EXCLUIR</button>
+                                    }
                                 </div>
                                 <h1 class="text-success fw-bold mb-0">R$ @sel.TotalAmount.ToString("N2")</h1>
-                                <span class="badge @(sel.Status == "Completed" ? "bg-success" : "bg-warning text-dark")">@(sel.Status == "Completed" ? "FINALIZADO" : "EM ANDAMENTO")</span>
                             </div>
                         </div>
 
-                        @if (sel.Status != "Completed")
-                        {
+                        @if (!verLixeira && sel.Status != "Completed") {
                             <div class="p-3 rounded-3 mb-4" style="background-color: #0a0a0a; border: 1px solid #333;">
                                 <ul class="nav nav-pills mb-3 gap-2">
                                     <li><button class="btn btn-sm @(tipoItem == "peca" ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = "peca"'>PEÇA</button></li>
                                     <li><button class="btn btn-sm @(tipoItem == "servico" ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = "servico"'>MÃO DE OBRA</button></li>
                                 </ul>
                                 <div class="row g-2 align-items-end mb-4">
-                                    @if (tipoItem == "peca")
-                                    {
-                                        <div class="col-md-4">
-                                            <select class="form-select bg-dark text-white border-secondary" @bind="novoItem.ProductId">
-                                                <option value="0">Selecione...</option>
-                                                @if(produtos != null){@foreach(var p in produtos){<option value="@p.id">[@p.code] @p.name</option>}}
-                                            </select>
-                                        </div>
+                                    @if (tipoItem == "peca") {
+                                        <div class="col-md-4"><select class="form-select bg-dark text-white border-secondary" @bind="novoItem.ProductId"><option value="0">Selecionar...</option>@if(produtos != null){@foreach(var p in produtos){<option value="@p.id">[@p.code] @p.name</option>}}</select></div>
                                         <div class="col-md-2"><input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Quantity" /></div>
                                         <div class="col-md-3"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItem.WarrantyPeriod" placeholder="Garantia" /></div>
                                         <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItem">ADD PEÇA</button></div>
-                                    }
-                                    else
-                                    {
+                                    } else {
                                         <div class="col-md-4"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Description" placeholder="Descrição" /></div>
-                                        <div class="col-md-3"><select class="form-select bg-dark text-white border-secondary" @bind="novoServico.MechanicId">@if(mecanicos != null){@foreach(var m in mecanicos){<option value="@m.id">@m.name</option>}}</select></div>
+                                        <div class="col-md-3"><select class="form-select bg-dark text-white border-secondary" @bind="novoServico.MechanicId"><option value="0">...</option>@if(mecanicos != null){@foreach(var m in mecanicos){<option value="@m.id">@m.name</option>}}</select></div>
                                         <div class="col-md-2"><input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" /></div>
                                         <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarServico">ADD</button></div>
                                     }
                                 </div>
                                 <div class="mt-4 pt-3 border-top border-secondary">
-                                    <label class="text-white-50 small d-block mb-2">Data e Hora de Entrega:</label>
-                                    <div class="d-flex gap-2">
-                                        <input type="datetime-local" class="form-control bg-dark text-white border-secondary w-50" @bind="dataEntregaManual" />
-                                        <button class="btn btn-success fw-bold flex-grow-1" @onclick="FinalizarOS">FINALIZAR E ENTREGAR</button>
-                                    </div>
+                                    <input type="datetime-local" class="form-control bg-dark text-white border-secondary w-50 d-inline-block" @bind="dataEntregaManual" />
+                                    <button class="btn btn-success fw-bold" @onclick="FinalizarOS">FINALIZAR E ENTREGAR</button>
                                 </div>
                             </div>
                         }
 
                         <table class="table table-dark table-hover">
-                            <thead><tr><th>Cód. Estoque</th><th>Descrição</th><th class="text-end">Valor</th></tr></thead>
+                            <thead><tr><th>Cód</th><th>Descrição</th><th class="text-end">Valor</th></tr></thead>
                             <tbody>
                                 @if (sel.Items != null) { @foreach (var item in sel.Items) {
                                     <tr>
-                                        @* Extraímos o Código que salvamos na string ou buscamos do DTO *@
                                         <td><small class="text-warning">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "-")</small></td>
                                         <td>@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description) @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")</td>
                                         <td class="text-end text-white fw-bold">R$ @item.Price.ToString("N2")</td>
@@ -133,22 +120,22 @@
 
 @if (sel != null)
 {
-    <div id="print-section" class="d-none d-print-block" style="background-image: url('images/OrdemServico.png'); background-size: 184mm 267mm; background-repeat: no-repeat;">
-        <div class="print-data" style="top: 17%; left: 81.5%; font-size: 14pt;">#@sel.Id</div>
+    <div id="print-section" class="d-none d-print-block">
+        <img src="images/OrdemServico.png" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: -1;" />
+
+        <div class="print-data" style="top: 17%; left: 81.5%; font-size: 14pt; font-weight: bold;">#@sel.Id</div>
         <div class="print-data" style="top: 21%; left: 19.5%;">@sel.Vehicle?.CustomerName</div>
         <div class="print-data" style="top: 26.6%; left: 22%;">@sel.Vehicle?.Model</div>
         <div class="print-data" style="top: 33.9%; left: 30%;">@sel.EntryDate.ToString("dd/MM/yyyy")</div>
 
-        @if (sel.CompletionDate.HasValue)
-        {
+        @if (sel.CompletionDate.HasValue) {
             <div class="print-data" style="top: 33.9%; left: 63%;">@sel.CompletionDate.Value.ToString("dd/MM/yyyy")</div>
             <div class="print-data" style="top: 33.9%; left: 87%;">@sel.CompletionDate.Value.ToString("HH:mm")</div>
         }
 
         <div class="print-data" style="top: 42%; left: 7.5%; width: 85%;">
-            @foreach (var item in sel.Items.Where(i => i.ProductId != null))
-            {
-                <div style="display: flex; margin-bottom: 9px;">
+            @foreach (var item in sel.Items.Where(i => i.ProductId != null)) {
+                <div style="display: flex; margin-bottom: 8px;">
                     <span style="width: 15%;">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "")</span>
                     <span style="width: 60%;">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description) @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")</span>
                     <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
@@ -157,54 +144,52 @@
         </div>
 
         <div class="print-data" style="top: 69.6%; left: 6.8%; width: 50%;">
-            @foreach (var item in sel.Items.Where(i => i.ProductId == null))
-            {
-                <div style="margin-bottom: 9px;">- @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")</div>
+            @foreach (var item in sel.Items.Where(i => i.ProductId == null)) {
+                <div style="margin-bottom: 8px;">- @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")</div>
             }
         </div>
         <div class="print-data" style="top: 80%; left: 81%; font-size: 18pt; font-weight: bold;">R$ @sel.TotalAmount.ToString("N2")</div>
     </div>
 }
 
-<style>
-    .form-control:focus, .form-select:focus { background-color: #222 !important; border-color: #ffeb3b !important; }
-    .table-dark { --bs-table-bg: #000; background-color: #000; }
-</style>
-
 @code {
     private string ApiUrl = "https://localhost:7082";
-    public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; }
     public class ServiceOrderDTO { public int Id { get; set; } public VehicleDTO? Vehicle { get; set; } public string Status { get; set; } = "Pending"; public decimal TotalAmount { get; set; } public DateTime EntryDate { get; set; } public DateTime? CompletionDate { get; set; } public List<ServiceItemDTO> Items { get; set; } = new(); }
+    public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; }
     public class ServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public int? ProductId { get; set; } public string? WarrantyPeriod { get; set; } }
     public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } }
     public class EmployeeListDTO { public int id { get; set; } public string name { get; set; } = ""; }
-    
     public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; }
     public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; public string? WarrantyPeriod { get; set; } }
-    public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
+    public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public decimal Price { get; set; } }
 
     List<ServiceOrderDTO>? todasOS;
-    List<ServiceOrderDTO>? listaFiltrada => mostrarFinalizadas ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList() : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList();
+    List<ServiceOrderDTO>? lixeiraOS;
     List<ProductListDTO>? produtos;
     List<EmployeeListDTO>? mecanicos;
+    bool mostrarFinalizadas = false;
+    bool verLixeira = false;
+    List<ServiceOrderDTO>? listaExibicao => verLixeira ? lixeiraOS : (mostrarFinalizadas ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList() : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList());
+
     ServiceOrderDTO? sel;
     CreateOsInput novaOsRequest = new();
     AddItemInput novoItem = new();
     AddLaborInput novoServico = new();
     DateTime dataEntregaManual = DateTime.Now;
-    bool mostrarFinalizadas = false;
     string tipoItem = "peca";
 
     protected override async Task OnInitializedAsync() { await CarregarProdutos(); await CarregarMecanicos(); await CarregarOS(); }
-    async Task CarregarOS() { try { todasOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders"); } catch { } }
-    async Task CarregarProdutos() { try { produtos = await Http.GetFromJsonAsync<List<ProductListDTO>>($"{ApiUrl}/api/products"); } catch { } }
-    async Task CarregarMecanicos() { try { mecanicos = await Http.GetFromJsonAsync<List<EmployeeListDTO>>($"{ApiUrl}/api/employees"); } catch { } }
-    void Selecionar(ServiceOrderDTO os) { sel = os; novoItem = new(); novoServico = new(); dataEntregaManual = DateTime.Now; }
+    async Task CarregarOS() { todasOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders"); }
+    async Task CarregarProdutos() { produtos = await Http.GetFromJsonAsync<List<ProductListDTO>>($"{ApiUrl}/api/products"); }
+    async Task CarregarMecanicos() { mecanicos = await Http.GetFromJsonAsync<List<EmployeeListDTO>>($"{ApiUrl}/api/employees"); }
+    async Task AlternarLixeira() { verLixeira = !verLixeira; sel = null; if (verLixeira) lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash"); else await CarregarOS(); }
+    async Task RestaurarOS() { if (sel == null) return; await Http.PutAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/restore", null); sel = null; lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash"); await CarregarOS(); }
+    void Selecionar(ServiceOrderDTO os) { sel = os; dataEntregaManual = DateTime.Now; }
     async Task ImprimirNota() { await JS.InvokeVoidAsync("print"); }
-    async Task ExcluirOS() { if (sel == null) return; if (await JS.InvokeAsync<bool>("confirm", "Excluir?")) { await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}"); sel = null; await CarregarOS(); } }
+    async Task ExcluirOS() { if (sel == null) return; if (await JS.InvokeAsync<bool>("confirm", "Mover para lixeira?")) { await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}"); sel = null; await CarregarOS(); } }
     async Task AbrirOS() { if (string.IsNullOrEmpty(novaOsRequest.ClientName)) return; await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOsRequest); novaOsRequest = new(); await CarregarOS(); }
-    async Task AdicionarItem() { if (sel == null || novoItem.ProductId == 0) return; await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem); await AtualizarTela(); novoItem = new(); }
-    async Task AdicionarServico() { if (sel == null || novoServico.MechanicId == 0) return; await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoServico); await AtualizarTela(); novoServico = new(); }
-    async Task FinalizarOS() { if (sel == null) return; await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/complete", new { CompletionDate = dataEntregaManual }); await CarregarOS(); mostrarFinalizadas = true; }
-    async Task AtualizarTela() { await CarregarOS(); if (sel != null && todasOS != null) sel = todasOS.FirstOrDefault(o => o.Id == sel.Id); }
+    async Task AdicionarItem() { await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem); await AtualizarTela(); novoItem = new(); }
+    async Task AdicionarServico() { await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoServico); await AtualizarTela(); novoServico = new(); }
+    async Task FinalizarOS() { await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/complete", new { CompletionDate = dataEntregaManual }); await CarregarOS(); mostrarFinalizadas = true; }
+    async Task AtualizarTela() { await CarregarOS(); if (sel != null) sel = todasOS?.FirstOrDefault(o => o.Id == sel.Id); }
 }

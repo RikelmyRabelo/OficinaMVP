@@ -24,6 +24,9 @@ namespace OficinaAPI.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
         public List<ServiceItem> Items { get; set; } = new();
+
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletionDate { get; set; }
     }
 
     public class ServiceItem
@@ -39,12 +42,7 @@ namespace OficinaAPI.Models
         public Employee? Mechanic { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
-        public decimal Price
-        {
-            get => _price;
-            set => _price = value < 0 ? 0 : value;
-        }
-
+        public decimal Price { get => _price; set => _price = value < 0 ? 0 : value; }
         public string? WarrantyPeriod { get; set; }
         public DateTime? WarrantyExpirationDate { get; set; }
     }

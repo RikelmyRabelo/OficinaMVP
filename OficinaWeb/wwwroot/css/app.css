@@ -1,7 +1,12 @@
+/* ============================================================
+   ESTILOS PARA TELA (MODO ESCURO)
+   ============================================================ */
 html, body {
-    background-color: #000000 !important;
+    background-color: #000000;
     color: #e0e0e0;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
 }
 
 .page {
@@ -22,10 +27,6 @@ a, .btn-link {
     text-decoration: none;
 }
 
-    a:hover {
-        color: #ff8533;
-    }
-
 .btn-primary {
     background-color: #ff6600;
     border: none;
@@ -34,51 +35,42 @@ a, .btn-link {
     text-transform: uppercase;
 }
 
-    .btn-primary:hover {
-        background-color: #e65c00;
-        color: #fff;
-    }
-
 input, select, .form-control, .form-select {
     background-color: #1a1a1a !important;
     border: 1px solid #333;
     color: #fff !important;
 }
 
-    input:focus, select:focus {
-        border-color: #ff6600;
-        box-shadow: 0 0 5px rgba(255, 102, 0, 0.5);
-    }
-
 .table {
     color: #ddd;
 }
 
-.table-hover tbody tr:hover {
-    color: #fff;
-    background-color: #1a1a1a;
-}
-
+/* ============================================================
+   ESTILOS DE IMPRESSÃO (O.S. EXECUTIVE)
+   ============================================================ */
 @media print {
     @page {
-        size: executive;
+        size: 184mm 267mm;
         margin: 0;
     }
 
-    body {
+    html, body {
         background-color: #ffffff !important;
-        margin: 0;
-        padding: 0;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
+        color: #000000 !important;
     }
 
+        /* Esconde tudo que não for a seção de impressão */
         body * {
             visibility: hidden;
         }
 
+    .no-print {
+        display: none !important;
+    }
+
+    /* Força a exibição da seção de impressão */
     #print-section, #print-section * {
-        visibility: visible;
+        visibility: visible !important;
     }
 
     #print-section {
@@ -89,19 +81,16 @@ input, select, .form-control, .form-select {
         height: 267mm;
         display: block !important;
         background-color: #ffffff !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
+        z-index: 9999;
     }
 
+    /* Dados posicionados sobre a imagem */
     .print-data {
         position: absolute;
         color: #000000 !important;
         font-family: Arial, sans-serif;
-        font-size: 11pt;
+        font-size: 10pt;
         white-space: nowrap;
-    }
-
-    .no-print {
-        display: none !important;
+        z-index: 10;
     }
 }

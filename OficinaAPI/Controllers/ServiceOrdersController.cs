@@ -10,49 +10,38 @@ namespace OficinaAPI.Controllers
     public class ServiceOrdersController : ControllerBase
     {
         private readonly OficinaContext _context;
-
-        public ServiceOrdersController(OficinaContext context)
-        {
-            _context = context;
-        }
+        public ServiceOrdersController(OficinaContext context) { _context = context; }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetServiceOrders()
         {
             return await _context.ServiceOrders
-                .Include(o => o.Vehicle)
-                .Include(o => o.Items)
-                .OrderByDescending(o => o.Id)
-                .ToListAsync();
+                .Include(o => o.Vehicle).Include(o => o.Items)
+                .Where(o => !o.IsDeleted)
+                .OrderByDescending(o => o.Id).ToListAsync();
+        }
+
+        [HttpGet("trash")]
+        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetTrash()
+        {
+            var threshold = DateTime.Now.AddDays(-30);
+            return await _context.ServiceOrders
+                .Include(o => o.Vehicle).Include(o => o.Items)
+                .Where(o => o.IsDeleted && o.DeletionDate >= threshold)
+                .OrderByDescending(o => o.DeletionDate).ToListAsync();
         }
 
         [HttpPost]
         public async Task<ActionResult<ServiceOrder>> PostServiceOrder(CreateOSDTO request)
         {
-            var newVehicle = new Vehicle
-            {
-                CustomerName = request.ClientName,
-                Model = request.VehicleModel,
-                LicensePlate = "SEM-PLACA",
-                CustomerPhone = ""
-            };
-
+            var newVehicle = new Vehicle { CustomerName = request.ClientName, Model = request.VehicleModel, LicensePlate = "SEM-PLACA" };
             _context.Vehicles.Add(newVehicle);
             await _context.SaveChangesAsync();
-
-            var serviceOrder = new ServiceOrder
-            {
-                VehicleId = newVehicle.Id,
-                EntryDate = DateTime.Now,
-                Status = "Pending",
-                TotalAmount = 0
-            };
-
-            _context.ServiceOrders.Add(serviceOrder);
+            var os = new ServiceOrder { VehicleId = newVehicle.Id, EntryDate = DateTime.Now, Status = "Pending", TotalAmount = 0 };
+            _context.ServiceOrders.Add(os);
             await _context.SaveChangesAsync();
-            serviceOrder.Vehicle = newVehicle;
-
-            return CreatedAtAction("GetServiceOrders", new { id = serviceOrder.Id }, serviceOrder);
+            os.Vehicle = newVehicle;
+            return CreatedAtAction("GetServiceOrders", new { id = os.Id }, os);
         }
 
         [HttpPost("{id}/items")]
@@ -60,26 +49,12 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
-
             var product = await _context.Products.FindAsync(itemDto.ProductId);
             if (product == null) return BadRequest();
-
-            if (product.StockQuantity < itemDto.Quantity)
-                return BadRequest("Estoque insuficiente.");
-
-            var newItem = new ServiceItem
-            {
-                ServiceOrderId = id,
-                ProductId = product.Id,
-                // ARMAZENAMOS O CÓDIGO DO PRODUTO NA DESCRIÇÃO OU CAMPO AUXILIAR
-                Description = $"{product.Code} - {product.Name}",
-                Price = product.SalePrice * itemDto.Quantity,
-                WarrantyPeriod = itemDto.WarrantyPeriod
-            };
-
+            if (product.StockQuantity < itemDto.Quantity) return BadRequest("Estoque insuficiente.");
+            var newItem = new ServiceItem { ServiceOrderId = id, ProductId = product.Id, Description = $"{product.Code} - {product.Name}", Price = product.SalePrice * itemDto.Quantity, WarrantyPeriod = itemDto.WarrantyPeriod };
             product.StockQuantity -= itemDto.Quantity;
             os.TotalAmount += newItem.Price;
-
             _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
             return Ok(newItem);
@@ -90,20 +65,9 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
-
             var mechanic = await _context.Employees.FindAsync(laborDto.MechanicId);
             if (mechanic == null) return BadRequest();
-
-            var newItem = new ServiceItem
-            {
-                ServiceOrderId = id,
-                ProductId = null,
-                MechanicId = mechanic.Id,
-                Description = laborDto.Description,
-                Price = laborDto.Price,
-                WarrantyPeriod = laborDto.WarrantyPeriod
-            };
-
+            var newItem = new ServiceItem { ServiceOrderId = id, ProductId = null, MechanicId = mechanic.Id, Description = laborDto.Description, Price = laborDto.Price, WarrantyPeriod = laborDto.WarrantyPeriod };
             os.TotalAmount += newItem.Price;
             _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
@@ -115,21 +79,30 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
-
             os.Status = "Completed";
             os.CompletionDate = completion.CompletionDate;
-
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteServiceOrder(int id)
+        public async Task<IActionResult> SoftDeleteServiceOrder(int id)
         {
-            var serviceOrder = await _context.ServiceOrders.Include(so => so.Items).FirstOrDefaultAsync(so => so.Id == id);
-            if (serviceOrder == null) return NotFound();
-            _context.ServiceItems.RemoveRange(serviceOrder.Items);
-            _context.ServiceOrders.Remove(serviceOrder);
+            var os = await _context.ServiceOrders.FindAsync(id);
+            if (os == null) return NotFound();
+            os.IsDeleted = true;
+            os.DeletionDate = DateTime.Now;
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        [HttpPut("{id}/restore")]
+        public async Task<IActionResult> RestoreServiceOrder(int id)
+        {
+            var os = await _context.ServiceOrders.FindAsync(id);
+            if (os == null) return NotFound();
+            os.IsDeleted = false;
+            os.DeletionDate = null;
             await _context.SaveChangesAsync();
             return NoContent();
         }
