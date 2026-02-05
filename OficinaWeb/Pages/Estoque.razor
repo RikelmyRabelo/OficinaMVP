@@ -132,7 +132,12 @@
                                         <i class="bi bi-plus-lg"></i>
                                     </button>
                                 </div>
-                                @if ((p.stockQuantity ?? 0) <= p.minimumStock)
+
+                                @if ((p.stockQuantity ?? 0) == 0)
+                                {
+                                    <div class="text-center mt-1"><small class="badge bg-secondary border border-secondary text-white">INDISPONÍVEL</small></div>
+                                }
+                                else if ((p.stockQuantity ?? 0) <= p.minimumStock)
                                 {
                                     <div class="text-center mt-1"><small class="badge bg-danger">BAIXO</small></div>
                                 }
@@ -265,7 +270,7 @@
             var res = await Http.PutAsJsonAsync($"{ApiUrl}/api/products/{p.id}", p);
             if (!res.IsSuccessStatusCode)
             {
-                p.stockQuantity -= delta; // Reverte se der erro
+                p.stockQuantity -= delta;
                 MostrarErro("Erro ao atualizar estoque.");
             }
         }
@@ -296,8 +301,7 @@
             }
             else
             {
-                var erro = await res.Content.ReadAsStringAsync(); // Geralmente o erro 409 Conflict
-                // Filtra a mensagem JSON se vier complexa, senão mostra padrão
+                var erro = await res.Content.ReadAsStringAsync();
                 if (erro.Contains("message")) MostrarErro("Produto em uso. Não pode excluir.");
                 else MostrarErro("Erro ao excluir.");
             }
