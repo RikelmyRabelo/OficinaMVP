@@ -117,9 +117,34 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
+        // NOVO ENDPOINT DE EDIÇÃO DE CABEÇALHO
+        [HttpPut("{id}/vehicle")]
+        public async Task<IActionResult> UpdateVehicleData(int id, [FromBody] UpdateVehicleDTO request)
+        {
+            var os = await _context.ServiceOrders.Include(o => o.Vehicle).FirstOrDefaultAsync(o => o.Id == id);
+            if (os == null || os.Vehicle == null) return NotFound();
+
+            os.Vehicle.CustomerName = request.CustomerName;
+            os.Vehicle.Model = request.VehicleModel;
+            os.Vehicle.CustomerAddress = request.CustomerAddress;
+            os.Vehicle.CustomerPhone = request.CustomerPhone;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
         public class CreateOSDTO
         {
             public string ClientName { get; set; } = "";
+            public string VehicleModel { get; set; } = "";
+            public string CustomerAddress { get; set; } = "";
+            public string CustomerPhone { get; set; } = "";
+        }
+
+        // NOVO DTO PARA ATUALIZAÇÃO
+        public class UpdateVehicleDTO
+        {
+            public string CustomerName { get; set; } = "";
             public string VehicleModel { get; set; } = "";
             public string CustomerAddress { get; set; } = "";
             public string CustomerPhone { get; set; } = "";

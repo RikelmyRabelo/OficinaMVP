@@ -101,19 +101,60 @@
                 <div class="card border-0 shadow-sm h-100" style="background-color: #111; border-top: 4px solid #ff6600 !important;">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between mb-4 border-bottom border-secondary pb-3">
-                            <div>
-                                <h2 class="fw-bold text-white mb-0">@(sel.Vehicle?.Model)</h2>
-                                <span class="text-warning">Cliente: @(sel.Vehicle?.CustomerName)</span>
-                                @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerPhone))
+                            
+                            <div class="flex-grow-1">
+                                @if (editandoCabecalho)
                                 {
-                                    <div class="text-white small"><i class="bi bi-telephone me-1"></i>@sel.Vehicle?.CustomerPhone</div>
+                                    <div class="d-flex flex-column gap-2 mb-2 bg-black p-3 rounded border border-secondary">
+                                        <div class="row g-2">
+                                            <div class="col-md-6">
+                                                <small class="text-muted">Modelo / Placa</small>
+                                                <input class="form-control form-control-sm bg-dark text-white border-secondary" @bind="editRequest.VehicleModel" />
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted">Cliente</small>
+                                                <input class="form-control form-control-sm bg-dark text-white border-secondary" @bind="editRequest.CustomerName" />
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted">Telefone</small>
+                                                <input type="tel" class="form-control form-control-sm bg-dark text-white border-secondary" 
+                                                       @bind="editRequest.CustomerPhone" oninput="this.value = this.value.replace(/[^0-9()-\s]/g, '')"/>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted">Endereço</small>
+                                                <input class="form-control form-control-sm bg-dark text-white border-secondary" @bind="editRequest.CustomerAddress" />
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2 mt-2">
+                                            <button class="btn btn-sm btn-success fw-bold" @onclick="SalvarEdicao"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+                                            <button class="btn btn-sm btn-outline-secondary text-white" @onclick="CancelarEdicao"><i class="bi bi-x-lg me-1"></i>Cancelar</button>
+                                        </div>
+                                    </div>
                                 }
-                                @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerAddress))
+                                else
                                 {
-                                    <div class="text-white small"><i class="bi bi-geo-alt me-1"></i>@sel.Vehicle?.CustomerAddress</div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h2 class="fw-bold text-white mb-0">@(sel.Vehicle?.Model)</h2>
+                                        @if (!verLixeira)
+                                        {
+                                            <button class="btn btn-sm btn-link text-secondary p-0 ms-2" @onclick="IniciarEdicao" title="Editar dados do cabeçalho">
+                                                <i class="bi bi-pencil-square fs-5"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                    <span class="text-warning">Cliente: @(sel.Vehicle?.CustomerName)</span>
+                                    @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerPhone))
+                                    {
+                                        <div class="text-white small"><i class="bi bi-telephone me-1"></i>@sel.Vehicle?.CustomerPhone</div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerAddress))
+                                    {
+                                        <div class="text-white small"><i class="bi bi-geo-alt me-1"></i>@sel.Vehicle?.CustomerAddress</div>
+                                    }
                                 }
                             </div>
-                            <div class="text-end">
+
+                            <div class="text-end ps-3">
                                 <div class="d-flex gap-2 justify-content-end mb-3">
                                     @if (verLixeira) {
                                         <button class="btn btn-success btn-sm fw-bold" @onclick="RestaurarOS">RESTAURAR</button>
@@ -180,7 +221,7 @@
         
         <div class="print-data" style="top: 21%; left: 19.5%;">@sel.Vehicle?.CustomerName</div>
         @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerPhone)) {
-             <div class="print-data" style="top: 26.6%; left: 70%;">@sel.Vehicle?.CustomerPhone</div>
+             <div class="print-data" style="top: 21%; left: 60%;">@sel.Vehicle?.CustomerPhone</div>
         }
 
         <div class="print-data" style="top: 26.6%; left: 22%;">@sel.Vehicle?.Model</div>
@@ -224,6 +265,9 @@
     public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; public string? WarrantyPeriod { get; set; } }
     public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public decimal Price { get; set; } }
+    
+    // DTO PARA EDIÇÃO
+    public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
 
     List<ServiceOrderDTO>? todasOS;
     List<ServiceOrderDTO>? lixeiraOS;
@@ -245,6 +289,10 @@
     string toastMensagem = "";
     string toastTipo = "sucesso"; // "sucesso" ou "erro"
     bool mostrarModalExclusao = false;
+    
+    // VARIÁVEIS PARA EDIÇÃO
+    bool editandoCabecalho = false;
+    UpdateVehicleDTO editRequest = new();
 
     protected override async Task OnInitializedAsync() { await CarregarDadosIniciais(); }
 
@@ -300,7 +348,11 @@
         } catch { MostrarErro("Falha ao restaurar O.S."); }
     }
 
-    void Selecionar(ServiceOrderDTO os) { sel = os; dataEntregaManual = DateTime.Now; }
+    void Selecionar(ServiceOrderDTO os) { 
+        sel = os; 
+        dataEntregaManual = DateTime.Now; 
+        editandoCabecalho = false; // Reseta edição ao trocar de OS
+    }
     
     async Task ImprimirNota() { await JS.InvokeVoidAsync("print"); }
 
@@ -335,7 +387,6 @@
         try {
             var response = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem); 
             if(!response.IsSuccessStatusCode) {
-                // Tenta ler a mensagem de erro que vem do backend (ex: Estoque insuficiente)
                 var errorMsg = await response.Content.ReadAsStringAsync();
                 MostrarErro(string.IsNullOrEmpty(errorMsg) ? "Erro ao adicionar item." : errorMsg);
                 return;
@@ -372,5 +423,33 @@
     
     async Task VoltarInteligente() {
         if (verLixeira) await AlternarLixeira(); else Nav.NavigateTo("/");
+    }
+
+    // --- LÓGICA DE EDIÇÃO ---
+    void IniciarEdicao() {
+        if (sel?.Vehicle == null) return;
+        editRequest = new UpdateVehicleDTO {
+            CustomerName = sel.Vehicle.CustomerName,
+            VehicleModel = sel.Vehicle.Model,
+            CustomerAddress = sel.Vehicle.CustomerAddress,
+            CustomerPhone = sel.Vehicle.CustomerPhone
+        };
+        editandoCabecalho = true;
+    }
+
+    void CancelarEdicao() {
+        editandoCabecalho = false;
+    }
+
+    async Task SalvarEdicao() {
+        if (sel == null) return;
+        try {
+            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/vehicle", editRequest);
+            editandoCabecalho = false;
+            await AtualizarTela();
+            MostrarSucesso("Dados do cliente atualizados!");
+        } catch {
+            MostrarErro("Erro ao salvar alterações.");
+        }
     }
 }
