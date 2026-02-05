@@ -100,7 +100,7 @@
                                         <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItem">ADD PEÇA</button></div>
                                     } else {
                                         <div class="col-md-4"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Description" placeholder="Descrição" /></div>
-                                        <div class="col-md-3"><select class="form-select bg-dark text-white border-secondary" @bind="novoServico.MechanicId"><option value="0">...</option>@if(mecanicos != null){@foreach(var m in mecanicos){<option value="@m.id">@m.name</option>}}</select></div>
+                                        <div class="col-md-3"><select class="form-select bg-dark text-white border-secondary" @bind="novoServico.MechanicId"><option value="0">Mecânico</option>@if(mecanicos != null){@foreach(var m in mecanicos){<option value="@m.id">@m.name</option>}}</select></div>
                                         <div class="col-md-2"><input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" /></div>
                                         <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarServico">ADD</button></div>
                                     }
@@ -140,7 +140,7 @@
         
         <div class="print-data" style="top: 21%; left: 19.5%;">@sel.Vehicle?.CustomerName</div>
         @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerPhone)) {
-             <div class="print-data" style="top: 26.6%; left: 70%;">@sel.Vehicle?.CustomerPhone</div>
+             <div class="print-data" style="top: 21%; left: 60%;">@sel.Vehicle?.CustomerPhone</div>
         }
 
         <div class="print-data" style="top: 26.6%; left: 22%;">@sel.Vehicle?.Model</div>
