@@ -110,12 +110,14 @@ namespace OficinaAPI.Controllers
         }
 
         [HttpPut("{id}/complete")]
-        public async Task<IActionResult> CompleteOrder(int id)
+        public async Task<IActionResult> CompleteOrder(int id, [FromBody] CompletionDTO completion)
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
+
             os.Status = "Completed";
-            os.CompletionDate = DateTime.Now;
+            os.CompletionDate = completion.CompletionDate;
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -134,5 +136,6 @@ namespace OficinaAPI.Controllers
         public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; }
         public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public string? WarrantyPeriod { get; set; } }
         public class AddLaborDTO { public int MechanicId { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
+        public class CompletionDTO { public DateTime CompletionDate { get; set; } }
     }
 }
