@@ -70,8 +70,6 @@ namespace OficinaAPI.Controllers
             var product = await _context.Products.FindAsync(itemDto.ProductId);
             if (product == null) return BadRequest("Produto não encontrado.");
 
-            // --- CORREÇÃO: Uso direto das variáveis sem '??' ---
-
             // Verifica Estoque
             if (product.StockQuantity < itemDto.Quantity)
                 return BadRequest($"Estoque insuficiente.");
@@ -82,7 +80,6 @@ namespace OficinaAPI.Controllers
                 ServiceOrderId = id,
                 ProductId = product.Id,
                 Description = product.Name,
-                // Multiplicação direta (assumindo que SalePrice não é nulo)
                 Price = product.SalePrice * itemDto.Quantity,
                 WarrantyExpirationDate = DateTime.Now.AddMonths(3)
             };
@@ -106,22 +103,19 @@ namespace OficinaAPI.Controllers
             var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound("Ordem de Serviço não encontrada.");
 
-            // Verifica se o mecânico existe
             var mechanic = await _context.Employees.FindAsync(laborDto.MechanicId);
             if (mechanic == null) return BadRequest("Mecânico não encontrado.");
 
-            // Cria o Item de Serviço
             var newItem = new ServiceItem
             {
                 ServiceOrderId = id,
-                ProductId = null, // É serviço, não peça
+                ProductId = null,
                 MechanicId = mechanic.Id,
                 Description = laborDto.Description,
                 Price = laborDto.Price,
                 WarrantyExpirationDate = DateTime.Now.AddMonths(3)
             };
 
-            // Atualiza total da OS
             os.TotalAmount += newItem.Price;
 
             _context.ServiceItems.Add(newItem);
@@ -143,25 +137,48 @@ namespace OficinaAPI.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
-    }
 
-    // --- DTOs ---
-    public class CreateOSDTO
-    {
-        public string ClientName { get; set; } = string.Empty;
-        public string VehicleModel { get; set; } = string.Empty;
-    }
+        // DELETE: api/serviceorders/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteServiceOrder(int id)
+        {
+            var serviceOrder = await _context.ServiceOrders
+                .Include(so => so.Items)
+                .FirstOrDefaultAsync(so => so.Id == id);
 
-    public class AddItemDTO
-    {
-        public int ProductId { get; set; }
-        public int Quantity { get; set; }
-    }
+            if (serviceOrder == null) return NotFound();
 
-    public class AddLaborDTO
-    {
-        public int MechanicId { get; set; }
-        public string Description { get; set; } = string.Empty;
-        public decimal Price { get; set; }
+            // 1. Remove os itens vinculados primeiro para evitar erro de chave estrangeira (FK)
+            if (serviceOrder.Items != null && serviceOrder.Items.Any())
+            {
+                _context.ServiceItems.RemoveRange(serviceOrder.Items);
+            }
+
+            // 2. Remove a ordem de serviço
+            _context.ServiceOrders.Remove(serviceOrder);
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // --- DTOs ---
+        public class CreateOSDTO
+        {
+            public string ClientName { get; set; } = string.Empty;
+            public string VehicleModel { get; set; } = string.Empty;
+        }
+
+        public class AddItemDTO
+        {
+            public int ProductId { get; set; }
+            public int Quantity { get; set; }
+        }
+
+        public class AddLaborDTO
+        {
+            public int MechanicId { get; set; }
+            public string Description { get; set; } = string.Empty;
+            public decimal Price { get; set; }
+        }
     }
 }

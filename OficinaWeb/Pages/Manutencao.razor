@@ -86,9 +86,17 @@
                                 <span class="text-warning">Cliente: @(sel.Vehicle?.CustomerName ?? "-")</span>
                             </div>
                             <div class="text-end">
-                                <button class="btn btn-light btn-sm fw-bold mb-3" @onclick="ImprimirNota">
-                                    <i class="bi bi-printer-fill me-2"></i>IMPRIMIR NOTA / PDF
-                                </button>
+                                <div class="d-flex gap-2 justify-content-end mb-3">
+                                    <button class="btn btn-light btn-sm fw-bold" @onclick="ImprimirNota">
+                                        <i class="bi bi-printer-fill me-2"></i>IMPRIMIR
+                                    </button>
+                                    @if (sel.Status != "Completed")
+                                    {
+                                        <button class="btn btn-outline-danger btn-sm fw-bold" @onclick="ExcluirOS">
+                                            <i class="bi bi-trash3-fill me-2"></i>EXCLUIR
+                                        </button>
+                                    }
+                                </div>
                                 <h1 class="text-success fw-bold mb-0">R$ @sel.TotalAmount.ToString("N2")</h1>
                                 <span class="badge @(sel.Status == "Completed" ? "bg-success" : "bg-warning text-dark")">
                                     @(sel.Status == "Completed" ? "FINALIZADO" : "EM ANDAMENTO")
@@ -211,13 +219,11 @@
     <div id="print-section" class="d-none d-print-block"
          style="background-image: url('images/OrdemServico.png'); background-size: 184mm 267mm; background-repeat: no-repeat;">
 
-        @* CABEÇALHO *@
         <div class="print-data" style="top: 17%; left: 81.5%; font-size: 14pt;">#@sel.Id</div>
         <div class="print-data" style="top: 21%; left: 19.5%;">@sel.Vehicle?.CustomerName</div>
         <div class="print-data" style="top: 26.6%; left: 22%;">@sel.Vehicle?.Model</div>
         <div class="print-data" style="top: 33.9%; left: 30%;">@DateTime.Now.ToString("dd/MM/yyyy")</div>
 
-        @* 1. SEÇÃO DE PRODUTOS/PEÇAS *@
         <div class="print-data" style="top: 42%; left: 20%; width: 73%;">
             @foreach (var item in sel.Items.Where(i => i.ProductId != null))
             {
@@ -228,7 +234,6 @@
             }
         </div>
 
-        @* 2. SEÇÃO DE DESCRIÇÃO DOS SERVIÇOS *@
         <div class="print-data" style="top: 69.6%; left: 6.8%; width: 50%;">
             @foreach (var item in sel.Items.Where(i => i.ProductId == null))
             {
@@ -236,7 +241,6 @@
             }
         </div>
 
-        @* VALOR TOTAL *@
         <div class="print-data" style="top: 80%; left: 81%; font-size: 18pt; font-weight: bold;">
             R$ @sel.TotalAmount.ToString("N2")
         </div>
@@ -299,6 +303,25 @@
     }
 
     async Task ImprimirNota() { await JS.InvokeVoidAsync("print"); }
+
+    async Task ExcluirOS()
+    {
+        if (sel == null) return;
+        bool confirmado = await JS.InvokeAsync<bool>("confirm", $"Tem certeza que deseja excluir a O.S #{sel.Id}?");
+        if (confirmado)
+        {
+            var res = await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}");
+            if (res.IsSuccessStatusCode)
+            {
+                sel = null;
+                await CarregarOS();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Erro ao excluir a Ordem de Serviço.");
+            }
+        }
+    }
 
     async Task AbrirOS()
     {
