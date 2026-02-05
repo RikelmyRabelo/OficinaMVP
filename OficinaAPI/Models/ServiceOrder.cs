@@ -10,6 +10,7 @@ namespace OficinaAPI.Models
         public string Model { get; set; } = string.Empty;
         public string CustomerName { get; set; } = string.Empty;
         public string CustomerPhone { get; set; } = string.Empty;
+        public string CustomerAddress { get; set; } = string.Empty;
     }
 
     public class ServiceOrder

@@ -30,6 +30,8 @@
                         <div class="d-flex flex-column gap-3">
                             <input class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.ClientName" placeholder="Nome do Cliente" />
                             <input class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.VehicleModel" placeholder="Veículo (Modelo)" />
+                            <input class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.CustomerAddress" placeholder="Endereço (Opcional)" />
+                            <input class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.CustomerPhone" placeholder="Telefone (Opcional)" />
                             <button class="btn fw-bold w-100" style="background-color: #ffeb3b; color: #000;" @onclick="AbrirOS">ABRIR OS</button>
                         </div>
                     </div>
@@ -59,7 +61,18 @@
                 <div class="card border-0 shadow-sm h-100" style="background-color: #111; border-top: 4px solid #ff6600 !important;">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between mb-4 border-bottom border-secondary pb-3">
-                            <div><h2 class="fw-bold text-white mb-0">@(sel.Vehicle?.Model)</h2><span class="text-warning">Cliente: @(sel.Vehicle?.CustomerName)</span></div>
+                            <div>
+                                <h2 class="fw-bold text-white mb-0">@(sel.Vehicle?.Model)</h2>
+                                <span class="text-warning">Cliente: @(sel.Vehicle?.CustomerName)</span>
+                                @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerPhone))
+                                {
+                                    <div class="text-white small"><i class="bi bi-telephone me-1"></i>@sel.Vehicle?.CustomerPhone</div>
+                                }
+                                @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerAddress))
+                                {
+                                    <div class="text-white small"><i class="bi bi-geo-alt me-1"></i>@sel.Vehicle?.CustomerAddress</div>
+                                }
+                            </div>
                             <div class="text-end">
                                 <div class="d-flex gap-2 justify-content-end mb-3">
                                     @if (verLixeira) {
@@ -124,8 +137,17 @@
         <img src="images/OrdemServico.png" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: -1;" />
 
         <div class="print-data" style="top: 17%; left: 81.5%; font-size: 14pt; font-weight: bold;">#@sel.Id</div>
+        
         <div class="print-data" style="top: 21%; left: 19.5%;">@sel.Vehicle?.CustomerName</div>
+        @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerPhone)) {
+             <div class="print-data" style="top: 21%; left: 60%;">@sel.Vehicle?.CustomerPhone</div>
+        }
+
         <div class="print-data" style="top: 26.6%; left: 22%;">@sel.Vehicle?.Model</div>
+        @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerAddress)) {
+             <div class="print-data" style="top: 24%; left: 19.5%; font-size: 10pt;">@sel.Vehicle?.CustomerAddress</div>
+        }
+
         <div class="print-data" style="top: 33.9%; left: 30%;">@sel.EntryDate.ToString("dd/MM/yyyy")</div>
 
         @if (sel.CompletionDate.HasValue) {
@@ -155,11 +177,11 @@
 @code {
     private string ApiUrl = "https://localhost:7082";
     public class ServiceOrderDTO { public int Id { get; set; } public VehicleDTO? Vehicle { get; set; } public string Status { get; set; } = "Pending"; public decimal TotalAmount { get; set; } public DateTime EntryDate { get; set; } public DateTime? CompletionDate { get; set; } public List<ServiceItemDTO> Items { get; set; } = new(); }
-    public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; }
+    public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class ServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public int? ProductId { get; set; } public string? WarrantyPeriod { get; set; } }
     public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } }
     public class EmployeeListDTO { public int id { get; set; } public string name { get; set; } = ""; }
-    public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; }
+    public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; public string? WarrantyPeriod { get; set; } }
     public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public decimal Price { get; set; } }
 
