@@ -125,10 +125,10 @@
                                 <div class="row g-2 align-items-end">
                                     @if (tipoItem == "peca")
                                     {
-                                        <div class="col-md-6">
-                                            <label class="text-white-50 small mb-1">Produto do Estoque</label>
+                                        <div class="col-md-4">
+                                            <label class="text-white-50 small mb-1">Peça</label>
                                             <select class="form-select bg-dark text-white border-secondary" @bind="novoItem.ProductId">
-                                                <option value="0" selected>Selecione...</option>
+                                                <option value="0">Selecione...</option>
                                                 @if (produtos != null)
                                                 {
                                                     foreach (var p in produtos)
@@ -138,9 +138,13 @@
                                                 }
                                             </select>
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-2">
                                             <label class="text-white-50 small mb-1">Qtd</label>
                                             <input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Quantity" min="1" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="text-white-50 small mb-1">Garantia</label>
+                                            <input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItem.WarrantyPeriod" placeholder="Ex: 90 dias" />
                                         </div>
                                         <div class="col-md-3">
                                             <button class="btn w-100 fw-bold" style="background-color: #ffeb3b; color: #000;" @onclick="AdicionarItem">ADD PEÇA</button>
@@ -148,15 +152,14 @@
                                     }
                                     else
                                     {
-                                        <div class="col-md-4">
-                                            <label class="text-white-50 small mb-1">Descrição do Serviço</label>
-                                            <input type="text" class="form-control bg-dark text-white border-secondary"
-                                                   @bind="novoServico.Description" placeholder="Ex: Troca de Óleo" />
-                                        </div>
                                         <div class="col-md-3">
+                                            <label class="text-white-50 small mb-1">Serviço</label>
+                                            <input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Description" placeholder="Ex: Troca de Óleo" />
+                                        </div>
+                                        <div class="col-md-2">
                                             <label class="text-white-50 small mb-1">Mecânico</label>
                                             <select class="form-select bg-dark text-white border-secondary" @bind="novoServico.MechanicId">
-                                                <option value="0">Selecione...</option>
+                                                <option value="0">...</option>
                                                 @if (mecanicos != null)
                                                 {
                                                     foreach (var m in mecanicos)
@@ -167,8 +170,12 @@
                                             </select>
                                         </div>
                                         <div class="col-md-2">
-                                            <label class="text-white-50 small mb-1">Valor (R$)</label>
-                                            <input type="number" step="0.01" min="0" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" />
+                                            <label class="text-white-50 small mb-1">Valor</label>
+                                            <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" />
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white-50 small mb-1">Garantia</label>
+                                            <input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoServico.WarrantyPeriod" placeholder="Opcional" />
                                         </div>
                                         <div class="col-md-3">
                                             <button class="btn w-100 fw-bold" style="background-color: #ffeb3b; color: #000;" @onclick="AdicionarServico">ADD SERVIÇO</button>
@@ -199,7 +206,13 @@
                                         {
                                             <tr>
                                                 <td><span class="badge @(item.ProductId != null ? "bg-secondary" : "bg-warning text-dark")">@(item.ProductId != null ? "PEÇA" : "SERVIÇO")</span></td>
-                                                <td class="text-white">@item.Description</td>
+                                                <td class="text-white">
+                                                    @item.Description
+                                                    @if (!string.IsNullOrEmpty(item.WarrantyPeriod))
+                                                    {
+                                                        <small class="text-muted d-block">Garantia: @item.WarrantyPeriod</small>
+                                                    }
+                                                </td>
                                                 <td class="text-end text-white fw-bold">R$ @item.Price.ToString("N2")</td>
                                             </tr>
                                         }
@@ -228,7 +241,7 @@
             @foreach (var item in sel.Items.Where(i => i.ProductId != null))
             {
                 <div style="display: flex; justify-content: space-between; margin-bottom: 9px;">
-                    <span>@item.Description</span>
+                    <span>@item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod} gar.)")</span>
                     <span>R$ @item.Price.ToString("N2")</span>
                 </div>
             }
@@ -237,7 +250,7 @@
         <div class="print-data" style="top: 69.6%; left: 6.8%; width: 50%;">
             @foreach (var item in sel.Items.Where(i => i.ProductId == null))
             {
-                <div style="margin-bottom: 9px;">- @item.Description</div>
+                <div style="margin-bottom: 9px;">- @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"[Garantia: {item.WarrantyPeriod}]")</div>
             }
         </div>
 
@@ -272,12 +285,12 @@
     private string ApiUrl = "https://localhost:7082";
     public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; }
     public class ServiceOrderDTO { public int Id { get; set; } public VehicleDTO? Vehicle { get; set; } public string Status { get; set; } = "Pending"; public decimal TotalAmount { get; set; } public List<ServiceItemDTO> Items { get; set; } = new(); }
-    public class ServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public int? ProductId { get; set; } public int? MechanicId { get; set; } }
+    public class ServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public int? ProductId { get; set; } public string? WarrantyPeriod { get; set; } }
     public class ProductListDTO { public int id { get; set; } public string name { get; set; } = ""; public decimal salePrice { get; set; } }
     public class EmployeeListDTO { public int id { get; set; } public string name { get; set; } = ""; }
     public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; }
-    public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; }
-    public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public decimal Price { get; set; } }
+    public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; public string? WarrantyPeriod { get; set; } }
+    public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
 
     List<ServiceOrderDTO>? todasOS;
     List<ServiceOrderDTO>? listaFiltrada => mostrarFinalizadas ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList() : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList();
@@ -316,10 +329,6 @@
                 sel = null;
                 await CarregarOS();
             }
-            else
-            {
-                await JS.InvokeVoidAsync("alert", "Erro ao excluir a Ordem de Serviço.");
-            }
         }
     }
 
@@ -338,23 +347,17 @@
     async Task AdicionarItem()
     {
         if (sel == null || novoItem.ProductId == 0) return;
-        var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem);
-        if (res.IsSuccessStatusCode)
-        {
-            await AtualizarTela();
-            novoItem.Quantity = 1;
-        }
+        await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem);
+        await AtualizarTela();
+        novoItem = new();
     }
 
     async Task AdicionarServico()
     {
         if (sel == null || string.IsNullOrEmpty(novoServico.Description) || novoServico.MechanicId == 0) return;
-        var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoServico);
-        if (res.IsSuccessStatusCode)
-        {
-            novoServico = new AddLaborInput();
-            await AtualizarTela();
-        }
+        await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoServico);
+        await AtualizarTela();
+        novoServico = new();
     }
 
     async Task FinalizarOS()
