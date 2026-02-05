@@ -34,12 +34,22 @@ namespace OficinaAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ServiceOrder>> PostServiceOrder(CreateOSDTO request)
         {
-            var newVehicle = new Vehicle { CustomerName = request.ClientName, Model = request.VehicleModel, LicensePlate = "SEM-PLACA" };
+            var newVehicle = new Vehicle
+            {
+                CustomerName = request.ClientName,
+                Model = request.VehicleModel,
+                LicensePlate = "SEM-PLACA",
+                CustomerAddress = request.CustomerAddress,
+                CustomerPhone = request.CustomerPhone
+            };
+
             _context.Vehicles.Add(newVehicle);
             await _context.SaveChangesAsync();
+
             var os = new ServiceOrder { VehicleId = newVehicle.Id, EntryDate = DateTime.Now, Status = "Pending", TotalAmount = 0 };
             _context.ServiceOrders.Add(os);
             await _context.SaveChangesAsync();
+
             os.Vehicle = newVehicle;
             return CreatedAtAction("GetServiceOrders", new { id = os.Id }, os);
         }
@@ -107,7 +117,14 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; }
+        public class CreateOSDTO
+        {
+            public string ClientName { get; set; } = "";
+            public string VehicleModel { get; set; } = "";
+            public string CustomerAddress { get; set; } = "";
+            public string CustomerPhone { get; set; } = "";
+        }
+
         public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public string? WarrantyPeriod { get; set; } }
         public class AddLaborDTO { public int MechanicId { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
         public class CompletionDTO { public DateTime CompletionDate { get; set; } }
