@@ -98,6 +98,16 @@
 
     @if (produtos != null)
     {
+        <div class="mb-3">
+            <div class="input-group">
+                <span class="input-group-text bg-dark text-secondary border-secondary"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control bg-dark text-white border-secondary"
+                       placeholder="Buscar por código ou nome..."
+                       @bind="termoBusca"
+                       @bind:event="oninput" />
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="table table-dark table-hover align-middle" style="border-color: #333;">
                 <thead style="border-bottom: 2px solid #ffeb3b;">
@@ -110,7 +120,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var p in produtos)
+                    @foreach (var p in produtosFiltrados)
                     {
                         var rowColor = (p.stockQuantity ?? 0) <= p.minimumStock ? "#ff4444" : "#fff";
 
@@ -148,6 +158,14 @@
                                         title="Excluir Produto">
                                     <i class="bi bi-trash3-fill fs-5"></i>
                                 </button>
+                            </td>
+                        </tr>
+                    }
+                    @if (produtosFiltrados.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                Nenhum produto encontrado para "<strong>@termoBusca</strong>"
                             </td>
                         </tr>
                     }
@@ -209,6 +227,14 @@
     string toastTipo = "sucesso";
     bool mostrarModalExclusao = false;
     ProductDTO? produtoParaExcluir;
+
+    // Busca
+    string termoBusca = "";
+    List<ProductDTO> produtosFiltrados => produtos?
+        .Where(p => string.IsNullOrEmpty(termoBusca) ||
+                    p.code.Contains(termoBusca, StringComparison.OrdinalIgnoreCase) ||
+                    p.name.Contains(termoBusca, StringComparison.OrdinalIgnoreCase))
+        .ToList() ?? new List<ProductDTO>();
 
     protected override async Task OnInitializedAsync() { await Carregar(); }
 
