@@ -136,8 +136,8 @@
 
         @if (sel.CompletionDate.HasValue)
         {
-            <div class="print-data" style="top: 85%; left: 30%;">@sel.CompletionDate.Value.ToString("dd/MM/yyyy")</div>
-            <div class="print-data" style="top: 85%; left: 55%;">@sel.CompletionDate.Value.ToString("HH:mm")</div>
+            <div class="print-data" style="top: 33.9%; left: 63%;">@sel.CompletionDate.Value.ToString("dd/MM/yyyy")</div>
+            <div class="print-data" style="top: 33.9%; left: 87%;">@sel.CompletionDate.Value.ToString("HH:mm")</div>
         }
 
         <div class="print-data" style="top: 42%; left: 20%; width: 73%;">
@@ -172,7 +172,6 @@
     public class ProductListDTO { public int id { get; set; } public string name { get; set; } = ""; public decimal salePrice { get; set; } }
     public class EmployeeListDTO { public int id { get; set; } public string name { get; set; } = ""; }
     
-    // CORREÇÃO: Definindo novaOsRequest corretamente
     public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; }
     public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; public string? WarrantyPeriod { get; set; } }
     public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
