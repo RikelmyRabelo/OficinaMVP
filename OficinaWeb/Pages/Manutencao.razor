@@ -241,7 +241,7 @@
             @foreach (var item in sel.Items.Where(i => i.ProductId != null))
             {
                 <div style="display: flex; justify-content: space-between; margin-bottom: 9px;">
-                    <span>@item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod} gar.)")</span>
+                    <span>@item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")</span>
                     <span>R$ @item.Price.ToString("N2")</span>
                 </div>
             }
@@ -250,7 +250,7 @@
         <div class="print-data" style="top: 69.6%; left: 6.8%; width: 50%;">
             @foreach (var item in sel.Items.Where(i => i.ProductId == null))
             {
-                <div style="margin-bottom: 9px;">- @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"[Garantia: {item.WarrantyPeriod}]")</div>
+                <div style="margin-bottom: 9px;">- @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")</div>
             }
         </div>
 
