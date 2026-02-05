@@ -71,7 +71,8 @@ namespace OficinaAPI.Controllers
             {
                 ServiceOrderId = id,
                 ProductId = product.Id,
-                Description = product.Name,
+                // ARMAZENAMOS O CÓDIGO DO PRODUTO NA DESCRIÇÃO OU CAMPO AUXILIAR
+                Description = $"{product.Code} - {product.Name}",
                 Price = product.SalePrice * itemDto.Quantity,
                 WarrantyPeriod = itemDto.WarrantyPeriod
             };
