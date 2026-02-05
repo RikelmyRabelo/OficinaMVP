@@ -7,6 +7,43 @@
 
 <PageTitle>Oficina - FJ Centro Automotivo</PageTitle>
 
+<div class="toast-container position-fixed bottom-0 end-0 p-3 no-print" style="z-index: 1100;">
+    @if (mostrarToast)
+    {
+        <div class="toast show align-items-center text-white @(toastTipo == "erro" ? "bg-danger" : "bg-success") border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body fw-bold">
+                    <i class="bi @(toastTipo == "erro" ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
+                    @toastMensagem
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => mostrarToast = false"></button>
+            </div>
+        </div>
+    }
+</div>
+
+@if (mostrarModalExclusao)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold text-danger"><i class="bi bi-trash-fill me-2"></i>Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => mostrarModalExclusao = false"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja mover a O.S. <strong>#@sel?.Id</strong> do veículo <strong>@sel?.Vehicle?.Model</strong> para a lixeira?</p>
+                    <small class="text-secondary">Você poderá restaurá-la depois se necessário.</small>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" @onclick="() => mostrarModalExclusao = false">Cancelar</button>
+                    <button type="button" class="btn btn-danger fw-bold" @onclick="ConfirmarExclusao">SIM, EXCLUIR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="container-fluid py-4 px-4 no-print">
     <div class="row align-items-center mb-5 position-relative">
         <div class="col-md-3 text-start">
@@ -82,7 +119,7 @@
                                         <button class="btn btn-success btn-sm fw-bold" @onclick="RestaurarOS">RESTAURAR</button>
                                     } else {
                                         <button class="btn btn-light btn-sm fw-bold" @onclick="ImprimirNota">IMPRIMIR</button>
-                                        <button class="btn btn-outline-danger btn-sm fw-bold" @onclick="ExcluirOS">EXCLUIR</button>
+                                        <button class="btn btn-outline-danger btn-sm fw-bold" @onclick="SolicitarExclusao">EXCLUIR</button>
                                     }
                                 </div>
                                 <h1 class="text-success fw-bold mb-0">R$ @sel.TotalAmount.ToString("N2")</h1>
@@ -203,27 +240,137 @@
     DateTime dataEntregaManual = DateTime.Now;
     string tipoItem = "peca";
 
-    protected override async Task OnInitializedAsync() { await CarregarProdutos(); await CarregarMecanicos(); await CarregarOS(); }
-    async Task CarregarOS() { todasOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders"); }
-    async Task CarregarProdutos() { produtos = await Http.GetFromJsonAsync<List<ProductListDTO>>($"{ApiUrl}/api/products"); }
-    async Task CarregarMecanicos() { mecanicos = await Http.GetFromJsonAsync<List<EmployeeListDTO>>($"{ApiUrl}/api/employees"); }
-    async Task AlternarLixeira() { verLixeira = !verLixeira; sel = null; if (verLixeira) lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash"); else await CarregarOS(); }
-    async Task RestaurarOS() { if (sel == null) return; await Http.PutAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/restore", null); sel = null; lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash"); await CarregarOS(); }
-    void Selecionar(ServiceOrderDTO os) { sel = os; dataEntregaManual = DateTime.Now; }
-    async Task ImprimirNota() { await JS.InvokeVoidAsync("print"); }
-    async Task ExcluirOS() { if (sel == null) return; if (await JS.InvokeAsync<bool>("confirm", "Mover para lixeira?")) { await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}"); sel = null; await CarregarOS(); } }
-    async Task AbrirOS() { if (string.IsNullOrEmpty(novaOsRequest.ClientName)) return; await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOsRequest); novaOsRequest = new(); await CarregarOS(); }
-    async Task AdicionarItem() { await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem); await AtualizarTela(); novoItem = new(); }
-    async Task AdicionarServico() { await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoServico); await AtualizarTela(); novoServico = new(); }
-    async Task FinalizarOS() { await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/complete", new { CompletionDate = dataEntregaManual }); await CarregarOS(); mostrarFinalizadas = true; }
-    async Task AtualizarTela() { await CarregarOS(); if (sel != null) sel = todasOS?.FirstOrDefault(o => o.Id == sel.Id); }
-    
-    // NOVA FUNÇÃO DO BOTÃO VOLTAR
-    async Task VoltarInteligente() {
-        if (verLixeira) {
-            await AlternarLixeira();
-        } else {
-            Nav.NavigateTo("/");
+    // VARIÁVEIS DE CONTROLE DE UI
+    bool mostrarToast = false;
+    string toastMensagem = "";
+    string toastTipo = "sucesso"; // "sucesso" ou "erro"
+    bool mostrarModalExclusao = false;
+
+    protected override async Task OnInitializedAsync() { await CarregarDadosIniciais(); }
+
+    async Task CarregarDadosIniciais() {
+        try {
+            await CarregarProdutos(); 
+            await CarregarMecanicos(); 
+            await CarregarOS();
+        } catch (Exception) {
+            MostrarErro("Falha crítica ao conectar com o servidor.");
         }
+    }
+
+    // MÉTODOS DE FEEDBACK VISUAL
+    async void MostrarSucesso(string msg) {
+        toastMensagem = msg; toastTipo = "sucesso"; mostrarToast = true; StateHasChanged();
+        await Task.Delay(3000); mostrarToast = false; StateHasChanged();
+    }
+    async void MostrarErro(string msg) {
+        toastMensagem = msg; toastTipo = "erro"; mostrarToast = true; StateHasChanged();
+        await Task.Delay(5000); mostrarToast = false; StateHasChanged();
+    }
+
+    async Task CarregarOS() { 
+        try { todasOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders"); } 
+        catch { MostrarErro("Erro ao atualizar lista de O.S."); }
+    }
+    async Task CarregarProdutos() { 
+        try { produtos = await Http.GetFromJsonAsync<List<ProductListDTO>>($"{ApiUrl}/api/products"); }
+        catch { MostrarErro("Erro ao carregar produtos."); }
+    }
+    async Task CarregarMecanicos() {
+        try { mecanicos = await Http.GetFromJsonAsync<List<EmployeeListDTO>>($"{ApiUrl}/api/employees"); }
+        catch { MostrarErro("Erro ao carregar mecânicos."); }
+    }
+
+    async Task AlternarLixeira() { 
+        try {
+            verLixeira = !verLixeira; sel = null; 
+            if (verLixeira) lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash"); 
+            else await CarregarOS();
+        } catch { MostrarErro("Erro ao acessar a lixeira."); }
+    }
+
+    async Task RestaurarOS() { 
+        if (sel == null) return; 
+        try {
+            await Http.PutAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/restore", null); 
+            sel = null; 
+            lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash"); 
+            await CarregarOS();
+            MostrarSucesso("O.S. restaurada com sucesso!");
+        } catch { MostrarErro("Falha ao restaurar O.S."); }
+    }
+
+    void Selecionar(ServiceOrderDTO os) { sel = os; dataEntregaManual = DateTime.Now; }
+    
+    async Task ImprimirNota() { await JS.InvokeVoidAsync("print"); }
+
+    void SolicitarExclusao() { if (sel != null) mostrarModalExclusao = true; }
+
+    async Task ConfirmarExclusao() { 
+        if (sel == null) return; 
+        try {
+            await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}"); 
+            sel = null; 
+            mostrarModalExclusao = false;
+            await CarregarOS();
+            MostrarSucesso("O.S. movida para a lixeira.");
+        } catch { 
+            mostrarModalExclusao = false;
+            MostrarErro("Erro ao excluir a O.S."); 
+        }
+    }
+
+    async Task AbrirOS() { 
+        if (string.IsNullOrEmpty(novaOsRequest.ClientName)) { MostrarErro("Nome do cliente é obrigatório."); return; }
+        try {
+            await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOsRequest); 
+            novaOsRequest = new(); 
+            await CarregarOS();
+            MostrarSucesso("Ordem de Serviço aberta!");
+        } catch { MostrarErro("Falha ao abrir nova O.S."); }
+    }
+
+    async Task AdicionarItem() { 
+        if (novoItem.ProductId == 0) { MostrarErro("Selecione um produto."); return; }
+        try {
+            var response = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem); 
+            if(!response.IsSuccessStatusCode) {
+                // Tenta ler a mensagem de erro que vem do backend (ex: Estoque insuficiente)
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                MostrarErro(string.IsNullOrEmpty(errorMsg) ? "Erro ao adicionar item." : errorMsg);
+                return;
+            }
+            await AtualizarTela(); 
+            novoItem = new();
+            MostrarSucesso("Peça adicionada.");
+        } catch { MostrarErro("Erro de conexão ao adicionar item."); }
+    }
+
+    async Task AdicionarServico() { 
+        if (string.IsNullOrEmpty(novoServico.Description)) { MostrarErro("Descrição é obrigatória."); return; }
+        try {
+            await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoServico); 
+            await AtualizarTela(); 
+            novoServico = new();
+            MostrarSucesso("Mão de obra registrada.");
+        } catch { MostrarErro("Erro ao adicionar serviço."); }
+    }
+
+    async Task FinalizarOS() { 
+        try {
+            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/complete", new { CompletionDate = dataEntregaManual }); 
+            await CarregarOS(); 
+            mostrarFinalizadas = true;
+            MostrarSucesso("O.S. finalizada e entregue!");
+        } catch { MostrarErro("Erro ao finalizar O.S."); }
+    }
+
+    async Task AtualizarTela() { 
+        await CarregarOS(); 
+        if (sel != null) sel = todasOS?.FirstOrDefault(o => o.Id == sel.Id); 
+    }
+    
+    async Task VoltarInteligente() {
+        if (verLixeira) await AlternarLixeira(); else Nav.NavigateTo("/");
     }
 }
