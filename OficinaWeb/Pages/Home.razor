@@ -80,16 +80,11 @@ else
     </div>
 
     <div class="p-4 rounded-3 shadow-sm mb-5" style="background-color: #111; border: 1px solid #333;">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h4 class="fw-bold mb-1" style="color: #ff6600;">Segurança dos Dados</h4>
-                <p class="text-white-50 small mb-0">O backup será gerado na pasta configurada para sincronização com o Google Drive.</p>
-            </div>
-            <button class="btn btn-lg fw-bold"
-                    style="background-color: #ff6600; color: white;"
-                    @onclick="ExecutarBackup"
-                    disabled="@isBackingUp">
-                @if (isBackingUp)
+        <h4 class="fw-bold mb-3" style="color: #ff6600;">Segurança e Relatórios Cloud</h4>
+
+        <div class="d-flex gap-3 flex-wrap">
+            <button class="btn btn-outline-light fw-bold px-4" @onclick="() => ExecutarAcaoBackup(true)" disabled="@isProcessing">
+                @if (isProcessing && backupTipoSistema)
                 {
                     <span class="spinner-border spinner-border-sm me-2"></span>
             
@@ -97,15 +92,33 @@ else
                 }
                 else
                 {
-                    <i class="bi bi-cloud-arrow-up-fill me-2"></i>
+                    <i class="bi bi-shield-lock-fill me-2"></i>
             
-                    <span>Gerar Backup Cloud</span>
+                    <span>Backup de Sistema (.bak)</span>
+                }
+            </button>
+
+            <button class="btn fw-bold px-4" style="background-color: #ff6600; color: white;"
+                    @onclick="() => ExecutarAcaoBackup(false)" disabled="@isProcessing">
+                @if (isProcessing && !backupTipoSistema)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+            
+                    <span>Gerando Texto...</span>
+                }
+                else
+                {
+                    <i class="bi bi-file-earmark-code-fill me-2"></i>
+            
+                    <span>Gerar Relatório Legível (JSON)</span>
                 }
             </button>
         </div>
+
         @if (!string.IsNullOrEmpty(backupStatus))
         {
             <div class="mt-3 alert @(backupSuccess ? "alert-success" : "alert-danger") bg-dark border-0 text-white">
+                <i class="bi @(backupSuccess ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill") me-2"></i>
                 @backupStatus
             </div>
         }
@@ -122,14 +135,13 @@ else
 
 @code {
     private string ApiUrl = "https://localhost:7082";
-
     bool isLoading = true;
     int osAbertas = 0;
     int estoqueBaixo = 0;
     decimal faturamento = 0;
 
-    // Variáveis de controle do Backup
-    private bool isBackingUp = false;
+    private bool isProcessing = false;
+    private bool backupTipoSistema = false;
     private string backupStatus = "";
     private bool backupSuccess = false;
 
@@ -162,33 +174,38 @@ else
         finally { isLoading = false; }
     }
 
-    private async Task ExecutarBackup()
+    private async Task ExecutarAcaoBackup(bool isSistema)
     {
-        isBackingUp = true;
-        backupStatus = "";
+        isProcessing = true;
+        backupTipoSistema = isSistema;
+        backupStatus = "Iniciando processo...";
+
+        string endpoint = isSistema ? "api/backup/gerar" : "api/backup/exportar-legivel";
 
         try
         {
-            var response = await Http.PostAsync($"{ApiUrl}/api/backup/gerar", null);
+            var response = await Http.PostAsync($"{ApiUrl}/{endpoint}", null);
             if (response.IsSuccessStatusCode)
             {
                 backupSuccess = true;
-                backupStatus = "Backup realizado com sucesso! Verifique a pasta do Google Drive.";
+                backupStatus = isSistema
+                    ? "Backup de sistema (.bak) concluído com sucesso!"
+                    : "Relatório legível (.json) gerado! Verifique sua pasta de sincronização.";
             }
             else
             {
                 backupSuccess = false;
-                backupStatus = "Erro ao processar o backup na API.";
+                backupStatus = "Erro na API: O arquivo não pôde ser gerado.";
             }
         }
         catch (Exception ex)
         {
             backupSuccess = false;
-            backupStatus = "Não foi possível conectar à API: " + ex.Message;
+            backupStatus = "Falha de conexão com a API: " + ex.Message;
         }
         finally
         {
-            isBackingUp = false;
+            isProcessing = false;
         }
     }
 }
