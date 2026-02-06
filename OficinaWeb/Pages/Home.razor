@@ -3,152 +3,134 @@
 @using System.Net.Http.Json
 @using System.Text.Json
 
-<PageTitle>FJ Centro Automotivo</PageTitle>
+<PageTitle>FJ Centro Automotivo - Início</PageTitle>
 
 <div class="text-center mb-5">
     <h1 class="fw-bold display-4" style="color: #ff6600; text-transform: uppercase; letter-spacing: 2px;">
         FJ CENTRO AUTOMOTIVO
     </h1>
+    <p class="text-white-50">Gestão Profissional de Oficina</p>
 </div>
 
+@* Cards de Navegação Principal *@
 <div class="row g-4 mb-5 justify-content-center">
     <div class="col-md-3">
-        <a href="estoque" class="card text-decoration-none h-100 border-0 shadow"
-           style="background: #111; border: 1px solid #333; transition: 0.3s;">
-            <div class="card-body text-center py-4 nav-card">
+        <a href="estoque" class="card text-decoration-none h-100 border-0 shadow-lg nav-card" style="background: #111; border: 1px solid #333;">
+            <div class="card-body text-center py-4">
                 <i class="bi bi-box-seam-fill fs-1 mb-3 d-block text-white"></i>
                 <h4 class="fw-bold" style="color: #ff6600;">Estoque</h4>
-                <small class="text-white">Gerenciar Peças</small>
+                <small class="text-white-50">Peças e Insumos</small>
             </div>
         </a>
     </div>
 
     <div class="col-md-3">
-        <a href="rh" class="card text-decoration-none h-100 border-0 shadow"
-           style="background: #111; border: 1px solid #333; transition: 0.3s;">
-            <div class="card-body text-center py-4 nav-card">
+        <a href="rh" class="card text-decoration-none h-100 border-0 shadow-lg nav-card" style="background: #111; border: 1px solid #333;">
+            <div class="card-body text-center py-4">
                 <i class="bi bi-people-fill fs-1 mb-3 d-block text-white"></i>
-                <h4 class="fw-bold" style="color: #ff6600;">RH e Pagamentos</h4>
-                <small class="text-white">Funcionários e Salários</small>
+                <h4 class="fw-bold" style="color: #ff6600;">Equipe</h4>
+                <small class="text-white-50">RH e Pagamentos</small>
             </div>
         </a>
     </div>
 
     <div class="col-md-3">
-        <a href="manutencao" class="card text-decoration-none h-100 border-0 shadow"
-           style="background: #111; border: 1px solid #333; transition: 0.3s;">
-            <div class="card-body text-center py-4 nav-card">
+        <a href="manutencao" class="card text-decoration-none h-100 border-0 shadow-lg nav-card" style="background: #111; border: 1px solid #333;">
+            <div class="card-body text-center py-4">
                 <i class="bi bi-wrench-adjustable fs-1 mb-3 d-block text-white"></i>
                 <h4 class="fw-bold" style="color: #ff6600;">Oficina</h4>
-                <small class="text-white">Ordens de Serviço</small>
+                <small class="text-white-50">Ordens de Serviço</small>
             </div>
         </a>
     </div>
 </div>
 
-<hr style="border-color: #333; margin-bottom: 3rem;" />
+<hr style="border-color: #333; margin: 3rem 0;" />
 
-<h3 class="mb-4 fw-bold" style="color: #ff6600;">
-    <i class="bi bi-activity me-2"></i>Resumo da Operação
-</h3>
-
+@* Seção de Resumo e Segurança *@
 @if (isLoading)
 {
-    <div class="text-center text-white">Carregando dados...</div>
+    <div class="text-center py-5">
+        <div class="spinner-border text-warning" role="status"></div>
+    </div>
 }
 else
 {
     <div class="row g-4 mb-5">
         <div class="col-md-4">
-            <div class="p-4 rounded-3" style="background-color: #0a0a0a; border-left: 5px solid #ff6600;">
-                <h6 class="text-white text-uppercase">Veículos na Oficina</h6>
+            <div class="p-4 rounded-3 border-start border-4 border-warning" style="background: #0a0a0a;">
+                <h6 class="text-white-50 text-uppercase small">Veículos em Reparo</h6>
                 <h1 class="text-white display-5 fw-bold">@osAbertas</h1>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="p-4 rounded-3" style="background-color: #0a0a0a; border-left: 5px solid #dc3545;">
-                <h6 class="text-white text-uppercase">Estoque Crítico</h6>
-                <h1 class="text-white display-5 fw-bold">@estoqueBaixo <span class="fs-6 text-white">itens</span></h1>
+            <div class="p-4 rounded-3 border-start border-4 border-danger" style="background: #0a0a0a;">
+                <h6 class="text-white-50 text-uppercase small">Alertas de Estoque</h6>
+                <h1 class="text-white display-5 fw-bold">@estoqueBaixo <span class="fs-5 text-white-50">itens</span></h1>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="p-4 rounded-3" style="background-color: #0a0a0a; border-left: 5px solid #198754;">
-                <h6 class="text-white text-uppercase">Faturamento Total</h6>
+            <div class="p-4 rounded-3 border-start border-4 border-success" style="background: #0a0a0a;">
+                <h6 class="text-white-50 text-uppercase small">Faturamento Concluído</h6>
                 <h1 class="text-white display-5 fw-bold">@faturamento.ToString("C2")</h1>
             </div>
         </div>
     </div>
 
-    <div class="p-4 rounded-3 shadow-sm mb-5" style="background-color: #111; border: 1px solid #333;">
-        <h4 class="fw-bold mb-3" style="color: #ff6600;">Segurança e Relatórios Cloud</h4>
+    @* Painel de Backup *@
+    <div class="p-4 rounded-3 border border-secondary" style="background: #111;">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
+            <div class="mb-3 mb-md-0">
+                <h4 class="fw-bold mb-1" style="color: #ff6600;">Backup Diário Inteligente</h4>
+                <p class="text-white-50 small mb-0">Os arquivos serão salvos em: <code class="text-light">D:\Backups_Oficina\@DateTime.Now.ToString("dd-MM-yyyy")\</code></p>
+            </div>
 
-        <div class="d-flex gap-3 flex-wrap">
-            <button class="btn btn-outline-light fw-bold px-4" @onclick="() => ExecutarAcaoBackup(true)" disabled="@isProcessing">
-                @if (isProcessing && backupTipoSistema)
-                {
-                    <span class="spinner-border spinner-border-sm me-2"></span>
-            
-                    <span>Processando...</span>
-                }
-                else
-                {
-                    <i class="bi bi-shield-lock-fill me-2"></i>
-            
-                    <span>Backup de Sistema (.bak)</span>
-                }
-            </button>
-
-            <button class="btn fw-bold px-4" style="background-color: #ff6600; color: white;"
-                    @onclick="() => ExecutarAcaoBackup(false)" disabled="@isProcessing">
-                @if (isProcessing && !backupTipoSistema)
-                {
-                    <span class="spinner-border spinner-border-sm me-2"></span>
-            
-                    <span>Gerando Texto...</span>
-                }
-                else
-                {
-                    <i class="bi bi-file-earmark-code-fill me-2"></i>
-            
-                    <span>Gerar Relatório Legível (JSON)</span>
-                }
-            </button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-light fw-bold" @onclick="() => ProcessarAcao(true)" disabled="@isBusy">
+                    <i class="bi bi-hdd-fill me-2"></i>Backup Sistema
+                </button>
+                <button class="btn fw-bold text-white px-4" style="background: #217346;" @onclick="() => ProcessarAcao(false)" disabled="@isBusy">
+                    @if (isBusy && !isBackupSistema)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="bi bi-file-earmark-excel-fill me-2"></i>Exportar Excel
+                </button>
+            </div>
         </div>
 
-        @if (!string.IsNullOrEmpty(backupStatus))
+        @if (!string.IsNullOrEmpty(feedbackMsg))
         {
-            <div class="mt-3 alert @(backupSuccess ? "alert-success" : "alert-danger") bg-dark border-0 text-white">
-                <i class="bi @(backupSuccess ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill") me-2"></i>
-                @backupStatus
+            <div class="mt-3 alert @(opSucesso ? "alert-success" : "alert-danger") bg-dark border-0 text-white fade show">
+                <i class="bi @(opSucesso ? "bi-check-circle" : "bi-x-circle") me-2"></i> @feedbackMsg
             </div>
         }
     </div>
 }
 
 <style>
-    .nav-card:hover {
-        background-color: #1a1a1a;
-        transform: translateY(-5px);
-        border-color: #ff6600;
+    .nav-card {
+        transition: all 0.3s;
+        cursor: pointer;
     }
+
+        .nav-card:hover {
+            transform: translateY(-8px);
+            border-color: #ff6600 !important;
+            background: #1a1a1a !important;
+        }
 </style>
 
 @code {
     private string ApiUrl = "https://localhost:7082";
-    bool isLoading = true;
-    int osAbertas = 0;
-    int estoqueBaixo = 0;
-    decimal faturamento = 0;
+    private bool isLoading = true;
+    private int osAbertas, estoqueBaixo;
+    private decimal faturamento;
 
-    private bool isProcessing = false;
-    private bool backupTipoSistema = false;
-    private string backupStatus = "";
-    private bool backupSuccess = false;
+    private bool isBusy, isBackupSistema, opSucesso;
+    private string feedbackMsg = "";
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CarregarDados();
-    }
+    protected override async Task OnInitializedAsync() => await CarregarDados();
 
     private async Task CarregarDados()
     {
@@ -160,52 +142,28 @@ else
             if (osList != null)
             {
                 osAbertas = osList.Count(x => x.GetProperty("status").ToString() != "Completed");
-                faturamento = 0;
-                foreach (var os in osList.Where(x => x.GetProperty("status").ToString() == "Completed"))
-                {
-                    if (os.TryGetProperty("totalAmount", out var val) && val.ValueKind == JsonValueKind.Number)
-                        faturamento += val.GetDecimal();
-                }
+                faturamento = osList.Where(x => x.GetProperty("status").ToString() == "Completed")
+                                    .Sum(x => x.GetProperty("totalAmount").GetDecimal());
             }
             if (prodList != null)
-                estoqueBaixo = prodList.Count(x => x.GetProperty("stockQuantity").GetInt32() <= 5);
+                estoqueBaixo = prodList.Count(x => x.GetProperty("stockQuantity").GetInt32() <= x.GetProperty("minimumStock").GetInt32());
         }
         catch { }
         finally { isLoading = false; }
     }
 
-    private async Task ExecutarAcaoBackup(bool isSistema)
+    private async Task ProcessarAcao(bool sistema)
     {
-        isProcessing = true;
-        backupTipoSistema = isSistema;
-        backupStatus = "Iniciando processo...";
-
-        string endpoint = isSistema ? "api/backup/gerar" : "api/backup/exportar-legivel";
+        isBusy = true; isBackupSistema = sistema; feedbackMsg = "Aguarde, processando...";
+        string rota = sistema ? "api/backup/gerar" : "api/backup/exportar-excel";
 
         try
         {
-            var response = await Http.PostAsync($"{ApiUrl}/{endpoint}", null);
-            if (response.IsSuccessStatusCode)
-            {
-                backupSuccess = true;
-                backupStatus = isSistema
-                    ? "Backup de sistema (.bak) concluído com sucesso!"
-                    : "Relatório legível (.json) gerado! Verifique sua pasta de sincronização.";
-            }
-            else
-            {
-                backupSuccess = false;
-                backupStatus = "Erro na API: O arquivo não pôde ser gerado.";
-            }
+            var res = await Http.PostAsync($"{ApiUrl}/{rota}", null);
+            opSucesso = res.IsSuccessStatusCode;
+            feedbackMsg = opSucesso ? (sistema ? "Backup de segurança salvo!" : "Planilha Excel organizada com sucesso!") : "Erro ao gerar arquivo.";
         }
-        catch (Exception ex)
-        {
-            backupSuccess = false;
-            backupStatus = "Falha de conexão com a API: " + ex.Message;
-        }
-        finally
-        {
-            isProcessing = false;
-        }
+        catch (Exception ex) { opSucesso = false; feedbackMsg = "Erro: " + ex.Message; }
+        finally { isBusy = false; }
     }
 }
