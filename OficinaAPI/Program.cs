@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configuração do CORS para permitir que o Front-end acesse a API
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -37,6 +38,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Importante: UseCors deve vir antes de UseAuthorization
 app.UseCors("AllowAll");
 
 app.UseAuthorization();
