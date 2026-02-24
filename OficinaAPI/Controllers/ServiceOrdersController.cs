@@ -16,7 +16,9 @@ namespace OficinaAPI.Controllers
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetServiceOrders()
         {
             return await _context.ServiceOrders
-                .Include(o => o.Vehicle).Include(o => o.Items)
+                .Include(o => o.Vehicle)
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Mechanic)
                 .Where(o => !o.IsDeleted)
                 .OrderByDescending(o => o.Id).ToListAsync();
         }
@@ -26,7 +28,9 @@ namespace OficinaAPI.Controllers
         {
             var threshold = DateTime.Now.AddDays(-30);
             return await _context.ServiceOrders
-                .Include(o => o.Vehicle).Include(o => o.Items)
+                .Include(o => o.Vehicle)
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Mechanic)
                 .Where(o => o.IsDeleted && o.DeletionDate >= threshold)
                 .OrderByDescending(o => o.DeletionDate).ToListAsync();
         }
@@ -46,7 +50,7 @@ namespace OficinaAPI.Controllers
             _context.Vehicles.Add(newVehicle);
             await _context.SaveChangesAsync();
 
-            var os = new ServiceOrder { VehicleId = newVehicle.Id, EntryDate = DateTime.Now, Status = "Pending", TotalAmount = 0 };
+            var os = new ServiceOrder { VehicleId = newVehicle.Id, EntryDate = DateTime.Now, Status = "Pending", TotalAmount = 0, AmountPaid = 0 };
             _context.ServiceOrders.Add(os);
             await _context.SaveChangesAsync();
 
@@ -62,7 +66,10 @@ namespace OficinaAPI.Controllers
             var product = await _context.Products.FindAsync(itemDto.ProductId);
             if (product == null) return BadRequest();
             if (product.StockQuantity < itemDto.Quantity) return BadRequest("Estoque insuficiente.");
+
+            // O preço volta a ser puxado rigorosamente do estoque
             var newItem = new ServiceItem { ServiceOrderId = id, ProductId = product.Id, Description = $"{product.Code} - {product.Name}", Price = product.SalePrice * itemDto.Quantity, WarrantyPeriod = itemDto.WarrantyPeriod };
+
             product.StockQuantity -= itemDto.Quantity;
             os.TotalAmount += newItem.Price;
             _context.ServiceItems.Add(newItem);
@@ -77,7 +84,9 @@ namespace OficinaAPI.Controllers
             if (os == null) return NotFound();
             var mechanic = await _context.Employees.FindAsync(laborDto.MechanicId);
             if (mechanic == null) return BadRequest();
-            var newItem = new ServiceItem { ServiceOrderId = id, ProductId = null, MechanicId = mechanic.Id, Description = laborDto.Description, Price = laborDto.Price, WarrantyPeriod = laborDto.WarrantyPeriod };
+
+            var newItem = new ServiceItem { ServiceOrderId = id, ProductId = null, MechanicId = mechanic.Id, Mechanic = mechanic, Description = laborDto.Description, Price = laborDto.Price, WarrantyPeriod = laborDto.WarrantyPeriod };
+
             os.TotalAmount += newItem.Price;
             _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
@@ -117,7 +126,6 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        // NOVO ENDPOINT DE EDIÇÃO DE CABEÇALHO
         [HttpPut("{id}/vehicle")]
         public async Task<IActionResult> UpdateVehicleData(int id, [FromBody] UpdateVehicleDTO request)
         {
@@ -133,25 +141,59 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        public class CreateOSDTO
+        [HttpPut("{id}/total")]
+        public async Task<IActionResult> UpdateTotalAmount(int id, [FromBody] UpdateTotalDTO request)
         {
-            public string ClientName { get; set; } = "";
-            public string VehicleModel { get; set; } = "";
-            public string CustomerAddress { get; set; } = "";
-            public string CustomerPhone { get; set; } = "";
+            var os = await _context.ServiceOrders.FindAsync(id);
+            if (os == null) return NotFound();
+
+            os.TotalAmount = request.TotalAmount;
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
 
-        // NOVO DTO PARA ATUALIZAÇÃO
-        public class UpdateVehicleDTO
+        [HttpPut("{id}/payment")]
+        public async Task<IActionResult> UpdateAmountPaid(int id, [FromBody] UpdatePaymentDTO request)
         {
-            public string CustomerName { get; set; } = "";
-            public string VehicleModel { get; set; } = "";
-            public string CustomerAddress { get; set; } = "";
-            public string CustomerPhone { get; set; } = "";
+            var os = await _context.ServiceOrders.FindAsync(id);
+            if (os == null) return NotFound();
+
+            os.AmountPaid = request.AmountPaid;
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
 
+        [HttpPut("{id}/items/{itemId}")]
+        public async Task<IActionResult> UpdateServiceItem(int id, int itemId, [FromBody] UpdateServiceItemDTO request)
+        {
+            var item = await _context.ServiceItems.FirstOrDefaultAsync(i => i.Id == itemId && i.ServiceOrderId == id);
+            if (item == null) return NotFound();
+
+            var os = await _context.ServiceOrders.FindAsync(id);
+            if (os != null)
+            {
+                os.TotalAmount -= item.Price;
+                os.TotalAmount += request.Price;
+            }
+
+            item.Description = request.Description;
+            item.Price = request.Price;
+            item.WarrantyPeriod = request.WarrantyPeriod;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
+        public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
+
+        // AddItemDTO restaurado para a versão sem o Price avulso
         public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public string? WarrantyPeriod { get; set; } }
+
         public class AddLaborDTO { public int MechanicId { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
         public class CompletionDTO { public DateTime CompletionDate { get; set; } }
+        public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
+        public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
+        public class UpdatePaymentDTO { public decimal AmountPaid { get; set; } }
     }
 }

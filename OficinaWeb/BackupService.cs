@@ -13,7 +13,6 @@ public class BackupService
     {
         try
         {
-            // Substitua pela porta correta da sua API que aparece no Visual Studio
             var response = await _http.PostAsync("api/Backup/gerar", null);
 
             if (response.IsSuccessStatusCode)

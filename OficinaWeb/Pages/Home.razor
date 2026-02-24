@@ -43,6 +43,16 @@
             </div>
         </a>
     </div>
+
+    <div class="col-md-3">
+        <a href="venda-avulsa" class="card text-decoration-none h-100 border-0 shadow-lg nav-card" style="background: #111; border: 1px solid #333;">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-cart-plus-fill fs-1 mb-3 d-block text-white"></i>
+                <h4 class="fw-bold" style="color: #ffeb3b;">Venda Avulsa</h4>
+                <small class="text-white-50">Caixa Rápido</small>
+            </div>
+        </a>
+    </div>
 </div>
 
 <hr style="border-color: #333; margin: 3rem 0;" />
@@ -52,6 +62,7 @@
 {
     <div class="text-center py-5">
         <div class="spinner-border text-warning" role="status"></div>
+        <p class="text-white-50 mt-2">Sincronizando dados...</p>
     </div>
 }
 else
@@ -71,7 +82,7 @@ else
         </div>
         <div class="col-md-4">
             <div class="p-4 rounded-3 border-start border-4 border-success" style="background: #0a0a0a;">
-                <h6 class="text-white-50 text-uppercase small">Faturamento Concluído</h6>
+                <h6 class="text-white-50 text-uppercase small">Faturamento Total</h6>
                 <h1 class="text-white display-5 fw-bold">@faturamento.ToString("C2")</h1>
             </div>
         </div>
@@ -82,11 +93,15 @@ else
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
             <div class="mb-3 mb-md-0">
                 <h4 class="fw-bold mb-1" style="color: #ff6600;">Backup Diário Inteligente</h4>
-                <p class="text-white-50 small mb-0">Os arquivos serão salvos em: <code class="text-light">D:\Backups_Oficina\@DateTime.Now.ToString("dd-MM-yyyy")\</code></p>
+                <p class="text-white-50 small mb-0">Local: <code class="text-light">C:\Backups_Oficina\@DateTime.Now.ToString("dd-MM-yyyy")\</code></p>
             </div>
 
             <div class="d-flex gap-2">
                 <button class="btn btn-outline-light fw-bold" @onclick="() => ProcessarAcao(true)" disabled="@isBusy">
+                    @if (isBusy && isBackupSistema)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
                     <i class="bi bi-hdd-fill me-2"></i>Backup Sistema
                 </button>
                 <button class="btn fw-bold text-white px-4" style="background: #217346;" @onclick="() => ProcessarAcao(false)" disabled="@isBusy">
@@ -101,8 +116,9 @@ else
 
         @if (!string.IsNullOrEmpty(feedbackMsg))
         {
-            <div class="mt-3 alert @(opSucesso ? "alert-success" : "alert-danger") bg-dark border-0 text-white fade show">
-                <i class="bi @(opSucesso ? "bi-check-circle" : "bi-x-circle") me-2"></i> @feedbackMsg
+            <div class="mt-3 alert @(opSucesso ? "alert-success" : "alert-danger") bg-dark border-0 text-white fade show d-flex align-items-center">
+                <i class="bi @(opSucesso ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill") me-2 fs-5"></i>
+                <div>@feedbackMsg</div>
             </div>
         }
     </div>
@@ -110,7 +126,7 @@ else
 
 <style>
     .nav-card {
-        transition: all 0.3s;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         cursor: pointer;
     }
 
@@ -118,6 +134,7 @@ else
             transform: translateY(-8px);
             border-color: #ff6600 !important;
             background: #1a1a1a !important;
+            box-shadow: 0 10px 20px rgba(255, 102, 0, 0.2) !important;
         }
 </style>
 
@@ -136,34 +153,78 @@ else
     {
         try
         {
+            isLoading = true;
+            // Busca de dados com proteção contra nulos
             var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders");
             var prodList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/products");
 
-            if (osList != null)
+            // NOVO: Busca o histórico de Vendas Avulsas para somar ao faturamento
+            var vendasAvulsas = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/quicksales");
+
+            faturamento = 0;
+
+            if (osList != null && osList.Any())
             {
-                osAbertas = osList.Count(x => x.GetProperty("status").ToString() != "Completed");
-                faturamento = osList.Where(x => x.GetProperty("status").ToString() == "Completed")
-                                    .Sum(x => x.GetProperty("totalAmount").GetDecimal());
+                osAbertas = osList.Count(x => x.TryGetProperty("status", out var s) && s.ToString() != "Completed");
+
+                // Soma as O.S concluídas
+                faturamento += osList.Where(x => x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
+                                     .Sum(x => x.TryGetProperty("totalAmount", out var t) ? t.GetDecimal() : 0);
             }
-            if (prodList != null)
-                estoqueBaixo = prodList.Count(x => x.GetProperty("stockQuantity").GetInt32() <= x.GetProperty("minimumStock").GetInt32());
+
+            // Soma as Vendas Avulsas ao total
+            if (vendasAvulsas != null && vendasAvulsas.Any())
+            {
+                faturamento += vendasAvulsas.Sum(x => x.TryGetProperty("price", out var p) ? p.GetDecimal() : 0);
+            }
+
+            if (prodList != null && prodList.Any())
+            {
+                estoqueBaixo = prodList.Count(x =>
+                    x.TryGetProperty("stockQuantity", out var q) &&
+                    x.TryGetProperty("minimumStock", out var m) &&
+                    q.GetInt32() <= m.GetInt32());
+            }
         }
-        catch { }
-        finally { isLoading = false; }
+        catch (Exception)
+        {
+            // Silencia erro inicial se a API ainda estiver subindo
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task ProcessarAcao(bool sistema)
     {
-        isBusy = true; isBackupSistema = sistema; feedbackMsg = "Aguarde, processando...";
+        if (isBusy) return;
+
+        isBusy = true;
+        isBackupSistema = sistema;
+        feedbackMsg = sistema ? "Gerando backup completo do banco de dados..." : "Gerando planilhas Excel...";
+        opSucesso = false;
+
         string rota = sistema ? "api/backup/gerar" : "api/backup/exportar-excel";
 
         try
         {
             var res = await Http.PostAsync($"{ApiUrl}/{rota}", null);
             opSucesso = res.IsSuccessStatusCode;
-            feedbackMsg = opSucesso ? (sistema ? "Backup de segurança salvo!" : "Planilha Excel organizada com sucesso!") : "Erro ao gerar arquivo.";
+            feedbackMsg = opSucesso ?
+                (sistema ? "Cópia de segurança criada com sucesso no Google Drive/Local!" : "Relatórios em Excel gerados e salvos!") :
+                "Falha na comunicação com o servidor de backup.";
         }
-        catch (Exception ex) { opSucesso = false; feedbackMsg = "Erro: " + ex.Message; }
-        finally { isBusy = false; }
+        catch (Exception ex)
+        {
+            opSucesso = false;
+            feedbackMsg = "Erro crítico: " + ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+            StateHasChanged();
+        }
     }
 }

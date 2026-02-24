@@ -44,6 +44,44 @@
     </div>
 }
 
+@if (mostrarModalEdicao && produtoParaEditar != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold" style="color: #ffeb3b;">
+                        <i class="bi bi-pencil-square me-2"></i>Editar Produto
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="FecharModalEdicao"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-secondary">Código</label>
+                        <input class="form-control bg-dark text-white border-secondary text-uppercase" @bind="produtoParaEditar.code" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary">Nome da Peça</label>
+                        <input class="form-control bg-dark text-white border-secondary" @bind="produtoParaEditar.name" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary">Preço (R$)</label>
+                        <input type="number" min="0" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="produtoParaEditar.salePrice" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary">Estoque</label>
+                        <input type="number" min="0" class="form-control bg-dark text-white border-secondary" @bind="produtoParaEditar.stockQuantity" />
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" @onclick="FecharModalEdicao">Cancelar</button>
+                    <button type="button" class="btn fw-bold" style="background-color: #ffeb3b; color: #000;" @onclick="SalvarEdicao">SALVAR ALTERAÇÕES</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="container py-4">
 
     <div class="row align-items-center mb-5 position-relative">
@@ -153,6 +191,11 @@
                                 }
                             </td>
                             <td class="text-end">
+                                <button class="btn btn-outline-warning btn-sm border-0 me-1"
+                                        @onclick="() => AbrirModalEdicao(p)"
+                                        title="Editar Produto">
+                                    <i class="bi bi-pencil-fill fs-5"></i>
+                                </button>
                                 <button class="btn btn-outline-danger btn-sm border-0"
                                         @onclick="() => SolicitarExclusao(p)"
                                         title="Excluir Produto">
@@ -225,8 +268,14 @@
     bool mostrarToast = false;
     string toastMensagem = "";
     string toastTipo = "sucesso";
+
+    // Variáveis de Exclusão
     bool mostrarModalExclusao = false;
     ProductDTO? produtoParaExcluir;
+
+    // Variáveis de Edição (AQUI ESTÃO AS VARIÁVEIS QUE FALTARAM)
+    bool mostrarModalEdicao = false;
+    ProductDTO? produtoParaEditar;
 
     // Busca
     string termoBusca = "";
@@ -336,5 +385,63 @@
 
         mostrarModalExclusao = false;
         produtoParaExcluir = null;
+    }
+
+    // --- MÉTODOS DE EDIÇÃO (QUE TAMBÉM FALTARAM) ---
+    private void AbrirModalEdicao(ProductDTO p)
+    {
+        produtoParaEditar = new ProductDTO
+        {
+            id = p.id,
+            code = p.code,
+            name = p.name,
+            salePrice = p.salePrice,
+            stockQuantity = p.stockQuantity,
+            minimumStock = p.minimumStock
+        };
+        mostrarModalEdicao = true;
+    }
+
+    private void FecharModalEdicao()
+    {
+        mostrarModalEdicao = false;
+        produtoParaEditar = null;
+    }
+
+    private async Task SalvarEdicao()
+    {
+        if (produtoParaEditar == null) return;
+
+        if (string.IsNullOrWhiteSpace(produtoParaEditar.code) ||
+            string.IsNullOrWhiteSpace(produtoParaEditar.name) ||
+            produtoParaEditar.salePrice == null ||
+            produtoParaEditar.stockQuantity == null)
+        {
+            MostrarErro("Todos os campos são obrigatórios para edição!");
+            return;
+        }
+
+        produtoParaEditar.code = produtoParaEditar.code.ToUpper();
+
+        try
+        {
+            var res = await Http.PutAsJsonAsync($"{ApiUrl}/api/products/{produtoParaEditar.id}", produtoParaEditar);
+
+            if (res.IsSuccessStatusCode)
+            {
+                await Carregar();
+                FecharModalEdicao();
+                MostrarSucesso("Produto atualizado com sucesso!");
+            }
+            else
+            {
+                var erro = await res.Content.ReadAsStringAsync();
+                MostrarErro(string.IsNullOrEmpty(erro) ? "Erro ao atualizar o produto." : erro);
+            }
+        }
+        catch
+        {
+            MostrarErro("Erro de conexão ao salvar a edição.");
+        }
     }
 }

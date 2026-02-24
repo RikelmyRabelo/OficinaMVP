@@ -11,7 +11,7 @@ namespace OficinaAPI.Controllers
     public class BackupController : ControllerBase
     {
         private readonly OficinaContext _context;
-        private readonly string _pastaRaiz = @"D:\Backups_Oficina";
+        private readonly string _pastaRaiz = @"C:\Backups_Oficina";
 
         public BackupController(OficinaContext context)
         {

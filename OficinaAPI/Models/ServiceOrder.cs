@@ -24,6 +24,11 @@ namespace OficinaAPI.Models
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
+
+        // --- NOVO CAMPO: VALOR PAGO ---
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal AmountPaid { get; set; } = 0;
+
         public List<ServiceItem> Items { get; set; } = new();
 
         public bool IsDeleted { get; set; } = false;
