@@ -197,6 +197,7 @@
                                 </div>
                                 
                                 <div class="d-flex flex-column align-items-end mt-2">
+                                    
                                     @if (!verLixeira && sel.Status != "Completed") {
                                         @if (editandoTotal) {
                                             <div class="d-flex align-items-center justify-content-end gap-2 mb-1">
@@ -214,7 +215,7 @@
                                         <h5 class="text-success fw-bold mb-1"><small class="text-secondary fw-bold me-1 fs-6">TOTAL:</small> R$ @sel.TotalAmount.ToString("N2")</h5>
                                     }
 
-                                    @if (!verLixeira && sel.Status != "Completed") {
+                                    @if (!verLixeira) {
                                         @if (editandoPagamento) {
                                             <div class="d-flex align-items-center justify-content-end gap-2 mb-1">
                                                 <small class="text-secondary fw-bold">PAGO:</small>
@@ -234,6 +235,34 @@
                                     <h5 class="@(sel.RemainingAmount > 0 ? "text-warning" : "text-muted") fw-bold mb-0 mt-2 pt-2 border-top border-secondary">
                                         <small class="text-secondary fw-bold me-1 fs-6">FALTA:</small> R$ @sel.RemainingAmount.ToString("N2")
                                     </h5>
+
+                                    <div class="mt-3 w-100 text-end no-print">
+                                        <label class="btn btn-sm btn-outline-secondary fw-bold mb-2" style="cursor: pointer;">
+                                            <i class="bi bi-paperclip me-1"></i> Anexar Arquivos
+                                            <InputFile OnChange="CarregarComprovantes" multiple accept="image/*,application/pdf,.doc,.docx" style="display: none;" />
+                                        </label>
+                                        
+                                        @if (isUploading) {
+                                            <div class="text-warning small mb-2"><i class="spinner-border spinner-border-sm me-1"></i> Salvando anexo(s)...</div>
+                                        }
+
+                                        @if (sel.Attachments != null && sel.Attachments.Any()) {
+                                            <div class="d-flex flex-column align-items-end gap-1 mt-1">
+                                                @foreach(var anexo in sel.Attachments) {
+                                                    <div class="d-flex align-items-center bg-black border border-secondary rounded px-2 py-1">
+                                                        <a href="@anexo.Base64Content" download="@anexo.FileName" class="text-info text-decoration-none small me-3" target="_blank" title="Clique para abrir ou baixar">
+                                                            <i class="bi @(anexo.FileType.Contains("pdf") ? "bi-file-pdf-fill text-danger" : (anexo.FileType.Contains("image") ? "bi-file-image-fill text-success" : "bi-file-earmark-fill")) me-1"></i> 
+                                                            @(anexo.FileName.Length > 20 ? anexo.FileName.Substring(0, 17) + "..." : anexo.FileName)
+                                                        </a>
+                                                        <button class="btn btn-sm text-danger p-0 m-0" @onclick="() => RemoverComprovante(anexo.Id)" title="Apagar este arquivo">
+                                                            <i class="bi bi-x-circle-fill"></i>
+                                                        </button>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
@@ -378,11 +407,19 @@
         public decimal TotalAmount { get; set; } 
         public decimal AmountPaid { get; set; }
         public decimal RemainingAmount => TotalAmount - AmountPaid; 
+        public List<AttachmentDTO> Attachments { get; set; } = new(); 
         public DateTime EntryDate { get; set; } 
         public DateTime? CompletionDate { get; set; } 
         public List<ServiceItemDTO> Items { get; set; } = new(); 
     }
     
+    public class AttachmentDTO {
+        public int Id { get; set; }
+        public string FileName { get; set; } = "";
+        public string FileType { get; set; } = "";
+        public string Base64Content { get; set; } = "";
+    }
+
     public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class ServiceItemDTO { public int Id { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public int? ProductId { get; set; } public string? WarrantyPeriod { get; set; } public EmployeeListDTO? Mechanic { get; set; } }
     public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } }
@@ -427,6 +464,8 @@
 
     bool editandoPagamento = false;
     decimal novoValorPago = 0;
+
+    bool isUploading = false;
 
     bool mostrarModalEdicaoItem = false;
     ServiceItemDTO? itemParaEditar;
@@ -661,6 +700,76 @@
             MostrarSucesso("Item atualizado com sucesso!");
         } catch {
             MostrarErro("Erro ao atualizar o item.");
+        }
+    }
+
+    async Task CarregarComprovantes(InputFileChangeEventArgs e)
+    {
+        if (sel == null) return;
+        
+        var arquivos = e.GetMultipleFiles(10);
+        long limiteTamanho = 15 * 1024 * 1024;
+        bool teveErro = false;
+
+        isUploading = true;
+        StateHasChanged();
+
+        foreach (var file in arquivos)
+        {
+            if (file.Size > limiteTamanho)
+            {
+                MostrarErro($"O arquivo {file.Name} passou do limite de 15MB.");
+                teveErro = true;
+                continue;
+            }
+
+            try
+            {
+                using var stream = file.OpenReadStream(maxAllowedSize: limiteTamanho);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                
+                var base64 = Convert.ToBase64String(ms.ToArray());
+                var base64String = $"data:{file.ContentType};base64,{base64}";
+
+                var request = new {
+                    FileName = file.Name,
+                    FileType = file.ContentType,
+                    Base64Content = base64String
+                };
+
+                var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments", request);
+                
+                if (!res.IsSuccessStatusCode) {
+                    teveErro = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao processar {file.Name}: {ex.Message}");
+                teveErro = true;
+            }
+        }
+
+        isUploading = false;
+        await AtualizarTela();
+
+        if (teveErro) {
+            MostrarErro("Alguns arquivos não puderam ser anexados.");
+        } else {
+            MostrarSucesso("Todos os anexos foram salvos!");
+        }
+    }
+
+    async Task RemoverComprovante(int attachmentId)
+    {
+        if (sel == null) return;
+        try {
+            await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments/{attachmentId}");
+            await AtualizarTela();
+            MostrarSucesso("Anexo apagado.");
+        } catch {
+            MostrarErro("Erro ao apagar o arquivo.");
         }
     }
 }

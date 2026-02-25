@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace OficinaAPI.Models
 {
@@ -25,14 +26,28 @@ namespace OficinaAPI.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
 
-        // --- NOVO CAMPO: VALOR PAGO ---
         [Column(TypeName = "decimal(18,2)")]
         public decimal AmountPaid { get; set; } = 0;
 
         public List<ServiceItem> Items { get; set; } = new();
 
+        // --- NOVA LISTA DE ANEXOS MÚLTIPLOS ---
+        public List<ServiceOrderAttachment> Attachments { get; set; } = new();
+
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletionDate { get; set; }
+    }
+
+    // --- NOVA TABELA PARA GUARDAR OS ANEXOS ---
+    public class ServiceOrderAttachment
+    {
+        public int Id { get; set; }
+        public int ServiceOrderId { get; set; }
+        [JsonIgnore]
+        public ServiceOrder? ServiceOrder { get; set; }
+        public string FileName { get; set; } = string.Empty;
+        public string FileType { get; set; } = string.Empty;
+        public string Base64Content { get; set; } = string.Empty;
     }
 
     public class ServiceItem

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OficinaAPI.Data;
 
@@ -11,9 +12,11 @@ using OficinaAPI.Data;
 namespace OficinaAPI.Migrations
 {
     [DbContext(typeof(OficinaContext))]
-    partial class OficinaContextModelSnapshot : ModelSnapshot
+    [Migration("20260224114715_AddReceiptColumn")]
+    partial class AddReceiptColumn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -202,6 +205,9 @@ namespace OficinaAPI.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<string>("ReceiptBase64")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -217,36 +223,6 @@ namespace OficinaAPI.Migrations
                     b.HasIndex("VehicleId");
 
                     b.ToTable("ServiceOrders");
-                });
-
-            modelBuilder.Entity("OficinaAPI.Models.ServiceOrderAttachment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Base64Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FileType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ServiceOrderId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ServiceOrderId");
-
-                    b.ToTable("ServiceOrderAttachment");
                 });
 
             modelBuilder.Entity("OficinaAPI.Models.Vehicle", b =>
@@ -327,17 +303,6 @@ namespace OficinaAPI.Migrations
                     b.Navigation("Vehicle");
                 });
 
-            modelBuilder.Entity("OficinaAPI.Models.ServiceOrderAttachment", b =>
-                {
-                    b.HasOne("OficinaAPI.Models.ServiceOrder", "ServiceOrder")
-                        .WithMany("Attachments")
-                        .HasForeignKey("ServiceOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ServiceOrder");
-                });
-
             modelBuilder.Entity("OficinaAPI.Models.Employee", b =>
                 {
                     b.Navigation("Payments");
@@ -345,8 +310,6 @@ namespace OficinaAPI.Migrations
 
             modelBuilder.Entity("OficinaAPI.Models.ServiceOrder", b =>
                 {
-                    b.Navigation("Attachments");
-
                     b.Navigation("Items");
                 });
 #pragma warning restore 612, 618

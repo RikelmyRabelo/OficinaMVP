@@ -17,8 +17,8 @@ namespace OficinaAPI.Controllers
         {
             return await _context.ServiceOrders
                 .Include(o => o.Vehicle)
-                .Include(o => o.Items)
-                    .ThenInclude(i => i.Mechanic)
+                .Include(o => o.Items).ThenInclude(i => i.Mechanic)
+                .Include(o => o.Attachments) // PUXANDO OS ANEXOS AQUI
                 .Where(o => !o.IsDeleted)
                 .OrderByDescending(o => o.Id).ToListAsync();
         }
@@ -29,8 +29,8 @@ namespace OficinaAPI.Controllers
             var threshold = DateTime.Now.AddDays(-30);
             return await _context.ServiceOrders
                 .Include(o => o.Vehicle)
-                .Include(o => o.Items)
-                    .ThenInclude(i => i.Mechanic)
+                .Include(o => o.Items).ThenInclude(i => i.Mechanic)
+                .Include(o => o.Attachments) // PUXANDO OS ANEXOS AQUI
                 .Where(o => o.IsDeleted && o.DeletionDate >= threshold)
                 .OrderByDescending(o => o.DeletionDate).ToListAsync();
         }
@@ -38,15 +38,7 @@ namespace OficinaAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ServiceOrder>> PostServiceOrder(CreateOSDTO request)
         {
-            var newVehicle = new Vehicle
-            {
-                CustomerName = request.ClientName,
-                Model = request.VehicleModel,
-                LicensePlate = "SEM-PLACA",
-                CustomerAddress = request.CustomerAddress,
-                CustomerPhone = request.CustomerPhone
-            };
-
+            var newVehicle = new Vehicle { CustomerName = request.ClientName, Model = request.VehicleModel, LicensePlate = "SEM-PLACA", CustomerAddress = request.CustomerAddress, CustomerPhone = request.CustomerPhone };
             _context.Vehicles.Add(newVehicle);
             await _context.SaveChangesAsync();
 
@@ -67,7 +59,6 @@ namespace OficinaAPI.Controllers
             if (product == null) return BadRequest();
             if (product.StockQuantity < itemDto.Quantity) return BadRequest("Estoque insuficiente.");
 
-            // O preço volta a ser puxado rigorosamente do estoque
             var newItem = new ServiceItem { ServiceOrderId = id, ProductId = product.Id, Description = $"{product.Code} - {product.Name}", Price = product.SalePrice * itemDto.Quantity, WarrantyPeriod = itemDto.WarrantyPeriod };
 
             product.StockQuantity -= itemDto.Quantity;
@@ -184,16 +175,45 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
+        // --- ENDPOINTS PARA MÚLTIPLOS ANEXOS ---
+        [HttpPost("{id}/attachments")]
+        public async Task<IActionResult> AddAttachment(int id, [FromBody] UploadAttachmentDTO request)
+        {
+            var os = await _context.ServiceOrders.FindAsync(id);
+            if (os == null) return NotFound();
+
+            var attachment = new ServiceOrderAttachment
+            {
+                ServiceOrderId = id,
+                FileName = request.FileName,
+                FileType = request.FileType,
+                Base64Content = request.Base64Content
+            };
+
+            _context.Set<ServiceOrderAttachment>().Add(attachment);
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        [HttpDelete("{id}/attachments/{attachmentId}")]
+        public async Task<IActionResult> DeleteAttachment(int id, int attachmentId)
+        {
+            var attachment = await _context.Set<ServiceOrderAttachment>().FirstOrDefaultAsync(a => a.Id == attachmentId && a.ServiceOrderId == id);
+            if (attachment == null) return NotFound();
+
+            _context.Set<ServiceOrderAttachment>().Remove(attachment);
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
         public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
         public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-
-        // AddItemDTO restaurado para a versão sem o Price avulso
         public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public string? WarrantyPeriod { get; set; } }
-
         public class AddLaborDTO { public int MechanicId { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
         public class CompletionDTO { public DateTime CompletionDate { get; set; } }
         public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
         public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
         public class UpdatePaymentDTO { public decimal AmountPaid { get; set; } }
+        public class UploadAttachmentDTO { public string FileName { get; set; } = ""; public string FileType { get; set; } = ""; public string Base64Content { get; set; } = ""; }
     }
 }
