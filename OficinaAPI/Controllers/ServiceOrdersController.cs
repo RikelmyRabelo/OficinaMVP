@@ -18,7 +18,7 @@ namespace OficinaAPI.Controllers
             return await _context.ServiceOrders
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items).ThenInclude(i => i.Mechanic)
-                .Include(o => o.Attachments) // PUXANDO OS ANEXOS AQUI
+                .Include(o => o.Attachments)
                 .Where(o => !o.IsDeleted)
                 .OrderByDescending(o => o.Id).ToListAsync();
         }
@@ -30,7 +30,7 @@ namespace OficinaAPI.Controllers
             return await _context.ServiceOrders
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items).ThenInclude(i => i.Mechanic)
-                .Include(o => o.Attachments) // PUXANDO OS ANEXOS AQUI
+                .Include(o => o.Attachments)
                 .Where(o => o.IsDeleted && o.DeletionDate >= threshold)
                 .OrderByDescending(o => o.DeletionDate).ToListAsync();
         }
@@ -175,7 +175,6 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        // --- ENDPOINTS PARA MÚLTIPLOS ANEXOS ---
         [HttpPost("{id}/attachments")]
         public async Task<IActionResult> AddAttachment(int id, [FromBody] UploadAttachmentDTO request)
         {

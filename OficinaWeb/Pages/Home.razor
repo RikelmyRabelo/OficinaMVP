@@ -88,7 +88,7 @@ else
         </div>
     </div>
 
-    @* Painel de Backup *@
+    @*  *@
     <div class="p-4 rounded-3 border border-secondary" style="background: #111;">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
             <div class="mb-3 mb-md-0">
@@ -154,11 +154,9 @@ else
         try
         {
             isLoading = true;
-            // Busca de dados com proteção contra nulos
             var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders");
             var prodList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/products");
 
-            // NOVO: Busca o histórico de Vendas Avulsas para somar ao faturamento
             var vendasAvulsas = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/quicksales");
 
             faturamento = 0;
@@ -167,12 +165,10 @@ else
             {
                 osAbertas = osList.Count(x => x.TryGetProperty("status", out var s) && s.ToString() != "Completed");
 
-                // Soma as O.S concluídas
                 faturamento += osList.Where(x => x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
                                      .Sum(x => x.TryGetProperty("totalAmount", out var t) ? t.GetDecimal() : 0);
             }
 
-            // Soma as Vendas Avulsas ao total
             if (vendasAvulsas != null && vendasAvulsas.Any())
             {
                 faturamento += vendasAvulsas.Sum(x => x.TryGetProperty("price", out var p) ? p.GetDecimal() : 0);
@@ -188,7 +184,7 @@ else
         }
         catch (Exception)
         {
-            // Silencia erro inicial se a API ainda estiver subindo
+           
         }
         finally
         {
