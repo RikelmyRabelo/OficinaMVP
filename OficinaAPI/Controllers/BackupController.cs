@@ -75,7 +75,7 @@ namespace OficinaAPI.Controllers
                 wsEstoque.Cell(1, 1).InsertTable(produtos);
                 wsEstoque.Column(3).Style.NumberFormat.Format = "R$ #,##0.00";
 
-                // 2. VENDAS (ORDENS CONCLUÍDAS COM EXTRAÇÃO DOS ARQUIVOS E GERAÇÃO DA O.S.)
+                // 2. VENDAS
                 var wsVendas = workbook.Worksheets.Add("Vendas");
                 var ordensBanco = await _context.ServiceOrders
                     .Include(s => s.Vehicle)
@@ -84,7 +84,6 @@ namespace OficinaAPI.Controllers
                     .Where(s => s.Status == "Completed")
                     .ToListAsync();
 
-                // Lista que vai efetivamente preencher as linhas do Excel
                 var vendasParaExcel = new List<object>();
 
                 foreach (var s in ordensBanco)
@@ -108,7 +107,7 @@ namespace OficinaAPI.Controllers
                         }
                     }
 
-                    // B) Gerar a O.S. em HTML (Visual de impressão)
+                    // B) Gerar a O.S. em HTML
                     string nomeClienteSeguro = string.IsNullOrWhiteSpace(s.Vehicle?.CustomerName) ? "Sem_Nome" : string.Join("_", s.Vehicle.CustomerName.Split(Path.GetInvalidFileNameChars()));
                     string nomeArquivoOS = $"OS_{s.Id}_{nomeClienteSeguro}.html";
                     string caminhoHtmlOS = Path.Combine(pastaOS, nomeArquivoOS);
@@ -136,7 +135,7 @@ namespace OficinaAPI.Controllers
                 wsVendas.Column(5).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm";
                 wsVendas.Column(6).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm";
 
-                // 3. EQUIPE (GERAL)
+                // 3. EQUIPE
                 var wsEquipe = workbook.Worksheets.Add("Equipe");
                 var equipe = await _context.Employees.Select(e => new {
                     Nome = e.Name,
@@ -177,7 +176,7 @@ namespace OficinaAPI.Controllers
             catch (Exception ex) { return BadRequest(new { erro = ex.Message }); }
         }
 
-        // --- FUNÇÃO PARA CRIAR O VISUAL DA O.S EM HTML ---
+        // FUNÇÃO PARA CRIAR O VISUAL DA O.S EM HTML
         private string GerarTemplateHtmlOS(ServiceOrder os)
         {
             var sb = new StringBuilder();
@@ -245,7 +244,7 @@ namespace OficinaAPI.Controllers
             sb.AppendLine($"<p class='total-destaque'>Falta Receber: R$ {(os.TotalAmount - os.AmountPaid):N2}</p>");
             sb.AppendLine("</div>");
 
-            sb.AppendLine("</div>"); // Fim do container
+            sb.AppendLine("</div>");
             sb.AppendLine("</body></html>");
 
             return sb.ToString();
