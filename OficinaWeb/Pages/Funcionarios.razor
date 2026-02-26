@@ -324,7 +324,7 @@
 
     async Task Contratar()
     {
-        // VALIDAÇÃO RIGOROSA
+        // VALIDAÇÃO
         if (string.IsNullOrWhiteSpace(novo.Name) || string.IsNullOrWhiteSpace(novo.Role) || novo.BaseSalary == null || novo.BaseSalary <= 0)
         {
             MostrarErro("Todos os campos (Nome, Cargo e Salário) são obrigatórios!");
@@ -376,7 +376,7 @@
         {
             await Http.PutAsync($"{ApiUrl}/api/employees/payments/{id}/confirm", null);
             await Load();
-            MostrarSucesso("Pagamento confirmado e salário pago!"); // Notificação solicitada
+            MostrarSucesso("Pagamento confirmado e salário pago!");
         }
         catch { MostrarErro("Erro ao dar baixa no pagamento."); }
     }
@@ -398,7 +398,7 @@
             {
                 sel = null;
                 await Load();
-                MostrarSucesso("Funcionário removido da equipe ativa."); // Notificação solicitada
+                MostrarSucesso("Funcionário removido da equipe ativa.");
             }
             else
             {

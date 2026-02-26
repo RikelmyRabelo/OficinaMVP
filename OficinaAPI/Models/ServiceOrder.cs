@@ -31,14 +31,12 @@ namespace OficinaAPI.Models
 
         public List<ServiceItem> Items { get; set; } = new();
 
-        // --- NOVA LISTA DE ANEXOS MÚLTIPLOS ---
         public List<ServiceOrderAttachment> Attachments { get; set; } = new();
 
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletionDate { get; set; }
     }
 
-    // --- NOVA TABELA PARA GUARDAR OS ANEXOS ---
     public class ServiceOrderAttachment
     {
         public int Id { get; set; }

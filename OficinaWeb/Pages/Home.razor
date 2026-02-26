@@ -67,28 +67,35 @@
 }
 else
 {
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-sm btn-outline-secondary border-0 text-white-50" @onclick="AlternarVisibilidade">
+            <i class="bi @(ocultarValores ? "bi-eye-fill" : "bi-eye-slash-fill") me-1"></i>
+            @(ocultarValores ? "Mostrar Resumo" : "Ocultar Resumo")
+        </button>
+    </div>
+
     <div class="row g-4 mb-5">
         <div class="col-md-4">
             <div class="p-4 rounded-3 border-start border-4 border-warning" style="background: #0a0a0a;">
                 <h6 class="text-white-50 text-uppercase small">Veículos em Reparo</h6>
-                <h1 class="text-white display-5 fw-bold">@osAbertas</h1>
+                <h1 class="text-white display-5 fw-bold">@(ocultarValores ? "****" : osAbertas.ToString())</h1>
             </div>
         </div>
         <div class="col-md-4">
             <div class="p-4 rounded-3 border-start border-4 border-danger" style="background: #0a0a0a;">
                 <h6 class="text-white-50 text-uppercase small">Alertas de Estoque</h6>
-                <h1 class="text-white display-5 fw-bold">@estoqueBaixo <span class="fs-5 text-white-50">itens</span></h1>
+                <h1 class="text-white display-5 fw-bold">@(ocultarValores ? "****" : estoqueBaixo.ToString()) <span class="fs-5 text-white-50">itens</span></h1>
             </div>
         </div>
         <div class="col-md-4">
             <div class="p-4 rounded-3 border-start border-4 border-success" style="background: #0a0a0a;">
                 <h6 class="text-white-50 text-uppercase small">Faturamento Total</h6>
-                <h1 class="text-white display-5 fw-bold">@faturamento.ToString("C2")</h1>
+                <h1 class="text-white display-5 fw-bold">@(ocultarValores ? "****" : faturamento.ToString("C2"))</h1>
             </div>
         </div>
     </div>
 
-    @*  *@
+    @* Painel de Backup *@
     <div class="p-4 rounded-3 border border-secondary" style="background: #111;">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
             <div class="mb-3 mb-md-0">
@@ -146,8 +153,16 @@ else
 
     private bool isBusy, isBackupSistema, opSucesso;
     private string feedbackMsg = "";
+    
+    // Variável para controlar a visibilidade dos valores
+    private bool ocultarValores = false;
 
     protected override async Task OnInitializedAsync() => await CarregarDados();
+
+    private void AlternarVisibilidade()
+    {
+        ocultarValores = !ocultarValores;
+    }
 
     private async Task CarregarDados()
     {
