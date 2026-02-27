@@ -72,13 +72,14 @@ namespace OficinaAPI.Controllers
                 wsEstoque.Cell(1, 1).InsertTable(produtos);
                 wsEstoque.Column(3).Style.NumberFormat.Format = "R$ #,##0.00";
 
-                // 2. VENDAS
+                // 2. VENDAS (COM CORREÇÃO DA LIXEIRA)
                 var wsVendas = workbook.Worksheets.Add("Vendas");
                 var ordensBanco = await _context.ServiceOrders
                     .Include(s => s.Vehicle)
                     .Include(s => s.Items).ThenInclude(i => i.Mechanic)
                     .Include(s => s.Attachments)
-                    .Where(s => s.Status == "Completed")
+                    // ---> CORREÇÃO AQUI: Garante que só vai puxar o que NÃO está deletado (!s.IsDeleted) <---
+                    .Where(s => s.Status == "Completed" && !s.IsDeleted)
                     .ToListAsync();
 
                 var vendasParaExcel = new List<object>();
@@ -110,15 +111,14 @@ namespace OficinaAPI.Controllers
                     string htmlOS = GerarTemplateHtmlOS(s);
                     System.IO.File.WriteAllText(caminhoHtmlOS, htmlOS, Encoding.UTF8);
 
-                    // CORREÇÃO DE LÓGICA MATEMÁTICA AQUI
                     vendasParaExcel.Add(new
                     {
                         OS = s.Id,
                         Cliente = s.Vehicle != null ? s.Vehicle.CustomerName : "",
                         Total = s.TotalAmount,
                         Pago = s.AmountPaid,
-                        Falta_Pagar = Math.Max(0, s.TotalAmount - s.AmountPaid), // Nunca será negativo
-                        Extra_Caixa = Math.Max(0, s.AmountPaid - s.TotalAmount), // Registra o que pagou a mais
+                        Falta_Pagar = Math.Max(0, s.TotalAmount - s.AmountPaid),
+                        Extra_Caixa = Math.Max(0, s.AmountPaid - s.TotalAmount),
                         Forma_Pagamento = string.IsNullOrEmpty(s.PaymentMethod) ? "-" : s.PaymentMethod,
                         Promessa_Pagto = s.PromisedPaymentDate.HasValue ? s.PromisedPaymentDate.Value.ToString("dd/MM/yyyy") : "-",
                         Data_Entrada = s.EntryDate,
@@ -129,12 +129,12 @@ namespace OficinaAPI.Controllers
                 }
 
                 wsVendas.Cell(1, 1).InsertTable(vendasParaExcel);
-                wsVendas.Column(3).Style.NumberFormat.Format = "R$ #,##0.00"; // Total
-                wsVendas.Column(4).Style.NumberFormat.Format = "R$ #,##0.00"; // Pago
-                wsVendas.Column(5).Style.NumberFormat.Format = "R$ #,##0.00"; // Falta Pagar
-                wsVendas.Column(6).Style.NumberFormat.Format = "R$ #,##0.00"; // Extra Caixa (Novo)
-                wsVendas.Column(9).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm"; // Entrada
-                wsVendas.Column(10).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm"; // Saida
+                wsVendas.Column(3).Style.NumberFormat.Format = "R$ #,##0.00";
+                wsVendas.Column(4).Style.NumberFormat.Format = "R$ #,##0.00";
+                wsVendas.Column(5).Style.NumberFormat.Format = "R$ #,##0.00";
+                wsVendas.Column(6).Style.NumberFormat.Format = "R$ #,##0.00";
+                wsVendas.Column(9).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm";
+                wsVendas.Column(10).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm";
 
                 // 3. EQUIPE
                 var wsEquipe = workbook.Worksheets.Add("Equipe");
@@ -243,7 +243,6 @@ namespace OficinaAPI.Controllers
             string metodoStr = string.IsNullOrEmpty(os.PaymentMethod) ? "" : $" ({os.PaymentMethod})";
             sb.AppendLine($"<p>Valor Pago: R$ {os.AmountPaid:N2}{metodoStr}</p>");
 
-            // CORREÇÃO DE LÓGICA AQUI NO HTML TAMBÉM
             decimal faltaPagar = Math.Max(0, os.TotalAmount - os.AmountPaid);
             decimal valorExtra = Math.Max(0, os.AmountPaid - os.TotalAmount);
 
