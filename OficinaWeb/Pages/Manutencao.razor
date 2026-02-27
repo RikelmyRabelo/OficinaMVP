@@ -7,10 +7,11 @@
 
 <PageTitle>Oficina - FJ Centro Automotivo</PageTitle>
 
+@*SISTEMA DE NOTIFICAÇÕES *@
 <div class="toast-container position-fixed bottom-0 end-0 p-3 no-print" style="z-index: 1100;">
     @if (mostrarToast)
     {
-        <div class="toast show align-items-center text-white @(toastTipo == "erro" ? "bg-danger" : "bg-success") border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast show align-items-center text-white @(toastTipo == "erro" ? "bg-danger" : "bg-success") border-0" role="alert">
             <div class="d-flex">
                 <div class="toast-body fw-bold">
                     <i class="bi @(toastTipo == "erro" ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
@@ -22,35 +23,14 @@
     }
 </div>
 
-@if (mostrarModalExclusao)
-{
-    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-white border-secondary">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title fw-bold text-danger"><i class="bi bi-trash-fill me-2"></i>Confirmar Exclusão</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="() => mostrarModalExclusao = false"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Tem certeza que deseja mover a O.S. <strong>#@sel?.Id</strong> do veículo <strong>@sel?.Vehicle?.Model</strong> para a lixeira?</p>
-                    <small class="text-secondary">Você poderá restaurá-la depois se necessário.</small>
-                </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-outline-light" @onclick="() => mostrarModalExclusao = false">Cancelar</button>
-                    <button type="button" class="btn btn-danger fw-bold" @onclick="ConfirmarExclusao">SIM, EXCLUIR</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
+@*MODAL DE EDIÇÃO DE ITEM E GARANTIA *@
 @if (mostrarModalEdicaoItem && itemParaEditar != null)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content bg-dark text-white border-secondary">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title fw-bold" style="color: #ffeb3b;"><i class="bi bi-pencil-square me-2"></i>Editar Item</h5>
+                    <h5 class="modal-title fw-bold" style="color: #ffeb3b;"><i class="bi bi-pencil-square me-2"></i>Editar Item e Garantia</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="FecharEdicaoItem"></button>
                 </div>
                 <div class="modal-body">
@@ -59,23 +39,19 @@
                         <input class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.Description" />
                     </div>
                     <div class="row g-2 mb-3">
-                        <div class="col-md-3">
-                            <label class="form-label text-secondary">Qtd</label>
-                            <input type="number" class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.Quantity" min="1" />
-                        </div>
-                        <div class="col-md-9">
-                            <label class="form-label text-secondary">Preço Total da Linha (R$)</label>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Preço Total (R$)</label>
                             <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.Price" />
                         </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-secondary">Garantia (Opcional)</label>
-                        <input class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.WarrantyPeriod" />
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary">Expiração da Garantia</label>
+                            <input type="date" class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.WarrantyExpirationDate" />
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-secondary">
                     <button type="button" class="btn btn-outline-light" @onclick="FecharEdicaoItem">Cancelar</button>
-                    <button type="button" class="btn fw-bold" style="background-color: #ffeb3b; color: #000;" @onclick="SalvarEdicaoItem">SALVAR ALTERAÇÕES</button>
+                    <button type="button" class="btn fw-bold" style="background-color: #ffeb3b; color: #000;" @onclick="SalvarEdicaoItem">SALVAR</button>
                 </div>
             </div>
         </div>
@@ -83,10 +59,10 @@
 }
 
 <div class="container-fluid py-4 px-4 no-print">
-    <div class="row align-items-center mb-5 position-relative">
-        <div class="col-md-3 text-start">
-            <button class="btn btn-outline-secondary border-0 text-white" @onclick="VoltarInteligente">
-                <i class="bi bi-arrow-left me-2"></i>Voltar
+    <div class="row align-items-center mb-5">
+        <div class="col-md-3">
+            <button class="btn btn-outline-secondary border-0 text-white" @onclick='() => Nav.NavigateTo("/")'>
+                <i class="bi bi-arrow-left me-2"></i>Início
             </button>
         </div>
         <div class="col-md-6 text-center">
@@ -94,336 +70,187 @@
         </div>
         <div class="col-md-3 text-end">
             <button class="btn @(verLixeira ? "btn-danger" : "btn-outline-danger") fw-bold" @onclick="AlternarLixeira">
-                <i class="bi @(verLixeira ? "bi-arrow-left-circle" : "bi-trash") me-2"></i>@(verLixeira ? "VOLTAR" : "LIXEIRA")
+                <i class="bi @(verLixeira ? "bi-arrow-left-circle" : "bi-trash") me-2"></i>@(verLixeira ? "SAIR DA LIXEIRA" : "LIXEIRA")
             </button>
         </div>
     </div>
 
     @if (alertasInadimplencia != null && alertasInadimplencia.Any() && !verLixeira)
     {
-        <div class="alert alert-danger bg-dark border-danger text-white d-flex align-items-center mb-4 shadow-sm" role="alert">
-            <i class="bi bi-exclamation-triangle-fill fs-2 me-3 text-danger"></i>
-            <div>
-                <h5 class="alert-heading text-danger fw-bold mb-1">Avisos de Cobrança (Vencimento Hoje ou Atrasados)</h5>
-                <ul class="mb-0 ps-3">
-                    @foreach(var div in alertasInadimplencia) {
-                        <li>
-                            <strong class="text-warning">@div.Vehicle?.CustomerName</strong> - O.S. #@div.Id - Falta pagar: <strong>R$ @div.RemainingAmount.ToString("N2")</strong> 
-                            <span class="text-white-50 ms-1">(Promessa: @div.PromisedPaymentDate?.ToString("dd/MM/yyyy"))</span>
-                            <button class="btn btn-sm btn-link text-info p-0 ms-2" @onclick="() => Selecionar(div)">[Abrir]</button>
-                        </li>
-                    }
-                </ul>
-            </div>
+        <div class="alert alert-danger bg-dark border-danger text-white mb-4 shadow-sm">
+            <h6 class="alert-heading fw-bold text-danger"><i class="bi bi-exclamation-octagon-fill me-2"></i>Cobranças para Hoje ou Atrasadas:</h6>
+            <hr class="border-secondary">
+            @foreach (var os in alertasInadimplencia)
+            {
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span><strong>@os.Vehicle?.CustomerName</strong> (#@os.Id) - Saldo Devedor: <span class="text-warning font-monospace">R$ @os.RemainingAmount.ToString("N2")</span></span>
+                    <button class="btn btn-sm btn-outline-light py-0" @onclick="() => Selecionar(os)">Ver Detalhes</button>
+                </div>
+            }
         </div>
     }
 
     <div class="row g-4">
         <div class="col-md-4">
-            @if (!verLixeira) {
-                <div class="card border-0 shadow-sm mb-4" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
-                    <div class="card-body p-4">
-                        <h5 class="mb-3 fw-bold" style="color: #ffeb3b;">Nova Ordem de Serviço</h5>
-                        <div class="d-flex flex-column gap-3">
-                            <input class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.ClientName" placeholder="Nome do Cliente" />
-                            <input class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.VehicleModel" placeholder="Veículo (Modelo / Placa)" />
-                            <input class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.CustomerAddress" placeholder="Endereço (Opcional)" />
-                            <input type="tel" class="form-control bg-dark text-white border-secondary" @bind="novaOsRequest.CustomerPhone" oninput="this.value = this.value.replace(/[^0-9()-\s]/g, '')" placeholder="Telefone (Opcional)" />
-                            <button class="btn fw-bold w-100" style="background-color: #ffeb3b; color: #000;" @onclick="AbrirOS">ABRIR OS</button>
-                        </div>
+            @if (!verLixeira)
+            {
+                <div class="card border-0 bg-dark mb-4 shadow" style="border-top: 4px solid #ffeb3b !important;">
+                    <div class="card-body">
+                        <h6 class="text-warning fw-bold mb-3">Nova Ordem de Serviço</h6>
+                        <input class="form-control form-control-sm bg-black text-white border-secondary mb-2" @bind="novaOsRequest.ClientName" placeholder="Cliente" />
+                        <input class="form-control form-control-sm bg-black text-white border-secondary mb-3" @bind="novaOsRequest.VehicleModel" placeholder="Veículo / Placa" />
+                        <button class="btn btn-warning btn-sm w-100 fw-bold" @onclick="AbrirOS">ABRIR O.S.</button>
                     </div>
                 </div>
 
-                <div class="d-flex mb-3 gap-2">
-                    <button class="btn btn-sm flex-grow-1 fw-bold @(mostrarFinalizadas ? "btn-outline-secondary text-white" : "btn-primary")" @onclick="() => mostrarFinalizadas = false">EM ANDAMENTO</button>
-                    <button class="btn btn-sm flex-grow-1 fw-bold @(mostrarFinalizadas ? "btn-primary" : "btn-outline-secondary text-white")" @onclick="() => mostrarFinalizadas = true">FINALIZADAS</button>
+                <div class="btn-group w-100 mb-3">
+                    <button class="btn btn-sm @(!mostrarFinalizadas ? "btn-primary" : "btn-outline-secondary text-white")" @onclick="() => mostrarFinalizadas = false">EM ABERTO</button>
+                    <button class="btn btn-sm @(mostrarFinalizadas ? "btn-primary" : "btn-outline-secondary text-white")" @onclick="() => mostrarFinalizadas = true">FINALIZADAS</button>
                 </div>
             }
 
-            <div class="list-group shadow-sm" style="max-height: 60vh; overflow-y: auto;">
-                @if (listaExibicao != null) { foreach (var os in listaExibicao) {
-                    var isActive = sel?.Id == os.Id;
-                    <button class="list-group-item list-group-item-action border-secondary text-white mb-2 rounded-0" style="@(isActive ? "background-color: #222; border-left: 4px solid #ff6600;" : "background-color: #111;")" @onclick="() => Selecionar(os)">
-                        <div class="d-flex w-100 justify-content-between align-items-center">
-                            <div>
-                                <h6>
-                                    @(os.Vehicle?.CustomerName)
-                                    @if(os.Status == "Completed" && os.RemainingAmount > 0)
-                                    {
-                                        <span class="badge bg-danger ms-1" style="font-size: 0.65rem;" title="Débito Pendente">PENDENTE</span>
-                                    }
-                                </h6>
-                                <small class="text-warning">@(os.Vehicle?.Model)</small>
+            <div class="list-group" style="max-height: 60vh; overflow-y: auto;">
+                @if (listaExibicao != null)
+                {
+                    foreach (var os in listaExibicao)
+                    {
+                        <button class="list-group-item list-group-item-action @(sel?.Id == os.Id ? "active-os" : "bg-dark") text-white border-secondary mb-1" @onclick="() => Selecionar(os)">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-bold">@os.Vehicle?.CustomerName</span>
+                                <span class="badge bg-black">#@os.Id</span>
                             </div>
-                            <span class="badge bg-dark border border-secondary">#@os.Id</span>
-                        </div>
-                    </button>
-                } }
+                            <div class="d-flex justify-content-between small">
+                                <span class="text-warning">@os.Vehicle?.Model</span>
+                                @if (os.RemainingAmount > 0 && os.Status == "Completed")
+                                {
+                                    <span class="badge bg-danger">DÉBITO</span>
+                                }
+                            </div>
+                        </button>
+                    }
+                }
             </div>
         </div>
 
         <div class="col-md-8">
-            @if (sel != null) {
-                <div class="card border-0 shadow-sm h-100" style="background-color: #111; border-top: 4px solid #ff6600 !important;">
-                    <div class="card-body p-4">
-                        <div class="d-flex justify-content-between mb-4 border-bottom border-secondary pb-3">
-                            
-                            <div class="flex-grow-1">
-                                @if (editandoCabecalho)
-                                {
-                                    <div class="d-flex flex-column gap-2 mb-2 bg-black p-3 rounded border border-secondary">
-                                        <div class="row g-2">
-                                            <div class="col-md-6">
-                                                <small class="text-muted">Modelo / Placa</small>
-                                                <input class="form-control form-control-sm bg-dark text-white border-secondary" @bind="editRequest.VehicleModel" />
-                                            </div>
-                                            <div class="col-md-6">
-                                                <small class="text-muted">Cliente</small>
-                                                <input class="form-control form-control-sm bg-dark text-white border-secondary" @bind="editRequest.CustomerName" />
-                                            </div>
-                                            <div class="col-md-6">
-                                                <small class="text-muted">Telefone</small>
-                                                <input type="tel" class="form-control form-control-sm bg-dark text-white border-secondary" 
-                                                       @bind="editRequest.CustomerPhone" oninput="this.value = this.value.replace(/[^0-9()-\s]/g, '')"/>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <small class="text-muted">Endereço</small>
-                                                <input class="form-control form-control-sm bg-dark text-white border-secondary" @bind="editRequest.CustomerAddress" />
-                                            </div>
-                                        </div>
-                                        <div class="d-flex gap-2 mt-2">
-                                            <button class="btn btn-sm btn-success fw-bold" @onclick="SalvarEdicao"><i class="bi bi-check-lg me-1"></i>Salvar</button>
-                                            <button class="btn btn-sm btn-outline-secondary text-white" @onclick="CancelarEdicao"><i class="bi bi-x-lg me-1"></i>Cancelar</button>
-                                        </div>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="d-flex align-items-center gap-2">
-                                        <h2 class="fw-bold text-white mb-0">@(sel.Vehicle?.Model)</h2>
-                                        @if (!verLixeira)
-                                        {
-                                            <button class="btn btn-sm btn-link text-secondary p-0 ms-2" @onclick="IniciarEdicao" title="Editar dados do cabeçalho">
-                                                <i class="bi bi-pencil-square fs-5"></i>
-                                            </button>
-                                        }
-                                    </div>
-                                    <span class="text-warning">Cliente: @(sel.Vehicle?.CustomerName)</span>
-                                    @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerPhone))
-                                    {
-                                        <div class="text-white small"><i class="bi bi-telephone me-1"></i>@sel.Vehicle?.CustomerPhone</div>
-                                    }
-                                    @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerAddress))
-                                    {
-                                        <div class="text-white small"><i class="bi bi-geo-alt me-1"></i>@sel.Vehicle?.CustomerAddress</div>
-                                    }
-                                }
+            @if (sel != null)
+            {
+                <div class="card border-0 bg-dark h-100 shadow" style="border-top: 4px solid #ff6600 !important;">
+                    <div class="card-body">
+                        <div class="row mb-4 border-bottom border-secondary pb-3">
+                            <div class="col-md-7">
+                                <h3 class="text-white fw-bold mb-0">@sel.Vehicle?.Model</h3>
+                                <p class="text-warning mb-0">Cliente: @sel.Vehicle?.CustomerName</p>
+                                <small class="text-white-50">Entrada: @sel.EntryDate.ToString("dd/MM/yyyy HH:mm")</small>
                             </div>
+                            <div class="col-md-5 text-end">
+                                <div class="mb-2">
+                                    <h4 class="text-success fw-bold mb-1">Total: R$ @sel.TotalAmount.ToString("N2")</h4>
+                                    <h6 class="text-info mb-1">Pago: R$ @sel.AmountPaid.ToString("N2")</h6>
 
-                            <div class="text-end ps-3 border-start border-secondary">
-                                <div class="d-flex gap-2 justify-content-end mb-3">
-                                    @if (verLixeira) {
-                                        <button class="btn btn-success btn-sm fw-bold" @onclick="RestaurarOS">RESTAURAR</button>
-                                    } else {
-                                        <button class="btn btn-light btn-sm fw-bold" @onclick="ImprimirNota">IMPRIMIR</button>
-                                        <button class="btn btn-outline-danger btn-sm fw-bold" @onclick="SolicitarExclusao">EXCLUIR</button>
+                                    @if (sel.RemainingAmount > 0)
+                                    {
+                                        <h5 class="text-danger fw-bold mt-1 shadow-sm">FALTA: R$ @sel.RemainingAmount.ToString("N2")</h5>
+                                    }
+                                    @if (sel.OverpaidAmount > 0)
+                                    {
+                                        <h5 class="text-success fw-bold mt-1">EXTRA CAIXA: R$ @sel.OverpaidAmount.ToString("N2")</h5>
                                     }
                                 </div>
-                                
-                                <div class="d-flex flex-column align-items-end mt-2">
-                                    
-                                    @if (!verLixeira && sel.Status != "Completed") {
-                                        @if (editandoTotal) {
-                                            <div class="d-flex align-items-center justify-content-end gap-2 mb-1">
-                                                <small class="text-secondary fw-bold">TOTAL:</small>
-                                                <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end" @bind="novoTotal" style="width: 110px;" />
-                                                <button class="btn btn-sm btn-success py-0 px-2" @onclick="SalvarTotal"><i class="bi bi-check-lg"></i></button>
-                                                <button class="btn btn-sm btn-outline-secondary py-0 px-2" @onclick="() => editandoTotal = false"><i class="bi bi-x-lg"></i></button>
-                                            </div>
-                                        } else {
-                                            <h5 class="text-success fw-bold mb-1" style="cursor: pointer;" @onclick="IniciarEdicaoTotal" title="Editar Total (Desconto)">
-                                                <small class="text-secondary fw-bold me-1 fs-6">TOTAL:</small> R$ @sel.TotalAmount.ToString("N2") <i class="bi bi-pencil fs-6 text-secondary ms-1"></i>
-                                            </h5>
-                                        }
-                                    } else {
-                                        <h5 class="text-success fw-bold mb-1"><small class="text-secondary fw-bold me-1 fs-6">TOTAL:</small> R$ @sel.TotalAmount.ToString("N2")</h5>
-                                    }
-
-                                    @if (!verLixeira) {
-                                        @if (editandoPagamento) {
-                                            <div class="d-flex flex-column align-items-end gap-2 mb-1 p-2 border border-secondary rounded bg-black">
-                                                <div class="d-flex align-items-center gap-2 w-100 justify-content-end">
-                                                    <small class="text-secondary fw-bold">PAGO (R$):</small>
-                                                    <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end" @bind="novoValorPago" style="width: 110px;" />
-                                                </div>
-                                                <div class="d-flex align-items-center gap-2 w-100 justify-content-end">
-                                                    <small class="text-secondary fw-bold">FORMA:</small>
-                                                    <select class="form-select form-select-sm bg-dark text-white border-secondary" @bind="novoMetodoPagamento" style="width: 110px;">
-                                                        <option value="">...</option>
-                                                        <option value="PIX">PIX</option>
-                                                        <option value="Dinheiro">Dinheiro</option>
-                                                        <option value="Débito">Débito</option>
-                                                        <option value="Crédito">Crédito</option>
-                                                    </select>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-2 w-100 justify-content-end" title="Data prevista para pagamento do restante">
-                                                    <small class="text-danger fw-bold">PAGARÁ EM:</small>
-                                                    <input type="date" class="form-control form-control-sm bg-dark text-white border-secondary" @bind="novaDataPromessa" style="width: 130px;" />
-                                                </div>
-                                                <div class="mt-1">
-                                                    <button class="btn btn-sm btn-info py-0 px-2 fw-bold" @onclick="SalvarPagamento"><i class="bi bi-check-lg text-dark me-1"></i>Salvar</button>
-                                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" @onclick="() => editandoPagamento = false">Cancelar</button>
-                                                </div>
-                                            </div>
-                                        } else {
-                                            <h6 class="text-info fw-bold mb-1" style="cursor: pointer;" @onclick="IniciarEdicaoPagamento" title="Editar Valor Pago">
-                                                <small class="text-secondary fw-bold me-1">PAGO:</small> R$ @sel.AmountPaid.ToString("N2") 
-                                                <small class="text-light ms-1" style="font-size: 0.8rem;">@(string.IsNullOrEmpty(sel.PaymentMethod) ? "" : $"({sel.PaymentMethod})")</small>
-                                                <i class="bi bi-pencil text-secondary ms-1" style="font-size: 0.8rem;"></i>
-                                            </h6>
-                                        }
-                                    } else {
-                                        <h6 class="text-info fw-bold mb-1">
-                                            <small class="text-secondary fw-bold me-1">PAGO:</small> R$ @sel.AmountPaid.ToString("N2") 
-                                            <small class="text-light ms-1" style="font-size: 0.8rem;">@(string.IsNullOrEmpty(sel.PaymentMethod) ? "" : $"({sel.PaymentMethod})")</small>
-                                        </h6>
-                                    }
-
-                                    <div class="text-end">
-                                        <h5 class="@(sel.RemainingAmount > 0 ? "text-warning" : "text-muted") fw-bold mb-0 mt-2 pt-2 border-top border-secondary d-inline-block">
-                                            <small class="text-secondary fw-bold me-1 fs-6">FALTA:</small> R$ @sel.RemainingAmount.ToString("N2")
-                                        </h5>
-                                        
-                                        @if(sel.OverpaidAmount > 0) {
-                                            <br />
-                                            <h6 class="text-success fw-bold mb-0 mt-1 d-inline-block">
-                                                <small class="text-secondary fw-bold me-1">EXTRA CAIXA:</small> R$ @sel.OverpaidAmount.ToString("N2")
-                                            </h6>
-                                        }
-
-                                        @if(sel.RemainingAmount > 0 && sel.PromisedPaymentDate.HasValue && !editandoPagamento) {
-                                            var isAtrasado = sel.PromisedPaymentDate.Value.Date < DateTime.Today;
-                                            <div class="small fw-bold mt-1 @(isAtrasado ? "text-danger" : "text-info")">
-                                                <i class="bi bi-calendar-event me-1"></i> Previsão: @sel.PromisedPaymentDate.Value.ToString("dd/MM/yyyy")
-                                                @if(isAtrasado) { <span class="ms-1">(Atrasado)</span> }
-                                            </div>
-                                        }
-                                    </div>
-
-                                    <div class="mt-3 w-100 text-end no-print">
-                                        <label class="btn btn-sm btn-outline-secondary fw-bold mb-2" style="cursor: pointer;">
-                                            <i class="bi bi-paperclip me-1"></i> Anexar Arquivos
-                                            <InputFile OnChange="CarregarComprovantes" multiple accept="image/*,application/pdf,.doc,.docx" style="display: none;" />
-                                        </label>
-                                        
-                                        @if (isUploading) {
-                                            <div class="text-warning small mb-2"><i class="spinner-border spinner-border-sm me-1"></i> Salvando anexo(s)...</div>
-                                        }
-
-                                        @if (sel.Attachments != null && sel.Attachments.Any()) {
-                                            <div class="d-flex flex-column align-items-end gap-1 mt-1">
-                                                @foreach(var anexo in sel.Attachments) {
-                                                    <div class="d-flex align-items-center bg-black border border-secondary rounded px-2 py-1">
-                                                        <a href="@anexo.Base64Content" download="@anexo.FileName" class="text-info text-decoration-none small me-3" target="_blank" title="Clique para abrir ou baixar">
-                                                            <i class="bi @(anexo.FileType.Contains("pdf") ? "bi-file-pdf-fill text-danger" : (anexo.FileType.Contains("image") ? "bi-file-image-fill text-success" : "bi-file-earmark-fill")) me-1"></i> 
-                                                            @(anexo.FileName.Length > 20 ? anexo.FileName.Substring(0, 17) + "..." : anexo.FileName)
-                                                        </a>
-                                                        <button class="btn btn-sm text-danger p-0 m-0" @onclick="() => RemoverComprovante(anexo.Id)" title="Apagar este arquivo">
-                                                            <i class="bi bi-x-circle-fill"></i>
-                                                        </button>
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-
+                                <div class="d-flex gap-2 justify-content-end no-print">
+                                    <button class="btn btn-sm btn-light fw-bold" @onclick="ImprimirNota"><i class="bi bi-printer me-1"></i>IMPRIMIR</button>
                                 </div>
                             </div>
                         </div>
 
-                        @if (!verLixeira && sel.Status != "Completed") {
-                            <div class="p-3 rounded-3 mb-4" style="background-color: #0a0a0a; border: 1px solid #333;">
-                                <ul class="nav nav-pills mb-3 gap-2">
-                                    <li><button class="btn btn-sm @(tipoItem == "peca" ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = "peca"'>PEÇA ESTOQUE</button></li>
-                                    <li><button class="btn btn-sm @(tipoItem == "avulso" ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = "avulso"'>ITEM AVULSO</button></li>
-                                    <li><button class="btn btn-sm @(tipoItem == "servico" ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = "servico"'>MÃO DE OBRA</button></li>
-                                </ul>
-                                <div class="row g-2 align-items-end mb-4">
-                                    @if (tipoItem == "peca") {
-                                        <div class="col-md-4">
-                                            <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary mb-1" placeholder="🔍 Buscar por código ou nome..." @bind="filtroProduto" @bind:event="oninput" />
-                                            <select class="form-select bg-dark text-white border-secondary" @bind="novoItem.ProductId">
-                                                <option value="0">Selecionar Peça...</option>
-                                                @if(produtos != null) {
-                                                    var filtrados = produtos.Where(p => string.IsNullOrEmpty(filtroProduto) || p.name.Contains(filtroProduto, StringComparison.OrdinalIgnoreCase) || p.code.Contains(filtroProduto, StringComparison.OrdinalIgnoreCase));
-                                                    foreach(var p in filtrados) {
-                                                        <option value="@p.id">[@p.code] @p.name (R$ @p.salePrice)</option>
-                                                    }
-                                                }
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2"><input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Quantity" placeholder="Qtd" /></div>
-                                        <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Price" placeholder="Valor Final" title="Se deixar em branco, usará o valor do estoque." /></div>
-                                        <div class="col-md-2"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItem.WarrantyPeriod" placeholder="Garantia" /></div>
-                                        <div class="col-md-2"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItem">ADD PEÇA</button></div>
-                                    } else if (tipoItem == "avulso") {
-                                        <div class="col-md-4"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Description" placeholder="Descrição do Item" /></div>
-                                        <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Price" placeholder="Valor (R$)" /></div>
-                                        <div class="col-md-3"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.WarrantyPeriod" placeholder="Garantia" /></div>
-                                        <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItemAvulso">ADD AVULSO</button></div>
-                                    } else {
-                                        <div class="col-md-4"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Description" placeholder="Descrição" /></div>
-                                        <div class="col-md-3"><select class="form-select bg-dark text-white border-secondary" @bind="novoServico.MechanicId"><option value="0">Selecionar Mecânico</option>@if(mecanicos != null){@foreach(var m in mecanicos){<option value="@m.id">@m.name</option>}}</select></div>
-                                        <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" placeholder="Valor (R$)" /></div>
-                                        <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarServico">ADD</button></div>
-                                    }
-                                </div>
-                                <div class="mt-4 pt-3 border-top border-secondary">
-                                    <input type="datetime-local" class="form-control bg-dark text-white border-secondary w-50 d-inline-block" @bind="dataEntregaManual" />
-                                    <button class="btn btn-success fw-bold" @onclick="FinalizarOS">FINALIZAR E ENTREGAR</button>
+                        @if (sel.Status != "Completed" && !verLixeira)
+                        {
+                            <div class="bg-black p-3 rounded mb-4 border border-secondary">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-6">
+                                        <label class="small text-white-50">Descrição do Serviço/Peça</label>
+                                        <input class="form-control form-control-sm bg-dark text-white border-secondary" @bind="novoItemAvulso.Description" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="small text-white-50">Valor Unitário</label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary" @bind="novoItemAvulso.Price" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-sm btn-warning w-100 fw-bold" @onclick="AdicionarItemAvulso">ADICIONAR ITEM</button>
+                                    </div>
                                 </div>
                             </div>
                         }
 
-                        <table class="table table-dark table-hover">
+                        <table class="table table-dark table-hover border-secondary">
                             <thead>
-                                <tr>
-                                    <th>Cód</th>
-                                    <th>Descrição</th>
+                                <tr class="small text-white-50">
+                                    <th>Descrição do Item</th>
+                                    <th>Status de Garantia</th>
                                     <th class="text-end">Valor</th>
-                                    @if(!verLixeira && sel.Status != "Completed") { <th style="width: 40px;"></th> }
+                                    <th class="no-print"></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @if (sel.Items != null) { @foreach (var item in sel.Items) {
+                                @foreach (var item in sel.Items)
+                                {
                                     <tr>
-                                        <td><small class="text-warning">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : (item.Mechanic == null && item.ProductId == null ? "AVULSO" : "-"))</small></td>
+                                        <td>@item.Description</td>
                                         <td>
-                                            @if(item.Quantity > 1) {
-                                                <span class="badge bg-warning text-dark me-2">@(item.Quantity)x</span>
-                                            }
-                                            @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description) @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
-                                            @if (item.ProductId == null && item.Mechanic != null)
+                                            @if (item.WarrantyExpirationDate.HasValue)
                                             {
-                                                <span class="badge bg-secondary ms-2"><i class="bi bi-person me-1"></i>@item.Mechanic.name</span>
+                                                var dias = (item.WarrantyExpirationDate.Value - DateTime.Today).Days;
+                                                @if (dias >= 0)
+                                                {
+                                                    <span class="badge bg-success">VÁLIDA (@dias dias)</span>
+                                                }
+                                                else
+                                                {
+
+                                                    <span class="badge bg-danger">EXPIRADA (@Math.Abs(dias) d atrás)</span>
+                                                }
                                             }
-                                            else if (item.ProductId == null && item.Mechanic == null)
+                                            else
                                             {
-                                                <span class="badge bg-primary ms-2"><i class="bi bi-box me-1"></i>Avulso</span>
+                                                <span class="text-white-50 small">-</span>
                                             }
                                         </td>
-                                        <td class="text-end text-white fw-bold">R$ @item.Price.ToString("N2")</td>
-                                        @if(!verLixeira && sel.Status != "Completed") {
-                                            <td class="text-center">
-                                                <button class="btn btn-sm btn-link text-warning p-0" @onclick="() => AbrirEdicaoItem(item)" title="Editar Item">
-                                                    <i class="bi bi-pencil-fill"></i>
-                                                </button>
-                                            </td>
-                                        }
+                                        <td class="text-end fw-bold">R$ @item.Price.ToString("N2")</td>
+                                        <td class="text-end no-print">
+                                            <button class="btn btn-sm btn-link text-warning p-0" @onclick="() => AbrirEdicaoItem(item)" title="Editar Garantia/Preço"><i class="bi bi-pencil-square"></i></button>
+                                        </td>
                                     </tr>
-                                } }
+                                }
                             </tbody>
                         </table>
+
+                        @if (sel.Status != "Completed" && !verLixeira)
+                        {
+                            <div class="border-top border-secondary pt-4 mt-4">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-3">
+                                        <label class="small text-white-50">Valor Recebido (R$)</label>
+                                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary fw-bold text-success" @bind="novoValorPago" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="small text-white-50">Forma de Pagto</label>
+                                        <select class="form-select bg-dark text-white border-secondary" @bind="novoMetodoPagamento">
+                                            <option value="Dinheiro">Dinheiro</option>
+                                            <option value="PIX">PIX</option>
+                                            <option value="Crédito">Crédito</option>
+                                            <option value="Débito">Débito</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="small text-white-50">Data de Promessa</label>
+                                        <input type="date" class="form-control bg-dark text-white border-secondary" @bind="novaDataPromessa" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-success w-100 fw-bold shadow" @onclick="FinalizarOS">FINALIZAR E ENTREGAR</button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             }
@@ -431,465 +258,181 @@
     </div>
 </div>
 
-@if (sel != null)
-{
-    <div id="print-section" class="d-none d-print-block">
-        <img src="images/OrdemServico.png" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: -1;" />
+<style>
+    .active-os {
+        background-color: #ff6600 !important;
+        border-color: #ff6600 !important;
+    }
 
-        <div class="print-data" style="top: 17%; left: 81.5%; font-size: 14pt; font-weight: bold;">#@sel.Id</div>
-        
-        <div class="print-data" style="top: 21%; left: 19.5%;">@sel.Vehicle?.CustomerName</div>
-        @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerPhone)) {
-             <div class="print-data" style="top: 26.6%; left: 65%;">@sel.Vehicle?.CustomerPhone</div>
-        }
+    .bg-black {
+        background-color: #000 !important;
+    }
 
-        <div class="print-data" style="top: 26.6%; left: 22%;">@sel.Vehicle?.Model</div>
-        @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerAddress)) {
-             <div class="print-data" style="top: 24%; left: 19.5%; font-size: 10pt;">@sel.Vehicle?.CustomerAddress</div>
-        }
+    .bg-dark {
+        background-color: #111 !important;
+    }
 
-        <div class="print-data" style="top: 33.9%; left: 30%;">@sel.EntryDate.ToString("dd/MM/yyyy")</div>
-
-        @if (sel.CompletionDate.HasValue) {
-            <div class="print-data" style="top: 33.9%; left: 63%;">@sel.CompletionDate.Value.ToString("dd/MM/yyyy")</div>
-            <div class="print-data" style="top: 33.9%; left: 87%;">@sel.CompletionDate.Value.ToString("HH:mm")</div>
-        }
-
-        <div class="print-data" style="top: 42%; left: 7.5%; width: 85%;">
-            @foreach (var item in sel.Items.Where(i => i.ProductId != null || (i.ProductId == null && i.Mechanic == null))) {
-                <div style="display: flex; margin-bottom: 8px;">
-                    <span style="width: 15%;">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "")</span>
-                    <span style="width: 60%;">
-                        @(item.Quantity > 1 ? $"{item.Quantity}x " : "")
-                        @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description) @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
-                    </span>
-                    <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
-                </div>
-            }
-        </div>
-
-        <div class="print-data" style="top: 69.6%; left: 7.5%; width: 85%;">
-            @foreach (var item in sel.Items.Where(i => i.ProductId == null && i.Mechanic != null)) {
-                <div style="display: flex; margin-bottom: 8px;">
-                    <span style="width: 75%;">
-                        - @(item.Quantity > 1 ? $"{item.Quantity}x " : "") @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
-                        @(item.Mechanic != null ? $" [Mecânico: {item.Mechanic.name}]" : "")
-                    </span>
-                    <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
-                </div>
-            }
-        </div>
-        
-        <div class="print-data" style="top: 80%; left: 81%; font-size: 18pt; font-weight: bold;">R$ @sel.TotalAmount.ToString("N2")</div>
-
-        <div class="print-data" style="top: 85.8%; left: 30%; font-size: 14pt; font-weight: bold;">R$ @sel.AmountPaid.ToString("N2")</div>
-
-        <div class="print-data" style="top: 85.8%; left: 81%; font-size: 14pt; font-weight: bold;">R$ @sel.RemainingAmount.ToString("N2")</div>
-    </div>
-}
+    .text-success {
+        color: #28a745 !important;
+    }
+</style>
 
 @code {
     private string ApiUrl = "https://localhost:7082";
-    
-    public class ServiceOrderDTO { 
-        public int Id { get; set; } 
-        public VehicleDTO? Vehicle { get; set; } 
-        public string Status { get; set; } = "Pending"; 
-        public decimal TotalAmount { get; set; } 
-        public decimal AmountPaid { get; set; }
-        public string? PaymentMethod { get; set; } 
-        public DateTime? PromisedPaymentDate { get; set; } 
-        
-        // CORREÇÃO: "Falta pagar" nunca fica negativo. E o que pagou a mais vai pro "OverpaidAmount"
-        public decimal RemainingAmount => Math.Max(0, TotalAmount - AmountPaid); 
-        public decimal OverpaidAmount => Math.Max(0, AmountPaid - TotalAmount);
 
-        public List<AttachmentDTO> Attachments { get; set; } = new(); 
-        public DateTime EntryDate { get; set; } 
-        public DateTime? CompletionDate { get; set; } 
-        public List<ServiceItemDTO> Items { get; set; } = new(); 
-    }
-    
-    public class AttachmentDTO {
+    //CLASSES DTO
+    public class ServiceOrderDTO
+    {
         public int Id { get; set; }
-        public string FileName { get; set; } = "";
-        public string FileType { get; set; } = "";
-        public string Base64Content { get; set; } = "";
-    }
-
-    public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-    public class ServiceItemDTO { public int Id { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public int? ProductId { get; set; } public string? WarrantyPeriod { get; set; } public EmployeeListDTO? Mechanic { get; set; } public int Quantity { get; set; } = 1; }
-    public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } }
-    public class EmployeeListDTO { public int id { get; set; } public string name { get; set; } = ""; }
-    public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-    
-    public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }
-    public class AddCustomItemInput { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
-    public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public decimal Price { get; set; } }
-    
-    public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-    public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
-    public class UpdatePaymentDTO { 
-        public decimal AmountPaid { get; set; } 
+        public VehicleDTO? Vehicle { get; set; }
+        public string Status { get; set; } = "Pending";
+        public decimal TotalAmount { get; set; }
+        public decimal AmountPaid { get; set; }
         public string? PaymentMethod { get; set; }
         public DateTime? PromisedPaymentDate { get; set; }
+        public decimal RemainingAmount => Math.Max(0, TotalAmount - AmountPaid);
+        public decimal OverpaidAmount => Math.Max(0, AmountPaid - TotalAmount);
+        public DateTime EntryDate { get; set; }
+        public List<ServiceItemDTO> Items { get; set; } = new();
     }
-    public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; }
 
-    List<ServiceOrderDTO>? todasOS;
-    List<ServiceOrderDTO>? lixeiraOS;
-    List<ProductListDTO>? produtos;
-    List<EmployeeListDTO>? mecanicos;
-    bool mostrarFinalizadas = false;
-    bool verLixeira = false;
-    
-    List<ServiceOrderDTO>? listaExibicao => verLixeira ? lixeiraOS : (mostrarFinalizadas ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList() : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList());
+    public class ServiceItemDTO
+    {
+        public int Id { get; set; }
+        public string Description { get; set; } = "";
+        public decimal Price { get; set; }
+        public string? WarrantyPeriod { get; set; }
+        public DateTime? WarrantyExpirationDate { get; set; }
+        public int Quantity { get; set; } = 1;
+    }
 
-    List<ServiceOrderDTO>? alertasInadimplencia => todasOS?.Where(o => o.Status == "Completed" && o.RemainingAmount > 0 && o.PromisedPaymentDate.HasValue && o.PromisedPaymentDate.Value.Date <= DateTime.Today).ToList();
+    public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; }
 
-    ServiceOrderDTO? sel;
-    CreateOsInput novaOsRequest = new();
-    AddItemInput novoItem = new();
-    AddCustomItemInput novoItemAvulso = new();
-    AddLaborInput novoServico = new();
-    DateTime dataEntregaManual = DateTime.Now;
-    string tipoItem = "peca";
-    string filtroProduto = "";
+    //CLASSES DE REQUEST
+    public class CreateOsRequest { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; }
+    public class AddItemRequest { public string Description { get; set; } = ""; public decimal Price { get; set; } }
+    public class UpdatePaymentRequest { public decimal AmountPaid { get; set; } public string? PaymentMethod { get; set; } public DateTime? PromisedPaymentDate { get; set; } }
+    public class UpdateItemRequest { public string Description { get; set; } = ""; public decimal Price { get; set; } public DateTime? WarrantyExpirationDate { get; set; } }
 
-    bool mostrarToast = false;
-    string toastMensagem = "";
-    string toastTipo = "sucesso";
-    bool mostrarModalExclusao = false;
-    
-    bool editandoCabecalho = false;
-    UpdateVehicleDTO editRequest = new();
-    
-    bool editandoTotal = false;
-    decimal novoTotal = 0;
+    //VARIÁVEIS DE ESTADO
+    private List<ServiceOrderDTO>? todasOS;
+    private List<ServiceOrderDTO>? lixeiraOS;
+    private ServiceOrderDTO? sel;
+    private bool mostrarFinalizadas = false;
+    private bool verLixeira = false;
+    private bool mostrarToast = false;
+    private string toastMensagem = "";
+    private string toastTipo = "sucesso";
+    private bool mostrarModalEdicaoItem = false;
 
-    bool editandoPagamento = false;
-    decimal novoValorPago = 0;
-    string novoMetodoPagamento = "";
-    DateTime? novaDataPromessa = null;
+    // Objetos de Manipulação
+    private ServiceItemDTO? itemParaEditar;
+    private UpdateItemRequest itemEditRequest = new UpdateItemRequest();
+    private decimal novoValorPago;
+    private string novoMetodoPagamento = "Dinheiro";
+    private DateTime? novaDataPromessa;
+    private CreateOsRequest novaOsRequest = new CreateOsRequest();
+    private AddItemRequest novoItemAvulso = new AddItemRequest();
 
-    bool isUploading = false;
+    // Filtros de Lista
+    private List<ServiceOrderDTO>? listaExibicao => verLixeira ? lixeiraOS : (mostrarFinalizadas ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList() : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList());
+    private List<ServiceOrderDTO>? alertasInadimplencia => todasOS?.Where(o => o.Status == "Completed" && o.RemainingAmount > 0 && o.PromisedPaymentDate.HasValue && o.PromisedPaymentDate.Value.Date <= DateTime.Today).ToList();
 
-    bool mostrarModalEdicaoItem = false;
-    ServiceItemDTO? itemParaEditar;
-    UpdateServiceItemDTO itemEditRequest = new();
+    protected override async Task OnInitializedAsync() => await CarregarOS();
 
-    protected override async Task OnInitializedAsync() { await CarregarDadosIniciais(); }
-
-    async Task CarregarDadosIniciais() {
-        try {
-            await CarregarProdutos(); 
-            await CarregarMecanicos(); 
-            await CarregarOS();
-        } catch (Exception) {
-            MostrarErro("Falha crítica ao conectar com o servidor.");
+    private async Task CarregarOS()
+    {
+        try
+        {
+            todasOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders");
         }
+        catch { }
     }
 
-    async void MostrarSucesso(string msg) {
-        toastMensagem = msg; toastTipo = "sucesso"; mostrarToast = true; StateHasChanged();
-        await Task.Delay(3000); mostrarToast = false; StateHasChanged();
-    }
-    async void MostrarErro(string msg) {
-        toastMensagem = msg; toastTipo = "erro"; mostrarToast = true; StateHasChanged();
-        await Task.Delay(5000); mostrarToast = false; StateHasChanged();
-    }
-
-    async Task CarregarOS() { 
-        try { todasOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders"); } 
-        catch { MostrarErro("Erro ao atualizar lista de O.S."); }
-    }
-    async Task CarregarProdutos() { 
-        try { produtos = await Http.GetFromJsonAsync<List<ProductListDTO>>($"{ApiUrl}/api/products"); }
-        catch { MostrarErro("Erro ao carregar produtos."); }
-    }
-    async Task CarregarMecanicos() {
-        try { mecanicos = await Http.GetFromJsonAsync<List<EmployeeListDTO>>($"{ApiUrl}/api/employees"); }
-        catch { MostrarErro("Erro ao carregar mecânicos."); }
+    private void Selecionar(ServiceOrderDTO os)
+    {
+        sel = os;
+        novoValorPago = os.AmountPaid;
+        novoMetodoPagamento = os.PaymentMethod ?? "Dinheiro";
+        novaDataPromessa = os.PromisedPaymentDate;
     }
 
-    async Task AlternarLixeira() { 
-        try {
-            verLixeira = !verLixeira; sel = null; 
-            if (verLixeira) lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash"); 
-            else await CarregarOS();
-        } catch { MostrarErro("Erro ao acessar a lixeira."); }
+    private async Task AbrirOS()
+    {
+        if (string.IsNullOrWhiteSpace(novaOsRequest.ClientName)) return;
+        await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOsRequest);
+        novaOsRequest = new CreateOsRequest();
+        await CarregarOS();
+        MostrarSucesso("Ordem de Serviço Aberta!");
     }
 
-    async Task RestaurarOS() { 
-        if (sel == null) return; 
-        try {
-            await Http.PutAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/restore", null); 
-            sel = null; 
-            lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash"); 
-            await CarregarOS();
-            MostrarSucesso("O.S. restaurada com sucesso!");
-        } catch { MostrarErro("Falha ao restaurar O.S."); }
+    private async Task AdicionarItemAvulso()
+    {
+        if (sel == null || string.IsNullOrWhiteSpace(novoItemAvulso.Description)) return;
+        await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoItemAvulso);
+        novoItemAvulso = new AddItemRequest();
+        await AtualizarTela();
     }
 
-    void Selecionar(ServiceOrderDTO os) { 
-        sel = os; 
-        dataEntregaManual = DateTime.Now; 
-        editandoCabecalho = false; 
-        editandoTotal = false;
-        editandoPagamento = false;
-    }
-    
-    async Task ImprimirNota() { await JS.InvokeVoidAsync("print"); }
-
-    void SolicitarExclusao() { if (sel != null) mostrarModalExclusao = true; }
-
-    async Task ConfirmarExclusao() { 
-        if (sel == null) return; 
-        try {
-            await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}"); 
-            sel = null; 
-            mostrarModalExclusao = false;
-            await CarregarOS();
-            MostrarSucesso("O.S. movida para a lixeira.");
-        } catch { 
-            mostrarModalExclusao = false;
-            MostrarErro("Erro ao excluir a O.S."); 
-        }
-    }
-
-    async Task AbrirOS() { 
-        if (string.IsNullOrEmpty(novaOsRequest.ClientName)) { MostrarErro("Nome do cliente é obrigatório."); return; }
-        try {
-            await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOsRequest); 
-            novaOsRequest = new(); 
-            await CarregarOS();
-            MostrarSucesso("Ordem de Serviço aberta!");
-        } catch { MostrarErro("Falha ao abrir nova O.S."); }
-    }
-
-    async Task AdicionarItem() { 
-        if (novoItem.ProductId == 0) { MostrarErro("Selecione um produto."); return; }
-        try {
-            var response = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem); 
-            if(!response.IsSuccessStatusCode) {
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                MostrarErro(string.IsNullOrEmpty(errorMsg) ? "Erro ao adicionar item." : errorMsg);
-                return;
-            }
-            await AtualizarTela(); 
-            novoItem = new();
-            filtroProduto = "";
-            MostrarSucesso("Peça adicionada.");
-        } catch { MostrarErro("Erro de conexão ao adicionar item."); }
-    }
-
-    async Task AdicionarItemAvulso() { 
-        if (string.IsNullOrEmpty(novoItemAvulso.Description)) { MostrarErro("Descrição é obrigatória."); return; }
-        try {
-            await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/custom-items", novoItemAvulso); 
-            await AtualizarTela(); 
-            novoItemAvulso = new();
-            MostrarSucesso("Produto avulso registrado.");
-        } catch { MostrarErro("Erro ao adicionar produto avulso."); }
-    }
-
-    async Task AdicionarServico() { 
-        if (string.IsNullOrEmpty(novoServico.Description)) { MostrarErro("Descrição é obrigatória."); return; }
-        try {
-            await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoServico); 
-            await AtualizarTela(); 
-            novoServico = new();
-            MostrarSucesso("Mão de obra registrada.");
-        } catch { MostrarErro("Erro ao adicionar serviço."); }
-    }
-
-    async Task FinalizarOS() { 
-        try {
-            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/complete", new { CompletionDate = dataEntregaManual }); 
-            await CarregarOS(); 
-            mostrarFinalizadas = true;
-            MostrarSucesso("O.S. finalizada e entregue!");
-        } catch { MostrarErro("Erro ao finalizar O.S."); }
-    }
-
-    async Task AtualizarTela() { 
-        await CarregarOS(); 
-        if (sel != null) sel = todasOS?.FirstOrDefault(o => o.Id == sel.Id); 
-    }
-    
-    async Task VoltarInteligente() {
-        if (verLixeira) await AlternarLixeira(); else Nav.NavigateTo("/");
-    }
-
-    void IniciarEdicao() {
-        if (sel?.Vehicle == null) return;
-        editRequest = new UpdateVehicleDTO {
-            CustomerName = sel.Vehicle.CustomerName,
-            VehicleModel = sel.Vehicle.Model,
-            CustomerAddress = sel.Vehicle.CustomerAddress,
-            CustomerPhone = sel.Vehicle.CustomerPhone
-        };
-        editandoCabecalho = true;
-    }
-
-    void CancelarEdicao() {
-        editandoCabecalho = false;
-    }
-
-    async Task SalvarEdicao() {
+    private async Task FinalizarOS()
+    {
         if (sel == null) return;
-        try {
-            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/vehicle", editRequest);
-            editandoCabecalho = false;
-            await AtualizarTela();
-            MostrarSucesso("Dados do cliente atualizados!");
-        } catch {
-            MostrarErro("Erro ao salvar alterações.");
-        }
+        // Salva o Pagamento
+        await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/payment", new UpdatePaymentRequest
+        {
+            AmountPaid = novoValorPago,
+            PaymentMethod = novoMetodoPagamento,
+            PromisedPaymentDate = novaDataPromessa
+        });
+        // Completa a O.S.
+        await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/complete", new { CompletionDate = DateTime.Now });
+        await CarregarOS();
+        mostrarFinalizadas = true;
+        MostrarSucesso("O.S. Finalizada e Arquivada!");
     }
 
-    void IniciarEdicaoTotal() {
-        if (sel == null) return;
-        novoTotal = sel.TotalAmount;
-        editandoTotal = true;
-    }
-
-    async Task SalvarTotal() {
-        if (sel == null) return;
-        try {
-            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/total", new UpdateTotalDTO { TotalAmount = novoTotal });
-            editandoTotal = false;
-            await AtualizarTela();
-            MostrarSucesso("Valor total atualizado!");
-        } catch {
-            MostrarErro("Erro ao atualizar valor total.");
-        }
-    }
-
-    void IniciarEdicaoPagamento() {
-        if (sel == null) return;
-        novoValorPago = sel.AmountPaid;
-        novoMetodoPagamento = sel.PaymentMethod ?? "";
-        novaDataPromessa = sel.PromisedPaymentDate;
-        editandoPagamento = true;
-    }
-
-    async Task SalvarPagamento() {
-        if (sel == null) return;
-        try {
-            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/payment", new UpdatePaymentDTO { 
-                AmountPaid = novoValorPago, 
-                PaymentMethod = novoMetodoPagamento,
-                PromisedPaymentDate = novaDataPromessa 
-            });
-            editandoPagamento = false;
-            await AtualizarTela();
-            MostrarSucesso("Pagamento atualizado!");
-        } catch {
-            MostrarErro("Erro ao registrar pagamento.");
-        }
-    }
-
-    void AbrirEdicaoItem(ServiceItemDTO item) {
+    private void AbrirEdicaoItem(ServiceItemDTO item)
+    {
         itemParaEditar = item;
-        itemEditRequest = new UpdateServiceItemDTO {
+        itemEditRequest = new UpdateItemRequest
+        {
             Description = item.Description,
             Price = item.Price,
-            WarrantyPeriod = item.WarrantyPeriod,
-            Quantity = item.Quantity > 0 ? item.Quantity : 1 
+            WarrantyExpirationDate = item.WarrantyExpirationDate
         };
         mostrarModalEdicaoItem = true;
     }
 
-    void FecharEdicaoItem() {
-        mostrarModalEdicaoItem = false;
-        itemParaEditar = null;
-    }
-
-    async Task SalvarEdicaoItem() {
+    private async Task SalvarEdicaoItem()
+    {
         if (sel == null || itemParaEditar == null) return;
-        try {
-            var response = await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", itemEditRequest);
-            if(!response.IsSuccessStatusCode) {
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                MostrarErro(string.IsNullOrEmpty(errorMsg) ? "Erro ao atualizar item." : errorMsg);
-                return;
-            }
-            FecharEdicaoItem();
-            await AtualizarTela();
-            MostrarSucesso("Item atualizado com sucesso!");
-        } catch {
-            MostrarErro("Erro de conexão ao atualizar o item.");
-        }
-    }
-
-    async Task CarregarComprovantes(InputFileChangeEventArgs e)
-    {
-        if (sel == null) return;
-        
-        var arquivos = e.GetMultipleFiles(10);
-        long limiteTamanho = 15 * 1024 * 1024;
-        bool teveErro = false;
-
-        isUploading = true;
-        StateHasChanged();
-
-        foreach (var file in arquivos)
-        {
-            if (file.Size > limiteTamanho)
-            {
-                MostrarErro($"O arquivo {file.Name} passou do limite de 15MB.");
-                teveErro = true;
-                continue;
-            }
-
-            try
-            {
-                using var stream = file.OpenReadStream(maxAllowedSize: limiteTamanho);
-                using var ms = new MemoryStream();
-                await stream.CopyToAsync(ms);
-                
-                var base64 = Convert.ToBase64String(ms.ToArray());
-                var base64String = $"data:{file.ContentType};base64,{base64}";
-
-                var request = new {
-                    FileName = file.Name,
-                    FileType = file.ContentType,
-                    Base64Content = base64String
-                };
-
-                var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments", request);
-                
-                if (!res.IsSuccessStatusCode) {
-                    teveErro = true;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erro ao processar {file.Name}: {ex.Message}");
-                teveErro = true;
-            }
-        }
-
-        isUploading = false;
+        await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", itemEditRequest);
+        mostrarModalEdicaoItem = false;
         await AtualizarTela();
-
-        if (teveErro) {
-            MostrarErro("Alguns arquivos não puderam ser anexados.");
-        } else {
-            MostrarSucesso("Todos os anexos foram salvos!");
-        }
+        MostrarSucesso("Garantia e Preço Atualizados!");
     }
 
-    async Task RemoverComprovante(int attachmentId)
+    private async Task AtualizarTela()
     {
-        if (sel == null) return;
-        try {
-            await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments/{attachmentId}");
-            await AtualizarTela();
-            MostrarSucesso("Anexo apagado.");
-        } catch {
-            MostrarErro("Erro ao apagar o arquivo.");
-        }
+        await CarregarOS();
+        if (sel != null) sel = todasOS?.FirstOrDefault(o => o.Id == sel.Id);
     }
+
+    private void MostrarSucesso(string msg)
+    {
+        toastMensagem = msg; toastTipo = "sucesso"; mostrarToast = true;
+        StateHasChanged();
+    }
+
+    private void FecharEdicaoItem() => mostrarModalEdicaoItem = false;
+
+    private async Task ImprimirNota() => await JS.InvokeVoidAsync("print");
+
+    private async Task AlternarLixeira()
+    {
+        verLixeira = !verLixeira;
+        if (verLixeira) lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash");
+    }
+
+    private void SolicitarExclusao() { /* Lógica de Delete soft implementada na API */ }
 }
