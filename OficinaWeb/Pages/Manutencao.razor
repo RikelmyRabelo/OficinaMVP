@@ -99,6 +99,26 @@
         </div>
     </div>
 
+    @* PAINEL DE AVISOS DE COBRANÇA *@
+    @if (alertasInadimplencia != null && alertasInadimplencia.Any() && !verLixeira)
+    {
+        <div class="alert alert-danger bg-dark border-danger text-white d-flex align-items-center mb-4 shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill fs-2 me-3 text-danger"></i>
+            <div>
+                <h5 class="alert-heading text-danger fw-bold mb-1">Avisos de Cobrança (Vencimento Hoje ou Atrasados)</h5>
+                <ul class="mb-0 ps-3">
+                    @foreach(var div in alertasInadimplencia) {
+                        <li>
+                            <strong class="text-warning">@div.Vehicle?.CustomerName</strong> - O.S. #@div.Id - Falta pagar: <strong>R$ @div.RemainingAmount.ToString("N2")</strong> 
+                            <span class="text-white-50 ms-1">(Promessa: @div.PromisedPaymentDate?.ToString("dd/MM/yyyy"))</span>
+                            <button class="btn btn-sm btn-link text-info p-0 ms-2" @onclick="() => Selecionar(div)">[Abrir]</button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+
     <div class="row g-4">
         <div class="col-md-4">
             @if (!verLixeira) {
@@ -126,7 +146,16 @@
                     var isActive = sel?.Id == os.Id;
                     <button class="list-group-item list-group-item-action border-secondary text-white mb-2 rounded-0" style="@(isActive ? "background-color: #222; border-left: 4px solid #ff6600;" : "background-color: #111;")" @onclick="() => Selecionar(os)">
                         <div class="d-flex w-100 justify-content-between align-items-center">
-                            <div><h6>@(os.Vehicle?.CustomerName)</h6><small class="text-warning">@(os.Vehicle?.Model)</small></div>
+                            <div>
+                                <h6>
+                                    @(os.Vehicle?.CustomerName)
+                                    @if(os.Status == "Completed" && os.RemainingAmount > 0)
+                                    {
+                                        <span class="badge bg-danger ms-1" style="font-size: 0.65rem;" title="Débito Pendente">PENDENTE</span>
+                                    }
+                                </h6>
+                                <small class="text-warning">@(os.Vehicle?.Model)</small>
+                            </div>
                             <span class="badge bg-dark border border-secondary">#@os.Id</span>
                         </div>
                     </button>
@@ -223,20 +252,29 @@
 
                                     @if (!verLixeira) {
                                         @if (editandoPagamento) {
-                                            <div class="d-flex align-items-center justify-content-end gap-2 mb-1">
-                                                <small class="text-secondary fw-bold">PAGO:</small>
-                                                
-                                                <select class="form-select form-select-sm bg-dark text-white border-secondary" @bind="novoMetodoPagamento" style="width: 120px;">
-                                                    <option value="">Forma...</option>
-                                                    <option value="PIX">PIX</option>
-                                                    <option value="Dinheiro">Dinheiro</option>
-                                                    <option value="Débito">Débito</option>
-                                                    <option value="Crédito">Crédito</option>
-                                                </select>
-
-                                                <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end" @bind="novoValorPago" style="width: 100px;" />
-                                                <button class="btn btn-sm btn-info py-0 px-2" @onclick="SalvarPagamento"><i class="bi bi-check-lg text-dark"></i></button>
-                                                <button class="btn btn-sm btn-outline-secondary py-0 px-2" @onclick="() => editandoPagamento = false"><i class="bi bi-x-lg"></i></button>
+                                            <div class="d-flex flex-column align-items-end gap-2 mb-1 p-2 border border-secondary rounded bg-black">
+                                                <div class="d-flex align-items-center gap-2 w-100 justify-content-end">
+                                                    <small class="text-secondary fw-bold">PAGO (R$):</small>
+                                                    <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end" @bind="novoValorPago" style="width: 110px;" />
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2 w-100 justify-content-end">
+                                                    <small class="text-secondary fw-bold">FORMA:</small>
+                                                    <select class="form-select form-select-sm bg-dark text-white border-secondary" @bind="novoMetodoPagamento" style="width: 110px;">
+                                                        <option value="">...</option>
+                                                        <option value="PIX">PIX</option>
+                                                        <option value="Dinheiro">Dinheiro</option>
+                                                        <option value="Débito">Débito</option>
+                                                        <option value="Crédito">Crédito</option>
+                                                    </select>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2 w-100 justify-content-end" title="Data prevista para pagamento do restante">
+                                                    <small class="text-danger fw-bold">PAGARÁ EM:</small>
+                                                    <input type="date" class="form-control form-control-sm bg-dark text-white border-secondary" @bind="novaDataPromessa" style="width: 130px;" />
+                                                </div>
+                                                <div class="mt-1">
+                                                    <button class="btn btn-sm btn-info py-0 px-2 fw-bold" @onclick="SalvarPagamento"><i class="bi bi-check-lg text-dark me-1"></i>Salvar</button>
+                                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" @onclick="() => editandoPagamento = false">Cancelar</button>
+                                                </div>
                                             </div>
                                         } else {
                                             <h6 class="text-info fw-bold mb-1" style="cursor: pointer;" @onclick="IniciarEdicaoPagamento" title="Editar Valor Pago">
@@ -252,9 +290,18 @@
                                         </h6>
                                     }
 
-                                    <h5 class="@(sel.RemainingAmount > 0 ? "text-warning" : "text-muted") fw-bold mb-0 mt-2 pt-2 border-top border-secondary">
-                                        <small class="text-secondary fw-bold me-1 fs-6">FALTA:</small> R$ @sel.RemainingAmount.ToString("N2")
-                                    </h5>
+                                    <div class="text-end">
+                                        <h5 class="@(sel.RemainingAmount > 0 ? "text-warning" : "text-muted") fw-bold mb-0 mt-2 pt-2 border-top border-secondary d-inline-block">
+                                            <small class="text-secondary fw-bold me-1 fs-6">FALTA:</small> R$ @sel.RemainingAmount.ToString("N2")
+                                        </h5>
+                                        @if(sel.RemainingAmount > 0 && sel.PromisedPaymentDate.HasValue && !editandoPagamento) {
+                                            var isAtrasado = sel.PromisedPaymentDate.Value.Date < DateTime.Today;
+                                            <div class="small fw-bold mt-1 @(isAtrasado ? "text-danger" : "text-info")">
+                                                <i class="bi bi-calendar-event me-1"></i> Previsão: @sel.PromisedPaymentDate.Value.ToString("dd/MM/yyyy")
+                                                @if(isAtrasado) { <span class="ms-1">(Atrasado)</span> }
+                                            </div>
+                                        }
+                                    </div>
 
                                     <div class="mt-3 w-100 text-end no-print">
                                         <label class="btn btn-sm btn-outline-secondary fw-bold mb-2" style="cursor: pointer;">
@@ -444,6 +491,7 @@
         public decimal TotalAmount { get; set; } 
         public decimal AmountPaid { get; set; }
         public string? PaymentMethod { get; set; } 
+        public DateTime? PromisedPaymentDate { get; set; } 
         public decimal RemainingAmount => TotalAmount - AmountPaid; 
         public List<AttachmentDTO> Attachments { get; set; } = new(); 
         public DateTime EntryDate { get; set; } 
@@ -473,6 +521,7 @@
     public class UpdatePaymentDTO { 
         public decimal AmountPaid { get; set; } 
         public string? PaymentMethod { get; set; }
+        public DateTime? PromisedPaymentDate { get; set; }
     }
     public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; }
 
@@ -482,7 +531,11 @@
     List<EmployeeListDTO>? mecanicos;
     bool mostrarFinalizadas = false;
     bool verLixeira = false;
+    
     List<ServiceOrderDTO>? listaExibicao => verLixeira ? lixeiraOS : (mostrarFinalizadas ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList() : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList());
+
+    // Alertas de clientes que devem e cuja data prometida é hoje ou já passou
+    List<ServiceOrderDTO>? alertasInadimplencia => todasOS?.Where(o => o.Status == "Completed" && o.RemainingAmount > 0 && o.PromisedPaymentDate.HasValue && o.PromisedPaymentDate.Value.Date <= DateTime.Today).ToList();
 
     ServiceOrderDTO? sel;
     CreateOsInput novaOsRequest = new();
@@ -507,6 +560,7 @@
     bool editandoPagamento = false;
     decimal novoValorPago = 0;
     string novoMetodoPagamento = "";
+    DateTime? novaDataPromessa = null;
 
     bool isUploading = false;
 
@@ -706,13 +760,18 @@
         if (sel == null) return;
         novoValorPago = sel.AmountPaid;
         novoMetodoPagamento = sel.PaymentMethod ?? "";
+        novaDataPromessa = sel.PromisedPaymentDate;
         editandoPagamento = true;
     }
 
     async Task SalvarPagamento() {
         if (sel == null) return;
         try {
-            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/payment", new UpdatePaymentDTO { AmountPaid = novoValorPago, PaymentMethod = novoMetodoPagamento });
+            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/payment", new UpdatePaymentDTO { 
+                AmountPaid = novoValorPago, 
+                PaymentMethod = novoMetodoPagamento,
+                PromisedPaymentDate = novaDataPromessa 
+            });
             editandoPagamento = false;
             await AtualizarTela();
             MostrarSucesso("Pagamento atualizado!");
@@ -727,7 +786,7 @@
             Description = item.Description,
             Price = item.Price,
             WarrantyPeriod = item.WarrantyPeriod,
-            Quantity = item.Quantity > 0 ? item.Quantity : 1 // Puxa a qtd atual para a caixa
+            Quantity = item.Quantity > 0 ? item.Quantity : 1 
         };
         mostrarModalEdicaoItem = true;
     }

@@ -59,7 +59,6 @@ namespace OficinaAPI.Controllers
             if (product == null) return BadRequest();
             if (product.StockQuantity < itemDto.Quantity) return BadRequest("Estoque insuficiente.");
 
-            // ---> QUANTIDADE AGORA É SALVA AQUI <---
             var newItem = new ServiceItem
             {
                 ServiceOrderId = id,
@@ -160,26 +159,24 @@ namespace OficinaAPI.Controllers
 
             os.AmountPaid = request.AmountPaid;
             os.PaymentMethod = request.PaymentMethod;
+            os.PromisedPaymentDate = request.PromisedPaymentDate;
 
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        // ---> LÓGICA DE ATUALIZAR ITEM E DEVOLVER/RETIRAR ESTOQUE AQUI <---
         [HttpPut("{id}/items/{itemId}")]
         public async Task<IActionResult> UpdateServiceItem(int id, int itemId, [FromBody] UpdateServiceItemDTO request)
         {
             var item = await _context.ServiceItems.FirstOrDefaultAsync(i => i.Id == itemId && i.ServiceOrderId == id);
             if (item == null) return NotFound();
 
-            // Se for uma peça do estoque e a quantidade mudou, ajusta o estoque
             if (item.ProductId != null && item.Quantity != request.Quantity)
             {
                 var product = await _context.Products.FindAsync(item.ProductId);
                 if (product != null)
                 {
                     int diferenca = request.Quantity - item.Quantity;
-                    // Verifica se tem estoque suficiente ao tentar aumentar a quantidade
                     if (diferenca > 0 && product.StockQuantity < diferenca)
                     {
                         return BadRequest("Estoque insuficiente para essa nova quantidade.");
@@ -198,7 +195,7 @@ namespace OficinaAPI.Controllers
             item.Description = request.Description;
             item.Price = request.Price;
             item.WarrantyPeriod = request.WarrantyPeriod;
-            item.Quantity = request.Quantity; // Salva a nova quantidade editada
+            item.Quantity = request.Quantity;
 
             await _context.SaveChangesAsync();
             return NoContent();
@@ -240,20 +237,13 @@ namespace OficinaAPI.Controllers
         public class AddLaborDTO { public int MechanicId { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
         public class CompletionDTO { public DateTime CompletionDate { get; set; } }
         public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
-
-        // ---> ATUALIZADO PARA RECEBER A QUANTIDADE <---
-        public class UpdateServiceItemDTO
-        {
-            public string Description { get; set; } = "";
-            public decimal Price { get; set; }
-            public string? WarrantyPeriod { get; set; }
-            public int Quantity { get; set; } = 1;
-        }
+        public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; }
 
         public class UpdatePaymentDTO
         {
             public decimal AmountPaid { get; set; }
             public string? PaymentMethod { get; set; }
+            public DateTime? PromisedPaymentDate { get; set; }
         }
 
         public class UploadAttachmentDTO { public string FileName { get; set; } = ""; public string FileType { get; set; } = ""; public string Base64Content { get; set; } = ""; }
