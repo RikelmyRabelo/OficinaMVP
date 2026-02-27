@@ -1,5 +1,6 @@
 ﻿@page "/"
 @inject HttpClient Http
+@inject IJSRuntime JS
 @using System.Net.Http.Json
 @using System.Text.Json
 
@@ -159,9 +160,36 @@ else
 
     protected override async Task OnInitializedAsync() => await CarregarDados();
 
-    private void AlternarVisibilidade()
+    // NOVO: Lê a preferência salva no navegador assim que a tela abre
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var preferenciaSalva = await JS.InvokeAsync<string>("localStorage.getItem", "ocultarValoresHome");
+                if (!string.IsNullOrEmpty(preferenciaSalva))
+                {
+                    ocultarValores = bool.Parse(preferenciaSalva);
+                    StateHasChanged(); // Atualiza a tela com o valor salvo
+                }
+            }
+            catch
+            {
+                // Ignora erros caso o navegador bloqueie o acesso (ex: navegação anônima muito restrita)
+            }
+        }
+    }
+
+    // ATUALIZADO: Salva a preferência no navegador toda vez que você clica no botão
+    private async Task AlternarVisibilidade()
     {
         ocultarValores = !ocultarValores;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "ocultarValoresHome", ocultarValores.ToString());
+        }
+        catch { }
     }
 
     private async Task CarregarDados()
