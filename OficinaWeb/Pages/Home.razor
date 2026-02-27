@@ -69,30 +69,40 @@
 else
 {
     <div class="d-flex justify-content-end mb-3">
-        <button class="btn btn-sm btn-outline-secondary border-0 text-white-50" @onclick="AlternarVisibilidade">
+        @* CORREÇÃO: Chamada assíncrona do botão Ocultar/Mostrar *@
+        <button class="btn btn-sm btn-outline-secondary border-0 text-white-50" @onclick="async () => await AlternarVisibilidade()">
             <i class="bi @(ocultarValores ? "bi-eye-fill" : "bi-eye-slash-fill") me-1"></i>
             @(ocultarValores ? "Mostrar Resumo" : "Ocultar Resumo")
         </button>
     </div>
 
-    <div class="row g-4 mb-5">
+    <div class="row g-4 mb-5 align-items-stretch">
         <div class="col-md-4">
-            <div class="p-4 rounded-3 border-start border-4 border-warning" style="background: #0a0a0a;">
+            <div class="p-4 rounded-3 border-start border-4 border-warning h-100" style="background: #0a0a0a;">
                 <h6 class="text-white-50 text-uppercase small">Veículos em Reparo</h6>
-                <h1 class="text-white display-5 fw-bold">@(ocultarValores ? "****" : osAbertas.ToString())</h1>
+                <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : osAbertas.ToString())</h1>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="p-4 rounded-3 border-start border-4 border-danger" style="background: #0a0a0a;">
+            <div class="p-4 rounded-3 border-start border-4 border-danger h-100" style="background: #0a0a0a;">
                 <h6 class="text-white-50 text-uppercase small">Alertas de Estoque</h6>
-                <h1 class="text-white display-5 fw-bold">@(ocultarValores ? "****" : estoqueBaixo.ToString()) <span class="fs-5 text-white-50">itens</span></h1>
+                <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : estoqueBaixo.ToString()) <span class="fs-5 text-white-50">itens</span></h1>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="p-4 rounded-3 border-start border-4 border-success" style="background: #0a0a0a;">
-                <h6 class="text-white-50 text-uppercase small">Faturamento Total</h6>
-                <h1 class="text-white display-5 fw-bold">@(ocultarValores ? "****" : faturamento.ToString("C2"))</h1>
-            </div>
+            @* CORREÇÃO: Transforma o Faturamento num botão que leva para a nova tela *@
+            <a href="faturamento" class="text-decoration-none d-block nav-card h-100 border-0">
+                <div class="p-4 rounded-3 border-start border-4 border-success h-100" style="background: #0a0a0a; border: 1px solid #28a745;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-white-50 text-uppercase small">Faturamento Total</h6>
+                            <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : faturamento.ToString("C2"))</h1>
+                        </div>
+                        <i class="bi bi-box-arrow-in-up-right text-success fs-3 opacity-50"></i>
+                    </div>
+                    <small class="text-success mt-2 d-block fw-bold"><i class="bi bi-wallet2 me-1"></i>Clique para ver o Caixa</small>
+                </div>
+            </a>
         </div>
     </div>
 
@@ -209,7 +219,7 @@ else
                 osAbertas = osList.Count(x => x.TryGetProperty("status", out var s) && s.ToString() != "Completed");
 
                 faturamento += osList.Where(x => x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
-                                     .Sum(x => x.TryGetProperty("totalAmount", out var t) ? t.GetDecimal() : 0);
+                                     .Sum(x => x.TryGetProperty("amountPaid", out var t) ? t.GetDecimal() : 0); // Mudamos de totalAmount para amountPaid para ser mais real com o caixa
             }
 
             if (vendasAvulsas != null && vendasAvulsas.Any())
