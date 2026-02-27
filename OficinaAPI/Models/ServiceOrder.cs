@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
@@ -28,6 +30,9 @@ namespace OficinaAPI.Models
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal AmountPaid { get; set; } = 0;
+
+        // ---> CAMPO DE MÉTODO DE PAGAMENTO <---
+        public string? PaymentMethod { get; set; }
 
         public List<ServiceItem> Items { get; set; } = new();
 
@@ -59,6 +64,9 @@ namespace OficinaAPI.Models
         public Product? Product { get; set; }
         public int? MechanicId { get; set; }
         public Employee? Mechanic { get; set; }
+
+        // ---> CAMPO DE QUANTIDADE ADICIONADO AQUI <---
+        public int Quantity { get; set; } = 1;
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal Price { get => _price; set => _price = value < 0 ? 0 : value; }
