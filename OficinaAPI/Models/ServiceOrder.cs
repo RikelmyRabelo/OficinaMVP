@@ -31,8 +31,9 @@ namespace OficinaAPI.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal AmountPaid { get; set; } = 0;
 
-        // ---> CAMPO DE MÉTODO DE PAGAMENTO <---
         public string? PaymentMethod { get; set; }
+
+        public DateTime? PromisedPaymentDate { get; set; }
 
         public List<ServiceItem> Items { get; set; } = new();
 
@@ -65,7 +66,6 @@ namespace OficinaAPI.Models
         public int? MechanicId { get; set; }
         public Employee? Mechanic { get; set; }
 
-        // ---> CAMPO DE QUANTIDADE ADICIONADO AQUI <---
         public int Quantity { get; set; } = 1;
 
         [Column(TypeName = "decimal(18,2)")]
