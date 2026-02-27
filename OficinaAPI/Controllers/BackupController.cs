@@ -19,7 +19,6 @@ namespace OficinaAPI.Controllers
             _context = context;
         }
 
-        // Cria a pasta do dia se não existir e retorna o caminho
         private string ObterPastaDoDia()
         {
             string nomePasta = DateTime.Now.ToString("dd-MM-yyyy");
@@ -40,7 +39,6 @@ namespace OficinaAPI.Controllers
                 string nomeArquivo = $"Sistema_Oficina_{DateTime.Now:HHmm}.bak";
                 string caminhoCompleto = Path.Combine(pastaDestino, nomeArquivo);
 
-                // Comando para backup do banco configurado no appsettings.json
                 _context.Database.ExecuteSqlRaw($@"BACKUP DATABASE [OficinaMVP] TO DISK = '{caminhoCompleto}'");
 
                 return Ok(new { mensagem = "Backup concluído", caminho = caminhoCompleto });
@@ -56,7 +54,6 @@ namespace OficinaAPI.Controllers
                 string pastaDestino = ObterPastaDoDia();
                 using var workbook = new XLWorkbook();
 
-                // Pastas para salvar os arquivos
                 string pastaAnexos = Path.Combine(pastaDestino, "Anexos");
                 if (!Directory.Exists(pastaAnexos)) Directory.CreateDirectory(pastaAnexos);
 
@@ -88,7 +85,6 @@ namespace OficinaAPI.Controllers
 
                 foreach (var s in ordensBanco)
                 {
-                    // Extrair Anexos (Comprovantes/Fotos)
                     List<string> nomesArquivos = new List<string>();
                     if (s.Attachments != null && s.Attachments.Any())
                     {
@@ -107,7 +103,6 @@ namespace OficinaAPI.Controllers
                         }
                     }
 
-                    // Gerar a O.S. em HTML
                     string nomeClienteSeguro = string.IsNullOrWhiteSpace(s.Vehicle?.CustomerName) ? "Sem_Nome" : string.Join("_", s.Vehicle.CustomerName.Split(Path.GetInvalidFileNameChars()));
                     string nomeArquivoOS = $"OS_{s.Id}_{nomeClienteSeguro}.html";
                     string caminhoHtmlOS = Path.Combine(pastaOS, nomeArquivoOS);
@@ -115,14 +110,15 @@ namespace OficinaAPI.Controllers
                     string htmlOS = GerarTemplateHtmlOS(s);
                     System.IO.File.WriteAllText(caminhoHtmlOS, htmlOS, Encoding.UTF8);
 
-                    // Adicionar os dados formatados à linha da planilha
+                    // CORREÇÃO DE LÓGICA MATEMÁTICA AQUI
                     vendasParaExcel.Add(new
                     {
                         OS = s.Id,
                         Cliente = s.Vehicle != null ? s.Vehicle.CustomerName : "",
                         Total = s.TotalAmount,
                         Pago = s.AmountPaid,
-                        Falta_Pagar = s.TotalAmount - s.AmountPaid,
+                        Falta_Pagar = Math.Max(0, s.TotalAmount - s.AmountPaid), // Nunca será negativo
+                        Extra_Caixa = Math.Max(0, s.AmountPaid - s.TotalAmount), // Registra o que pagou a mais
                         Forma_Pagamento = string.IsNullOrEmpty(s.PaymentMethod) ? "-" : s.PaymentMethod,
                         Promessa_Pagto = s.PromisedPaymentDate.HasValue ? s.PromisedPaymentDate.Value.ToString("dd/MM/yyyy") : "-",
                         Data_Entrada = s.EntryDate,
@@ -133,12 +129,12 @@ namespace OficinaAPI.Controllers
                 }
 
                 wsVendas.Cell(1, 1).InsertTable(vendasParaExcel);
-
                 wsVendas.Column(3).Style.NumberFormat.Format = "R$ #,##0.00"; // Total
                 wsVendas.Column(4).Style.NumberFormat.Format = "R$ #,##0.00"; // Pago
                 wsVendas.Column(5).Style.NumberFormat.Format = "R$ #,##0.00"; // Falta Pagar
-                wsVendas.Column(8).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm"; // Entrada
-                wsVendas.Column(9).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm"; // Saida
+                wsVendas.Column(6).Style.NumberFormat.Format = "R$ #,##0.00"; // Extra Caixa (Novo)
+                wsVendas.Column(9).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm"; // Entrada
+                wsVendas.Column(10).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm"; // Saida
 
                 // 3. EQUIPE
                 var wsEquipe = workbook.Worksheets.Add("Equipe");
@@ -150,7 +146,7 @@ namespace OficinaAPI.Controllers
                 wsEquipe.Cell(1, 1).InsertTable(equipe);
                 wsEquipe.Column(3).Style.NumberFormat.Format = "R$ #,##0.00";
 
-                // 4. PAGAMENTOS (COM DATA E HORA)
+                // 4. PAGAMENTOS
                 var wsPagos = workbook.Worksheets.Add("Histórico de Pagamentos");
                 var pagamentos = await _context.PaymentRecords
                     .Include(p => p.Employee)
@@ -201,7 +197,6 @@ namespace OficinaAPI.Controllers
             sb.AppendLine("</style></head><body>");
 
             sb.AppendLine("<div class='container'>");
-
             sb.AppendLine("<div class='header'>");
             sb.AppendLine("<h1>FJ CENTRO AUTOMOTIVO</h1>");
             sb.AppendLine($"<h2>Ordem de Serviço #{os.Id}</h2>");
@@ -248,18 +243,28 @@ namespace OficinaAPI.Controllers
             string metodoStr = string.IsNullOrEmpty(os.PaymentMethod) ? "" : $" ({os.PaymentMethod})";
             sb.AppendLine($"<p>Valor Pago: R$ {os.AmountPaid:N2}{metodoStr}</p>");
 
-            decimal faltaPagar = os.TotalAmount - os.AmountPaid;
-            sb.AppendLine($"<p class='total-destaque'>Falta Receber: R$ {faltaPagar:N2}</p>");
+            // CORREÇÃO DE LÓGICA AQUI NO HTML TAMBÉM
+            decimal faltaPagar = Math.Max(0, os.TotalAmount - os.AmountPaid);
+            decimal valorExtra = Math.Max(0, os.AmountPaid - os.TotalAmount);
 
-            if (faltaPagar > 0 && os.PromisedPaymentDate.HasValue)
+            if (faltaPagar > 0)
             {
-                sb.AppendLine($"<p style='color: #dc3545; font-size: 14px; font-weight: bold;'>Promessa de Pagamento: {os.PromisedPaymentDate.Value:dd/MM/yyyy}</p>");
+                sb.AppendLine($"<p class='total-destaque' style='color: #dc3545;'>Falta Receber: R$ {faltaPagar:N2}</p>");
+                if (os.PromisedPaymentDate.HasValue)
+                {
+                    sb.AppendLine($"<p style='color: #dc3545; font-size: 14px; font-weight: bold;'>Promessa de Pagamento: {os.PromisedPaymentDate.Value:dd/MM/yyyy}</p>");
+                }
+            }
+            else if (valorExtra > 0)
+            {
+                sb.AppendLine($"<p class='total-destaque' style='color: #28a745;'>Extra Pago / Troco Faltante: R$ {valorExtra:N2}</p>");
+            }
+            else
+            {
+                sb.AppendLine($"<p class='total-destaque' style='color: #28a745;'>Falta Receber: R$ 0,00</p>");
             }
 
-            sb.AppendLine("</div>");
-
-            sb.AppendLine("</div>");
-            sb.AppendLine("</body></html>");
+            sb.AppendLine("</div></div></body></html>");
 
             return sb.ToString();
         }

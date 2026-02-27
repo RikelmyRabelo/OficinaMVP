@@ -99,7 +99,6 @@
         </div>
     </div>
 
-    @* PAINEL DE AVISOS DE COBRANÇA *@
     @if (alertasInadimplencia != null && alertasInadimplencia.Any() && !verLixeira)
     {
         <div class="alert alert-danger bg-dark border-danger text-white d-flex align-items-center mb-4 shadow-sm" role="alert">
@@ -294,6 +293,14 @@
                                         <h5 class="@(sel.RemainingAmount > 0 ? "text-warning" : "text-muted") fw-bold mb-0 mt-2 pt-2 border-top border-secondary d-inline-block">
                                             <small class="text-secondary fw-bold me-1 fs-6">FALTA:</small> R$ @sel.RemainingAmount.ToString("N2")
                                         </h5>
+                                        
+                                        @if(sel.OverpaidAmount > 0) {
+                                            <br />
+                                            <h6 class="text-success fw-bold mb-0 mt-1 d-inline-block">
+                                                <small class="text-secondary fw-bold me-1">EXTRA CAIXA:</small> R$ @sel.OverpaidAmount.ToString("N2")
+                                            </h6>
+                                        }
+
                                         @if(sel.RemainingAmount > 0 && sel.PromisedPaymentDate.HasValue && !editandoPagamento) {
                                             var isAtrasado = sel.PromisedPaymentDate.Value.Date < DateTime.Today;
                                             <div class="small fw-bold mt-1 @(isAtrasado ? "text-danger" : "text-info")">
@@ -492,7 +499,11 @@
         public decimal AmountPaid { get; set; }
         public string? PaymentMethod { get; set; } 
         public DateTime? PromisedPaymentDate { get; set; } 
-        public decimal RemainingAmount => TotalAmount - AmountPaid; 
+        
+        // CORREÇÃO: "Falta pagar" nunca fica negativo. E o que pagou a mais vai pro "OverpaidAmount"
+        public decimal RemainingAmount => Math.Max(0, TotalAmount - AmountPaid); 
+        public decimal OverpaidAmount => Math.Max(0, AmountPaid - TotalAmount);
+
         public List<AttachmentDTO> Attachments { get; set; } = new(); 
         public DateTime EntryDate { get; set; } 
         public DateTime? CompletionDate { get; set; } 
@@ -534,7 +545,6 @@
     
     List<ServiceOrderDTO>? listaExibicao => verLixeira ? lixeiraOS : (mostrarFinalizadas ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList() : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList());
 
-    // Alertas de clientes que devem e cuja data prometida é hoje ou já passou
     List<ServiceOrderDTO>? alertasInadimplencia => todasOS?.Where(o => o.Status == "Completed" && o.RemainingAmount > 0 && o.PromisedPaymentDate.HasValue && o.PromisedPaymentDate.Value.Date <= DateTime.Today).ToList();
 
     ServiceOrderDTO? sel;
