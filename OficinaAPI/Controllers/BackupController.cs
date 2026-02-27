@@ -88,7 +88,7 @@ namespace OficinaAPI.Controllers
 
                 foreach (var s in ordensBanco)
                 {
-                    // A) Extrair Anexos (Comprovantes/Fotos)
+                    // Extrair Anexos (Comprovantes/Fotos)
                     List<string> nomesArquivos = new List<string>();
                     if (s.Attachments != null && s.Attachments.Any())
                     {
@@ -107,7 +107,7 @@ namespace OficinaAPI.Controllers
                         }
                     }
 
-                    // B) Gerar a O.S. em HTML
+                    // Gerar a O.S. em HTML
                     string nomeClienteSeguro = string.IsNullOrWhiteSpace(s.Vehicle?.CustomerName) ? "Sem_Nome" : string.Join("_", s.Vehicle.CustomerName.Split(Path.GetInvalidFileNameChars()));
                     string nomeArquivoOS = $"OS_{s.Id}_{nomeClienteSeguro}.html";
                     string caminhoHtmlOS = Path.Combine(pastaOS, nomeArquivoOS);
@@ -115,13 +115,16 @@ namespace OficinaAPI.Controllers
                     string htmlOS = GerarTemplateHtmlOS(s);
                     System.IO.File.WriteAllText(caminhoHtmlOS, htmlOS, Encoding.UTF8);
 
-                    // C) Adicionar os dados formatados à linha da planilha
+                    // Adicionar os dados formatados à linha da planilha
                     vendasParaExcel.Add(new
                     {
                         OS = s.Id,
                         Cliente = s.Vehicle != null ? s.Vehicle.CustomerName : "",
                         Total = s.TotalAmount,
                         Pago = s.AmountPaid,
+                        Falta_Pagar = s.TotalAmount - s.AmountPaid,
+                        Forma_Pagamento = string.IsNullOrEmpty(s.PaymentMethod) ? "-" : s.PaymentMethod,
+                        Promessa_Pagto = s.PromisedPaymentDate.HasValue ? s.PromisedPaymentDate.Value.ToString("dd/MM/yyyy") : "-",
                         Data_Entrada = s.EntryDate,
                         Data_Saída = s.CompletionDate,
                         Documento_OS = nomeArquivoOS,
@@ -130,10 +133,12 @@ namespace OficinaAPI.Controllers
                 }
 
                 wsVendas.Cell(1, 1).InsertTable(vendasParaExcel);
-                wsVendas.Column(3).Style.NumberFormat.Format = "R$ #,##0.00";
-                wsVendas.Column(4).Style.NumberFormat.Format = "R$ #,##0.00";
-                wsVendas.Column(5).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm";
-                wsVendas.Column(6).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm";
+
+                wsVendas.Column(3).Style.NumberFormat.Format = "R$ #,##0.00"; // Total
+                wsVendas.Column(4).Style.NumberFormat.Format = "R$ #,##0.00"; // Pago
+                wsVendas.Column(5).Style.NumberFormat.Format = "R$ #,##0.00"; // Falta Pagar
+                wsVendas.Column(8).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm"; // Entrada
+                wsVendas.Column(9).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm"; // Saida
 
                 // 3. EQUIPE
                 var wsEquipe = workbook.Worksheets.Add("Equipe");
@@ -160,7 +165,6 @@ namespace OficinaAPI.Controllers
                 wsPagos.Column(2).Style.NumberFormat.Format = "R$ #,##0.00";
                 wsPagos.Column(4).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm:ss";
 
-                // Ajustes finais de layout
                 foreach (var ws in workbook.Worksheets)
                 {
                     ws.Columns().AdjustToContents();
@@ -176,7 +180,6 @@ namespace OficinaAPI.Controllers
             catch (Exception ex) { return BadRequest(new { erro = ex.Message }); }
         }
 
-        // FUNÇÃO PARA CRIAR O VISUAL DA O.S EM HTML
         private string GerarTemplateHtmlOS(ServiceOrder os)
         {
             var sb = new StringBuilder();
@@ -222,15 +225,16 @@ namespace OficinaAPI.Controllers
 
             sb.AppendLine("<h3>Itens e Serviços Realizados</h3>");
             sb.AppendLine("<table>");
-            sb.AppendLine("<tr><th>Cód / Tipo</th><th>Descrição</th><th>Garantia</th><th style='text-align: right;'>Valor (R$)</th></tr>");
+            sb.AppendLine("<tr><th>Qtd / Tipo</th><th>Descrição</th><th>Garantia</th><th style='text-align: right;'>Valor (R$)</th></tr>");
 
             foreach (var item in os.Items)
             {
                 string tipo = item.ProductId != null ? "Peça" : "Serviço";
+                string qtd = item.Quantity > 1 ? $"{item.Quantity}x " : "";
                 string mec = item.Mechanic != null ? $" <small>({item.Mechanic.Name})</small>" : "";
 
                 sb.AppendLine("<tr>");
-                sb.AppendLine($"<td>{tipo}</td>");
+                sb.AppendLine($"<td>{qtd}{tipo}</td>");
                 sb.AppendLine($"<td>{item.Description}{mec}</td>");
                 sb.AppendLine($"<td>{item.WarrantyPeriod ?? "-"}</td>");
                 sb.AppendLine($"<td style='text-align: right;'>{item.Price:N2}</td>");
@@ -240,8 +244,18 @@ namespace OficinaAPI.Controllers
 
             sb.AppendLine("<div class='totals'>");
             sb.AppendLine($"<p>Subtotal: R$ {os.TotalAmount:N2}</p>");
-            sb.AppendLine($"<p>Valor Pago: R$ {os.AmountPaid:N2}</p>");
-            sb.AppendLine($"<p class='total-destaque'>Falta Receber: R$ {(os.TotalAmount - os.AmountPaid):N2}</p>");
+
+            string metodoStr = string.IsNullOrEmpty(os.PaymentMethod) ? "" : $" ({os.PaymentMethod})";
+            sb.AppendLine($"<p>Valor Pago: R$ {os.AmountPaid:N2}{metodoStr}</p>");
+
+            decimal faltaPagar = os.TotalAmount - os.AmountPaid;
+            sb.AppendLine($"<p class='total-destaque'>Falta Receber: R$ {faltaPagar:N2}</p>");
+
+            if (faltaPagar > 0 && os.PromisedPaymentDate.HasValue)
+            {
+                sb.AppendLine($"<p style='color: #dc3545; font-size: 14px; font-weight: bold;'>Promessa de Pagamento: {os.PromisedPaymentDate.Value:dd/MM/yyyy}</p>");
+            }
+
             sb.AppendLine("</div>");
 
             sb.AppendLine("</div>");
