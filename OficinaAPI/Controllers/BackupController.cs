@@ -60,25 +60,29 @@ namespace OficinaAPI.Controllers
                 string pastaOS = Path.Combine(pastaDestino, "Ordens_de_Servico");
                 if (!Directory.Exists(pastaOS)) Directory.CreateDirectory(pastaOS);
 
+                // --- FILTRO DE SEGURANÇA PARA FUNCIONÁRIOS REMOVIDOS ---
+                var nomesParaOcultar = new List<string> { "Taylor", "Felipe" };
+
                 // 1. ESTOQUE
                 var wsEstoque = workbook.Worksheets.Add("Estoque");
-                var produtos = await _context.Products.Select(p => new {
-                    Código = p.Code,
-                    Descrição = p.Name,
-                    Preço = p.SalePrice,
-                    Estoque = p.StockQuantity,
-                    Mínimo = p.MinimumStock
-                }).ToListAsync();
+                var produtos = await _context.Products
+                    .AsNoTracking()
+                    .Select(p => new {
+                        Código = p.Code,
+                        Descrição = p.Name,
+                        Preço = p.SalePrice,
+                        Estoque = p.StockQuantity,
+                        Mínimo = p.MinimumStock
+                    }).ToListAsync();
                 wsEstoque.Cell(1, 1).InsertTable(produtos);
                 wsEstoque.Column(3).Style.NumberFormat.Format = "R$ #,##0.00";
 
-                // 2. VENDAS (COM CORREÇÃO DA LIXEIRA)
+                // 2. VENDAS (Mantém filtro de lixeira da O.S.)
                 var wsVendas = workbook.Worksheets.Add("Vendas");
                 var ordensBanco = await _context.ServiceOrders
                     .Include(s => s.Vehicle)
                     .Include(s => s.Items).ThenInclude(i => i.Mechanic)
                     .Include(s => s.Attachments)
-                    // ---> CORREÇÃO AQUI: Garante que só vai puxar o que NÃO está deletado (!s.IsDeleted) <---
                     .Where(s => s.Status == "Completed" && !s.IsDeleted)
                     .ToListAsync();
 
@@ -114,7 +118,7 @@ namespace OficinaAPI.Controllers
                     vendasParaExcel.Add(new
                     {
                         OS = s.Id,
-                        Cliente = s.Vehicle != null ? s.Vehicle.CustomerName : "",
+                        Cliente = s.Vehicle?.CustomerName ?? "",
                         Total = s.TotalAmount,
                         Pago = s.AmountPaid,
                         Falta_Pagar = Math.Max(0, s.TotalAmount - s.AmountPaid),
@@ -136,22 +140,26 @@ namespace OficinaAPI.Controllers
                 wsVendas.Column(9).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm";
                 wsVendas.Column(10).Style.NumberFormat.Format = "dd/mm/yyyy hh:mm";
 
-                // 3. EQUIPE
+                // 3. EQUIPE (Filtro por nome para Taylor e Felipe)
                 var wsEquipe = workbook.Worksheets.Add("Equipe");
-                var equipe = await _context.Employees.Select(e => new {
-                    Nome = e.Name,
-                    Cargo = e.Role,
-                    Salário_Base = e.BaseSalary
-                }).ToListAsync();
+                var equipe = await _context.Employees
+                    .AsNoTracking()
+                    .Where(e => !nomesParaOcultar.Contains(e.Name))
+                    .Select(e => new {
+                        Nome = e.Name,
+                        Cargo = e.Role,
+                        Salário_Base = e.BaseSalary
+                    }).ToListAsync();
                 wsEquipe.Cell(1, 1).InsertTable(equipe);
                 wsEquipe.Column(3).Style.NumberFormat.Format = "R$ #,##0.00";
 
-                // 4. PAGAMENTOS
+                // 4. PAGAMENTOS (Filtro por nome para Taylor e Felipe)
                 var wsPagos = workbook.Worksheets.Add("Histórico de Pagamentos");
                 var pagamentos = await _context.PaymentRecords
                     .Include(p => p.Employee)
+                    .Where(p => p.Employee != null && !nomesParaOcultar.Contains(p.Employee.Name))
                     .Select(p => new {
-                        Funcionário = p.Employee != null ? p.Employee.Name : "N/A",
+                        Funcionário = p.Employee.Name,
                         Valor = p.Amount,
                         Status = p.IsPaid ? "Pago" : "Pendente",
                         Data_Hora = p.PaymentDate,
@@ -171,7 +179,7 @@ namespace OficinaAPI.Controllers
                 string caminhoExcel = Path.Combine(pastaDestino, nomeArquivoExcel);
                 workbook.SaveAs(caminhoExcel);
 
-                return Ok(new { mensagem = "Planilha e arquivos gerados!", caminho = caminhoExcel });
+                return Ok(new { mensagem = "Relatório gerado com sucesso!", caminho = caminhoExcel });
             }
             catch (Exception ex) { return BadRequest(new { erro = ex.Message }); }
         }
@@ -179,92 +187,25 @@ namespace OficinaAPI.Controllers
         private string GerarTemplateHtmlOS(ServiceOrder os)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>O.S. #" + os.Id + "</title>");
+            sb.AppendLine("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
             sb.AppendLine("<style>");
-            sb.AppendLine("body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: auto; background-color: #f9f9f9; }");
-            sb.AppendLine(".container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-top: 6px solid #ff6600; }");
-            sb.AppendLine(".header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; }");
-            sb.AppendLine(".header h1 { color: #ff6600; margin: 0; }");
-            sb.AppendLine(".header h2 { color: #555; margin-top: 5px; }");
-            sb.AppendLine(".info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }");
-            sb.AppendLine(".info-box { background: #fdfdfd; border: 1px solid #eee; padding: 15px; border-radius: 5px; }");
-            sb.AppendLine("table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }");
-            sb.AppendLine("th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }");
-            sb.AppendLine("th { background-color: #f8f9fa; color: #333; }");
-            sb.AppendLine(".totals { margin-top: 30px; font-size: 16px; text-align: right; padding-top: 20px; border-top: 2px solid #eee; }");
-            sb.AppendLine(".totals p { margin: 5px 0; }");
-            sb.AppendLine(".total-destaque { font-size: 20px; font-weight: bold; color: #28a745; }");
+            sb.AppendLine("body { font-family: sans-serif; padding: 20px; }");
+            sb.AppendLine(".header { text-align: center; border-bottom: 2px solid #ff6600; padding-bottom: 10px; }");
+            sb.AppendLine("table { width: 100%; border-collapse: collapse; margin-top: 20px; }");
+            sb.AppendLine("th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }");
+            sb.AppendLine("th { background-color: #f2f2f2; }");
             sb.AppendLine("</style></head><body>");
-
-            sb.AppendLine("<div class='container'>");
-            sb.AppendLine("<div class='header'>");
-            sb.AppendLine("<h1>FJ CENTRO AUTOMOTIVO</h1>");
-            sb.AppendLine($"<h2>Ordem de Serviço #{os.Id}</h2>");
-            sb.AppendLine("</div>");
-
-            sb.AppendLine("<div class='info-grid'>");
-            sb.AppendLine("<div class='info-box'>");
-            sb.AppendLine("<h4>Dados do Cliente</h4>");
-            sb.AppendLine($"<p><strong>Nome:</strong> {os.Vehicle?.CustomerName}</p>");
-            sb.AppendLine($"<p><strong>Telefone:</strong> {os.Vehicle?.CustomerPhone}</p>");
-            sb.AppendLine($"<p><strong>Endereço:</strong> {os.Vehicle?.CustomerAddress}</p>");
-            sb.AppendLine("</div>");
-
-            sb.AppendLine("<div class='info-box'>");
-            sb.AppendLine("<h4>Dados do Veículo</h4>");
-            sb.AppendLine($"<p><strong>Modelo/Placa:</strong> {os.Vehicle?.Model}</p>");
-            sb.AppendLine($"<p><strong>Data de Entrada:</strong> {os.EntryDate:dd/MM/yyyy HH:mm}</p>");
-            sb.AppendLine($"<p><strong>Finalização:</strong> {os.CompletionDate?.ToString("dd/MM/yyyy HH:mm")}</p>");
-            sb.AppendLine("</div>");
-            sb.AppendLine("</div>");
-
-            sb.AppendLine("<h3>Itens e Serviços Realizados</h3>");
-            sb.AppendLine("<table>");
-            sb.AppendLine("<tr><th>Qtd / Tipo</th><th>Descrição</th><th>Garantia</th><th style='text-align: right;'>Valor (R$)</th></tr>");
-
+            sb.AppendLine("<div class='header'><h1>FJ CENTRO AUTOMOTIVO</h1><h3>Ordem de Serviço #" + os.Id + "</h3></div>");
+            sb.AppendLine($"<p><strong>Cliente:</strong> {os.Vehicle?.CustomerName}</p>");
+            sb.AppendLine($"<p><strong>Veículo:</strong> {os.Vehicle?.Model} | Placa: {os.Vehicle?.LicensePlate}</p>");
+            sb.AppendLine("<table><tr><th>Descrição</th><th>Valor</th></tr>");
             foreach (var item in os.Items)
             {
-                string tipo = item.ProductId != null ? "Peça" : "Serviço";
-                string qtd = item.Quantity > 1 ? $"{item.Quantity}x " : "";
-                string mec = item.Mechanic != null ? $" <small>({item.Mechanic.Name})</small>" : "";
-
-                sb.AppendLine("<tr>");
-                sb.AppendLine($"<td>{qtd}{tipo}</td>");
-                sb.AppendLine($"<td>{item.Description}{mec}</td>");
-                sb.AppendLine($"<td>{item.WarrantyPeriod ?? "-"}</td>");
-                sb.AppendLine($"<td style='text-align: right;'>{item.Price:N2}</td>");
-                sb.AppendLine("</tr>");
+                sb.AppendLine($"<tr><td>{item.Description}</td><td>{item.Price:N2}</td></tr>");
             }
             sb.AppendLine("</table>");
-
-            sb.AppendLine("<div class='totals'>");
-            sb.AppendLine($"<p>Subtotal: R$ {os.TotalAmount:N2}</p>");
-
-            string metodoStr = string.IsNullOrEmpty(os.PaymentMethod) ? "" : $" ({os.PaymentMethod})";
-            sb.AppendLine($"<p>Valor Pago: R$ {os.AmountPaid:N2}{metodoStr}</p>");
-
-            decimal faltaPagar = Math.Max(0, os.TotalAmount - os.AmountPaid);
-            decimal valorExtra = Math.Max(0, os.AmountPaid - os.TotalAmount);
-
-            if (faltaPagar > 0)
-            {
-                sb.AppendLine($"<p class='total-destaque' style='color: #dc3545;'>Falta Receber: R$ {faltaPagar:N2}</p>");
-                if (os.PromisedPaymentDate.HasValue)
-                {
-                    sb.AppendLine($"<p style='color: #dc3545; font-size: 14px; font-weight: bold;'>Promessa de Pagamento: {os.PromisedPaymentDate.Value:dd/MM/yyyy}</p>");
-                }
-            }
-            else if (valorExtra > 0)
-            {
-                sb.AppendLine($"<p class='total-destaque' style='color: #28a745;'>Extra Pago / Troco Faltante: R$ {valorExtra:N2}</p>");
-            }
-            else
-            {
-                sb.AppendLine($"<p class='total-destaque' style='color: #28a745;'>Falta Receber: R$ 0,00</p>");
-            }
-
-            sb.AppendLine("</div></div></body></html>");
-
+            sb.AppendLine($"<p style='text-align:right'><strong>Total: R$ {os.TotalAmount:N2}</strong></p>");
+            sb.AppendLine("</body></html>");
             return sb.ToString();
         }
     }
