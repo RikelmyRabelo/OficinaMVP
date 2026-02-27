@@ -58,9 +58,15 @@
                         <label class="form-label text-secondary">Descrição</label>
                         <input class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.Description" />
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label text-secondary">Preço Final (R$)</label>
-                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.Price" />
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">Qtd</label>
+                            <input type="number" class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.Quantity" min="1" />
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label text-secondary">Preço Total da Linha (R$)</label>
+                            <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.Price" />
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label text-secondary">Garantia (Opcional)</label>
@@ -219,17 +225,31 @@
                                         @if (editandoPagamento) {
                                             <div class="d-flex align-items-center justify-content-end gap-2 mb-1">
                                                 <small class="text-secondary fw-bold">PAGO:</small>
-                                                <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end" @bind="novoValorPago" style="width: 110px;" />
+                                                
+                                                <select class="form-select form-select-sm bg-dark text-white border-secondary" @bind="novoMetodoPagamento" style="width: 120px;">
+                                                    <option value="">Forma...</option>
+                                                    <option value="PIX">PIX</option>
+                                                    <option value="Dinheiro">Dinheiro</option>
+                                                    <option value="Débito">Débito</option>
+                                                    <option value="Crédito">Crédito</option>
+                                                </select>
+
+                                                <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end" @bind="novoValorPago" style="width: 100px;" />
                                                 <button class="btn btn-sm btn-info py-0 px-2" @onclick="SalvarPagamento"><i class="bi bi-check-lg text-dark"></i></button>
                                                 <button class="btn btn-sm btn-outline-secondary py-0 px-2" @onclick="() => editandoPagamento = false"><i class="bi bi-x-lg"></i></button>
                                             </div>
                                         } else {
                                             <h6 class="text-info fw-bold mb-1" style="cursor: pointer;" @onclick="IniciarEdicaoPagamento" title="Editar Valor Pago">
-                                                <small class="text-secondary fw-bold me-1">PAGO:</small> R$ @sel.AmountPaid.ToString("N2") <i class="bi bi-pencil text-secondary ms-1" style="font-size: 0.8rem;"></i>
+                                                <small class="text-secondary fw-bold me-1">PAGO:</small> R$ @sel.AmountPaid.ToString("N2") 
+                                                <small class="text-light ms-1" style="font-size: 0.8rem;">@(string.IsNullOrEmpty(sel.PaymentMethod) ? "" : $"({sel.PaymentMethod})")</small>
+                                                <i class="bi bi-pencil text-secondary ms-1" style="font-size: 0.8rem;"></i>
                                             </h6>
                                         }
                                     } else {
-                                        <h6 class="text-info fw-bold mb-1"><small class="text-secondary fw-bold me-1">PAGO:</small> R$ @sel.AmountPaid.ToString("N2")</h6>
+                                        <h6 class="text-info fw-bold mb-1">
+                                            <small class="text-secondary fw-bold me-1">PAGO:</small> R$ @sel.AmountPaid.ToString("N2") 
+                                            <small class="text-light ms-1" style="font-size: 0.8rem;">@(string.IsNullOrEmpty(sel.PaymentMethod) ? "" : $"({sel.PaymentMethod})")</small>
+                                        </h6>
                                     }
 
                                     <h5 class="@(sel.RemainingAmount > 0 ? "text-warning" : "text-muted") fw-bold mb-0 mt-2 pt-2 border-top border-secondary">
@@ -276,11 +296,22 @@
                                 </ul>
                                 <div class="row g-2 align-items-end mb-4">
                                     @if (tipoItem == "peca") {
-                                        <div class="col-md-3"><select class="form-select bg-dark text-white border-secondary" @bind="novoItem.ProductId"><option value="0">Selecionar...</option>@if(produtos != null){@foreach(var p in produtos){<option value="@p.id">[@p.code] @p.name (R$ @p.salePrice)</option>}}</select></div>
+                                        <div class="col-md-4">
+                                            <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary mb-1" placeholder="🔍 Buscar por código ou nome..." @bind="filtroProduto" @bind:event="oninput" />
+                                            <select class="form-select bg-dark text-white border-secondary" @bind="novoItem.ProductId">
+                                                <option value="0">Selecionar Peça...</option>
+                                                @if(produtos != null) {
+                                                    var filtrados = produtos.Where(p => string.IsNullOrEmpty(filtroProduto) || p.name.Contains(filtroProduto, StringComparison.OrdinalIgnoreCase) || p.code.Contains(filtroProduto, StringComparison.OrdinalIgnoreCase));
+                                                    foreach(var p in filtrados) {
+                                                        <option value="@p.id">[@p.code] @p.name (R$ @p.salePrice)</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
                                         <div class="col-md-2"><input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Quantity" placeholder="Qtd" /></div>
                                         <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Price" placeholder="Valor Final" title="Se deixar em branco, usará o valor do estoque." /></div>
                                         <div class="col-md-2"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItem.WarrantyPeriod" placeholder="Garantia" /></div>
-                                        <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItem">ADD PEÇA</button></div>
+                                        <div class="col-md-2"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItem">ADD PEÇA</button></div>
                                     } else if (tipoItem == "avulso") {
                                         <div class="col-md-4"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Description" placeholder="Descrição do Item" /></div>
                                         <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Price" placeholder="Valor (R$)" /></div>
@@ -314,6 +345,9 @@
                                     <tr>
                                         <td><small class="text-warning">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : (item.Mechanic == null && item.ProductId == null ? "AVULSO" : "-"))</small></td>
                                         <td>
+                                            @if(item.Quantity > 1) {
+                                                <span class="badge bg-warning text-dark me-2">@(item.Quantity)x</span>
+                                            }
                                             @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description) @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
                                             @if (item.ProductId == null && item.Mechanic != null)
                                             {
@@ -371,7 +405,10 @@
             @foreach (var item in sel.Items.Where(i => i.ProductId != null || (i.ProductId == null && i.Mechanic == null))) {
                 <div style="display: flex; margin-bottom: 8px;">
                     <span style="width: 15%;">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "")</span>
-                    <span style="width: 60%;">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description) @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")</span>
+                    <span style="width: 60%;">
+                        @(item.Quantity > 1 ? $"{item.Quantity}x " : "")
+                        @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description) @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
+                    </span>
                     <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
                 </div>
             }
@@ -381,7 +418,7 @@
             @foreach (var item in sel.Items.Where(i => i.ProductId == null && i.Mechanic != null)) {
                 <div style="display: flex; margin-bottom: 8px;">
                     <span style="width: 75%;">
-                        - @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
+                        - @(item.Quantity > 1 ? $"{item.Quantity}x " : "") @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
                         @(item.Mechanic != null ? $" [Mecânico: {item.Mechanic.name}]" : "")
                     </span>
                     <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
@@ -406,6 +443,7 @@
         public string Status { get; set; } = "Pending"; 
         public decimal TotalAmount { get; set; } 
         public decimal AmountPaid { get; set; }
+        public string? PaymentMethod { get; set; } 
         public decimal RemainingAmount => TotalAmount - AmountPaid; 
         public List<AttachmentDTO> Attachments { get; set; } = new(); 
         public DateTime EntryDate { get; set; } 
@@ -421,7 +459,7 @@
     }
 
     public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-    public class ServiceItemDTO { public int Id { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public int? ProductId { get; set; } public string? WarrantyPeriod { get; set; } public EmployeeListDTO? Mechanic { get; set; } }
+    public class ServiceItemDTO { public int Id { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public int? ProductId { get; set; } public string? WarrantyPeriod { get; set; } public EmployeeListDTO? Mechanic { get; set; } public int Quantity { get; set; } = 1; }
     public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } }
     public class EmployeeListDTO { public int id { get; set; } public string name { get; set; } = ""; }
     public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
@@ -432,8 +470,11 @@
     
     public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
-    public class UpdatePaymentDTO { public decimal AmountPaid { get; set; } }
-    public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
+    public class UpdatePaymentDTO { 
+        public decimal AmountPaid { get; set; } 
+        public string? PaymentMethod { get; set; }
+    }
+    public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; }
 
     List<ServiceOrderDTO>? todasOS;
     List<ServiceOrderDTO>? lixeiraOS;
@@ -450,6 +491,7 @@
     AddLaborInput novoServico = new();
     DateTime dataEntregaManual = DateTime.Now;
     string tipoItem = "peca";
+    string filtroProduto = "";
 
     bool mostrarToast = false;
     string toastMensagem = "";
@@ -464,6 +506,7 @@
 
     bool editandoPagamento = false;
     decimal novoValorPago = 0;
+    string novoMetodoPagamento = "";
 
     bool isUploading = false;
 
@@ -571,6 +614,7 @@
             }
             await AtualizarTela(); 
             novoItem = new();
+            filtroProduto = "";
             MostrarSucesso("Peça adicionada.");
         } catch { MostrarErro("Erro de conexão ao adicionar item."); }
     }
@@ -661,16 +705,17 @@
     void IniciarEdicaoPagamento() {
         if (sel == null) return;
         novoValorPago = sel.AmountPaid;
+        novoMetodoPagamento = sel.PaymentMethod ?? "";
         editandoPagamento = true;
     }
 
     async Task SalvarPagamento() {
         if (sel == null) return;
         try {
-            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/payment", new UpdatePaymentDTO { AmountPaid = novoValorPago });
+            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/payment", new UpdatePaymentDTO { AmountPaid = novoValorPago, PaymentMethod = novoMetodoPagamento });
             editandoPagamento = false;
             await AtualizarTela();
-            MostrarSucesso("Valor pago atualizado!");
+            MostrarSucesso("Pagamento atualizado!");
         } catch {
             MostrarErro("Erro ao registrar pagamento.");
         }
@@ -681,7 +726,8 @@
         itemEditRequest = new UpdateServiceItemDTO {
             Description = item.Description,
             Price = item.Price,
-            WarrantyPeriod = item.WarrantyPeriod
+            WarrantyPeriod = item.WarrantyPeriod,
+            Quantity = item.Quantity > 0 ? item.Quantity : 1 // Puxa a qtd atual para a caixa
         };
         mostrarModalEdicaoItem = true;
     }
@@ -694,12 +740,17 @@
     async Task SalvarEdicaoItem() {
         if (sel == null || itemParaEditar == null) return;
         try {
-            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", itemEditRequest);
+            var response = await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", itemEditRequest);
+            if(!response.IsSuccessStatusCode) {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                MostrarErro(string.IsNullOrEmpty(errorMsg) ? "Erro ao atualizar item." : errorMsg);
+                return;
+            }
             FecharEdicaoItem();
             await AtualizarTela();
             MostrarSucesso("Item atualizado com sucesso!");
         } catch {
-            MostrarErro("Erro ao atualizar o item.");
+            MostrarErro("Erro de conexão ao atualizar o item.");
         }
     }
 

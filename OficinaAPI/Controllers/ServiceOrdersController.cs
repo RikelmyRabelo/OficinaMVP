@@ -59,7 +59,16 @@ namespace OficinaAPI.Controllers
             if (product == null) return BadRequest();
             if (product.StockQuantity < itemDto.Quantity) return BadRequest("Estoque insuficiente.");
 
-            var newItem = new ServiceItem { ServiceOrderId = id, ProductId = product.Id, Description = $"{product.Code} - {product.Name}", Price = product.SalePrice * itemDto.Quantity, WarrantyPeriod = itemDto.WarrantyPeriod };
+            // ---> QUANTIDADE AGORA É SALVA AQUI <---
+            var newItem = new ServiceItem
+            {
+                ServiceOrderId = id,
+                ProductId = product.Id,
+                Description = $"{product.Code} - {product.Name}",
+                Price = product.SalePrice * itemDto.Quantity,
+                WarrantyPeriod = itemDto.WarrantyPeriod,
+                Quantity = itemDto.Quantity
+            };
 
             product.StockQuantity -= itemDto.Quantity;
             os.TotalAmount += newItem.Price;
@@ -76,7 +85,7 @@ namespace OficinaAPI.Controllers
             var mechanic = await _context.Employees.FindAsync(laborDto.MechanicId);
             if (mechanic == null) return BadRequest();
 
-            var newItem = new ServiceItem { ServiceOrderId = id, ProductId = null, MechanicId = mechanic.Id, Mechanic = mechanic, Description = laborDto.Description, Price = laborDto.Price, WarrantyPeriod = laborDto.WarrantyPeriod };
+            var newItem = new ServiceItem { ServiceOrderId = id, ProductId = null, MechanicId = mechanic.Id, Mechanic = mechanic, Description = laborDto.Description, Price = laborDto.Price, WarrantyPeriod = laborDto.WarrantyPeriod, Quantity = 1 };
 
             os.TotalAmount += newItem.Price;
             _context.ServiceItems.Add(newItem);
@@ -150,15 +159,34 @@ namespace OficinaAPI.Controllers
             if (os == null) return NotFound();
 
             os.AmountPaid = request.AmountPaid;
+            os.PaymentMethod = request.PaymentMethod;
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
+        // ---> LÓGICA DE ATUALIZAR ITEM E DEVOLVER/RETIRAR ESTOQUE AQUI <---
         [HttpPut("{id}/items/{itemId}")]
         public async Task<IActionResult> UpdateServiceItem(int id, int itemId, [FromBody] UpdateServiceItemDTO request)
         {
             var item = await _context.ServiceItems.FirstOrDefaultAsync(i => i.Id == itemId && i.ServiceOrderId == id);
             if (item == null) return NotFound();
+
+            // Se for uma peça do estoque e a quantidade mudou, ajusta o estoque
+            if (item.ProductId != null && item.Quantity != request.Quantity)
+            {
+                var product = await _context.Products.FindAsync(item.ProductId);
+                if (product != null)
+                {
+                    int diferenca = request.Quantity - item.Quantity;
+                    // Verifica se tem estoque suficiente ao tentar aumentar a quantidade
+                    if (diferenca > 0 && product.StockQuantity < diferenca)
+                    {
+                        return BadRequest("Estoque insuficiente para essa nova quantidade.");
+                    }
+                    product.StockQuantity -= diferenca;
+                }
+            }
 
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os != null)
@@ -170,6 +198,7 @@ namespace OficinaAPI.Controllers
             item.Description = request.Description;
             item.Price = request.Price;
             item.WarrantyPeriod = request.WarrantyPeriod;
+            item.Quantity = request.Quantity; // Salva a nova quantidade editada
 
             await _context.SaveChangesAsync();
             return NoContent();
@@ -211,8 +240,22 @@ namespace OficinaAPI.Controllers
         public class AddLaborDTO { public int MechanicId { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
         public class CompletionDTO { public DateTime CompletionDate { get; set; } }
         public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
-        public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
-        public class UpdatePaymentDTO { public decimal AmountPaid { get; set; } }
+
+        // ---> ATUALIZADO PARA RECEBER A QUANTIDADE <---
+        public class UpdateServiceItemDTO
+        {
+            public string Description { get; set; } = "";
+            public decimal Price { get; set; }
+            public string? WarrantyPeriod { get; set; }
+            public int Quantity { get; set; } = 1;
+        }
+
+        public class UpdatePaymentDTO
+        {
+            public decimal AmountPaid { get; set; }
+            public string? PaymentMethod { get; set; }
+        }
+
         public class UploadAttachmentDTO { public string FileName { get; set; } = ""; public string FileType { get; set; } = ""; public string Base64Content { get; set; } = ""; }
     }
 }
