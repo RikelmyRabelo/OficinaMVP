@@ -362,20 +362,22 @@
                                                 }
                                             </select>
                                         </div>
-                                        <div class="col-md-2"><input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Quantity" placeholder="Qtd" /></div>
-                                        <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Price" placeholder="Valor Final" title="Se deixar em branco, usará o valor do estoque." /></div>
+                                        <div class="col-md-2"><input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Quantity" placeholder="Qtd" min="1" /></div>
+                                        <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Price" placeholder="Valor Total" title="Se deixar em branco, usará o valor do estoque." /></div>
                                         <div class="col-md-2"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItem.WarrantyPeriod" placeholder="Garantia" /></div>
                                         <div class="col-md-2"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItem">ADD PEÇA</button></div>
                                     } else if (tipoItem == "avulso") {
                                         <div class="col-md-4"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Description" placeholder="Descrição do Item" /></div>
-                                        <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Price" placeholder="Valor (R$)" /></div>
-                                        <div class="col-md-3"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.WarrantyPeriod" placeholder="Garantia" /></div>
+                                        <div class="col-md-1"><input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Quantity" placeholder="Qtd" min="1" /></div>
+                                        <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Price" placeholder="Valor Total (R$)" /></div>
+                                        <div class="col-md-2"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.WarrantyPeriod" placeholder="Garantia" /></div>
                                         <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItemAvulso">ADD AVULSO</button></div>
                                     } else {
-                                        <div class="col-md-4"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Description" placeholder="Descrição" /></div>
+                                        <div class="col-md-3"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Description" placeholder="Descrição" /></div>
                                         <div class="col-md-3"><select class="form-select bg-dark text-white border-secondary" @bind="novoServico.MechanicId"><option value="0">Selecionar Mecânico</option>@if(mecanicos != null){@foreach(var m in mecanicos){<option value="@m.id">@m.name</option>}}</select></div>
-                                        <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" placeholder="Valor (R$)" /></div>
-                                        <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarServico">ADD</button></div>
+                                        <div class="col-md-1"><input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Quantity" placeholder="Qtd" min="1" /></div>
+                                        <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" placeholder="Valor Total (R$)" /></div>
+                                        <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarServico">ADD SERVIÇO</button></div>
                                     }
                                 </div>
                                 <div class="mt-4 pt-3 border-top border-secondary">
@@ -385,12 +387,14 @@
                             </div>
                         }
 
-                        <table class="table table-dark table-hover">
+                        <table class="table table-dark table-hover align-middle">
                             <thead>
                                 <tr>
                                     <th>Cód</th>
                                     <th>Descrição</th>
-                                    <th class="text-end">Valor</th>
+                                    <th class="text-center">Qtd</th>
+                                    <th class="text-end text-white-50">V. Unitário</th>
+                                    <th class="text-end">V. Total</th>
                                     @if(!verLixeira && sel.Status != "Completed") { <th style="width: 40px;"></th> }
                                 </tr>
                             </thead>
@@ -399,9 +403,6 @@
                                     <tr>
                                         <td><small class="text-warning">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : (item.Mechanic == null && item.ProductId == null ? "AVULSO" : "-"))</small></td>
                                         <td>
-                                            @if(item.Quantity > 1) {
-                                                <span class="badge bg-warning text-dark me-2">@(item.Quantity)x</span>
-                                            }
                                             @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description) @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
                                             @if (item.ProductId == null && item.Mechanic != null)
                                             {
@@ -411,6 +412,16 @@
                                             {
                                                 <span class="badge bg-primary ms-2"><i class="bi bi-box me-1"></i>Avulso</span>
                                             }
+                                        </td>
+                                        <td class="text-center">
+                                            @if(item.Quantity > 1) {
+                                                <span class="badge bg-warning text-dark">@item.Quantity</span>
+                                            } else {
+                                                <span>@item.Quantity</span>
+                                            }
+                                        </td>
+                                        <td class="text-end text-white-50">
+                                            <small>R$ @((item.Price / (item.Quantity > 0 ? item.Quantity : 1)).ToString("N2"))</small>
                                         </td>
                                         <td class="text-end text-white fw-bold">R$ @item.Price.ToString("N2")</td>
                                         @if(!verLixeira && sel.Status != "Completed") {
@@ -460,7 +471,7 @@
                 <div style="display: flex; margin-bottom: 8px;">
                     <span style="width: 15%;">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "")</span>
                     <span style="width: 60%;">
-                        @(item.Quantity > 1 ? $"{item.Quantity}x " : "")
+                        @(item.Quantity > 1 ? $"{item.Quantity}x (R$ {(item.Price / item.Quantity).ToString("N2")} un) " : "")
                         @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description) @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
                     </span>
                     <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
@@ -472,7 +483,7 @@
             @foreach (var item in sel.Items.Where(i => i.ProductId == null && i.Mechanic != null)) {
                 <div style="display: flex; margin-bottom: 8px;">
                     <span style="width: 75%;">
-                        - @(item.Quantity > 1 ? $"{item.Quantity}x " : "") @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
+                        - @(item.Quantity > 1 ? $"{item.Quantity}x (R$ {(item.Price / item.Quantity).ToString("N2")} un) " : "") @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
                         @(item.Mechanic != null ? $" [Mecânico: {item.Mechanic.name}]" : "")
                     </span>
                     <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
@@ -500,7 +511,6 @@
         public string? PaymentMethod { get; set; } 
         public DateTime? PromisedPaymentDate { get; set; } 
         
-        // CORREÇÃO: "Falta pagar" nunca fica negativo. E o que pagou a mais vai pro "OverpaidAmount"
         public decimal RemainingAmount => Math.Max(0, TotalAmount - AmountPaid); 
         public decimal OverpaidAmount => Math.Max(0, AmountPaid - TotalAmount);
 
@@ -524,8 +534,8 @@
     public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     
     public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }
-    public class AddCustomItemInput { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
-    public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public decimal Price { get; set; } }
+    public class AddCustomItemInput { public string Description { get; set; } = ""; public int Quantity { get; set; } = 1; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
+    public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public int Quantity { get; set; } = 1; public decimal Price { get; set; } }
     
     public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
