@@ -7,7 +7,7 @@
 
 <PageTitle>Estoque - FJ Centro Automotivo</PageTitle>
 
-<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+<div class="toast-container position-fixed bottom-0 end-0 p-3 no-print" style="z-index: 1100;">
     @if (mostrarToast)
     {
         <div class="toast show align-items-center text-white @(toastTipo == "erro" ? "bg-danger" : "bg-success") border-0" role="alert" aria-live="assertive" aria-atomic="true">
@@ -24,7 +24,7 @@
 
 @if (mostrarModalExclusao)
 {
-    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
+    <div class="modal fade show d-block no-print" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content bg-dark text-white border-secondary">
                 <div class="modal-header border-secondary">
@@ -46,7 +46,7 @@
 
 @if (mostrarModalEdicao && produtoParaEditar != null)
 {
-    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
+    <div class="modal fade show d-block no-print" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content bg-dark text-white border-secondary">
                 <div class="modal-header border-secondary">
@@ -82,7 +82,7 @@
     </div>
 }
 
-<div class="container py-4">
+<div class="container py-4 no-print">
 
     <div class="row align-items-center mb-5 position-relative">
         <div class="col-md-3 text-start">
@@ -95,7 +95,11 @@
                 <i class="bi bi-box-seam-fill me-2"></i>Controle de Estoque
             </h2>
         </div>
-        <div class="col-md-3"></div>
+        <div class="col-md-3 text-end">
+            <button class="btn btn-light fw-bold shadow-sm" @onclick="ImprimirRelatorio">
+                <i class="bi bi-file-pdf-fill text-danger me-2"></i>GERAR PDF
+            </button>
+        </div>
     </div>
 
     <div class="card border-0 shadow-sm mb-5" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
@@ -225,6 +229,78 @@
     }
 </div>
 
+@* ---- SEÇÃO EXCLUSIVA PARA O PDF/IMPRESSÃO ---- *@
+@if (produtos != null)
+{
+    <div class="print-only p-4" style="background-color: white; color: black !important;">
+        <div class="text-center mb-4 pb-3 border-bottom border-dark">
+            <h2 class="fw-bold mb-0">Relatório de Estoque</h2>
+            <h4 class="text-muted">FJ Centro Automotivo</h4>
+            <small>Gerado em: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</small>
+        </div>
+
+        @{
+            var emEstoque = produtos.Where(p => (p.stockQuantity ?? 0) > 0).OrderBy(p => p.name).ToList();
+            var indisponiveis = produtos.Where(p => (p.stockQuantity ?? 0) <= 0).OrderBy(p => p.name).ToList();
+        }
+
+        <h4 class="fw-bold mt-4" style="color: black;">Itens em Estoque</h4>
+        <table class="table table-bordered border-dark table-sm align-middle" style="color: black !important; font-size: 0.9rem;">
+            <thead class="table-light border-dark">
+                <tr>
+                    <th style="width: 15%;">Código</th>
+                    <th style="width: 45%;">Descrição do Item</th>
+                    <th class="text-center" style="width: 10%;">Qtd</th>
+                    <th class="text-end" style="width: 15%;">Valor Unit.</th>
+                    <th class="text-end" style="width: 15%;">Total Investido</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in emEstoque)
+                {
+                    <tr>
+                        <td class="fw-bold">@item.code</td>
+                        <td>@item.name</td>
+                        <td class="text-center">@item.stockQuantity</td>
+                        <td class="text-end">R$ @item.salePrice?.ToString("N2")</td>
+                        <td class="text-end fw-bold">R$ @(((item.salePrice ?? 0) * (item.stockQuantity ?? 0)).ToString("N2"))</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="table-light border-dark">
+                    <th colspan="4" class="text-end fw-bold">VALOR TOTAL DO ESTOQUE:</th>
+                    <th class="text-end fw-bold text-success fs-6">R$ @emEstoque.Sum(i => (i.salePrice ?? 0) * (i.stockQuantity ?? 0)).ToString("N2")</th>
+                </tr>
+            </tfoot>
+        </table>
+
+        @if (indisponiveis.Any())
+        {
+            <h4 class="fw-bold mt-5" style="color: black;">Itens Indisponíveis (Zerados)</h4>
+            <table class="table table-bordered border-dark table-sm align-middle" style="color: black !important; font-size: 0.9rem;">
+                <thead class="table-light border-dark">
+                    <tr>
+                        <th style="width: 15%;">Código</th>
+                        <th style="width: 70%;">Descrição do Item</th>
+                        <th class="text-end" style="width: 15%;">Último Preço</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in indisponiveis)
+                    {
+                        <tr>
+                            <td class="fw-bold text-danger">@item.code</td>
+                            <td>@item.name</td>
+                            <td class="text-end">R$ @item.salePrice?.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
 <style>
     .form-control::placeholder {
         color: #b0b0b0 !important;
@@ -245,6 +321,58 @@
 
     .text-uppercase {
         text-transform: uppercase;
+    }
+
+    .print-only {
+        display: none;
+    }
+
+    /* CSS EXCLUSIVO PARA IMPRESSÃO / PDF */
+    @@media print {
+        /* 1. Sobrescreve o tamanho de página imposto pelo app.css para usar folha A4 normal */
+        @@page {
+            size: A4 portrait !important;
+            margin: 10mm !important;
+        }
+        /* 2. Desfaz a regra global (visibility: hidden) que deixava a tela em branco */
+        body * {
+            visibility: visible !important;
+        }
+        /* 3. Esconde a interface inteira do sistema (menus, botões, formulários) */
+        .no-print, nav, .sidebar, .top-row {
+            display: none !important;
+        }
+        /* 4. Exibe e posiciona o nosso relatório no topo da folha */
+        .print-only {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: white !important;
+        }
+
+        body, html, main, .page, .content {
+            background-color: white !important;
+            color: black !important;
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+
+        table {
+            color: black !important;
+            border-color: #000 !important;
+        }
+
+        th, td {
+            border-color: #000 !important;
+            color: black !important;
+        }
+
+        .table-light {
+            background-color: #f8f9fa !important;
+        }
     }
 </style>
 
@@ -442,5 +570,11 @@
         {
             MostrarErro("Erro de conexão ao salvar a edição.");
         }
+    }
+
+    // Chama a janela de impressão do navegador para gerar o PDF
+    private async Task ImprimirRelatorio()
+    {
+        await JS.InvokeVoidAsync("print");
     }
 }
