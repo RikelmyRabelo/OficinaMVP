@@ -24,6 +24,7 @@ namespace OficinaAPI.Controllers
             return caminhoCompleto;
         }
 
+        // EXPORTAR RELATÓRIOS
         [HttpPost("exportar-excel")]
         public async Task<IActionResult> ExportarExcel()
         {
@@ -35,7 +36,9 @@ namespace OficinaAPI.Controllers
 
                 // 1. ESTOQUE
                 var wsEstoque = workbook.Worksheets.Add("Estoque");
-                var produtos = await _context.Products.AsNoTracking().Select(p => new { Código = p.Code, Descrição = p.Name, Preço = p.SalePrice, Estoque = p.StockQuantity }).ToListAsync();
+                var produtos = await _context.Products.AsNoTracking()
+                    .Select(p => new { Código = p.Code, Descrição = p.Name, Preço = p.SalePrice, Estoque = p.StockQuantity })
+                    .ToListAsync();
                 wsEstoque.Cell(1, 1).InsertTable(produtos);
 
                 // 2. VENDAS
@@ -53,42 +56,50 @@ namespace OficinaAPI.Controllers
                 }).ToList();
                 wsVendas.Cell(1, 1).InsertTable(vendasParaExcel);
 
-                // 3. EQUIPE
+                // 3. EQUIPE e 4. PAGAMENTOS
                 var wsEquipe = workbook.Worksheets.Add("Equipe");
                 var equipe = await _context.Employees.AsNoTracking().Where(e => !nomesParaOcultar.Contains(e.Name))
                     .Select(e => new { Nome = e.Name, Cargo = e.Role, Salário = e.BaseSalary }).ToListAsync();
                 wsEquipe.Cell(1, 1).InsertTable(equipe);
 
-                // 4. PAGAMENTOS
-                var wsPagos = workbook.Worksheets.Add("Histórico de Pagamentos");
-                var pagamentos = await _context.PaymentRecords.Include(p => p.Employee)
-                    .Where(p => p.Employee != null && !nomesParaOcultar.Contains(p.Employee.Name))
-                    .Select(p => new { Funcionario = p.Employee.Name, Valor = p.Amount, Data = p.PaymentDate }).ToListAsync();
-                wsPagos.Cell(1, 1).InsertTable(pagamentos);
-
                 string caminhoExcel = Path.Combine(pastaDestino, $"Relatorio_{DateTime.Now:HHmm}.xlsx");
                 workbook.SaveAs(caminhoExcel);
-                return Ok(new { mensagem = "Backup Gerado!", caminho = caminhoExcel });
+
+                return Ok(new { mensagem = "Relatórios Excel gerados!", caminho = caminhoExcel });
             }
             catch (Exception ex) { return BadRequest(new { erro = ex.Message }); }
+        }
+
+        [HttpPost("gerar")]
+        public async Task<IActionResult> GerarBackupDatabase()
+        {
+            try
+            {
+                string pastaDestino = ObterPastaDoDia();
+                string nomeArquivoBak = $"Backup_Sistema_{DateTime.Now:yyyyMMdd_HHmm}.bak";
+                string caminhoCompletoBak = Path.Combine(pastaDestino, nomeArquivoBak);
+
+                string dbName = _context.Database.GetDbConnection().Database;
+
+                string sqlCommand = $"BACKUP DATABASE [{dbName}] TO DISK = '{caminhoCompletoBak}' WITH FORMAT, MEDIANAME = 'OficinaBackup', NAME = 'Full Backup of {dbName}';";
+
+                await _context.Database.ExecuteSqlRawAsync(sqlCommand);
+
+                return Ok(new { mensagem = "Arquivo .BAK gerado com sucesso!", caminho = caminhoCompletoBak });
+            }
+            catch (Exception ex)
+            {
+      
+                return BadRequest(new { erro = "Erro ao gerar .BAK. Verifique se a pasta C:\\Backups_Oficina tem permissão total para o SQL Server. Detalhe: " + ex.Message });
+            }
         }
 
         private string GerarTemplateHtmlOS(ServiceOrder os)
         {
             var sb = new StringBuilder();
             sb.AppendLine("<html><body style='font-family:sans-serif;'><h1>FJ CENTRO AUTOMOTIVO - OS #" + os.Id + "</h1>");
-            sb.AppendLine("<table border='1' width='100%'><tr><th>Item</th><th>Garantia</th><th>Preço</th></tr>");
-            foreach (var item in os.Items)
-            {
-                string statusGarantia = "Sem Garantia";
-                if (item.WarrantyExpirationDate.HasValue)
-                {
-                    statusGarantia = item.WarrantyExpirationDate.Value >= DateTime.Today
-                        ? $"VÁLIDA (até {item.WarrantyExpirationDate.Value:dd/MM/yyyy})"
-                        : $"EXPIRADA (em {item.WarrantyExpirationDate.Value:dd/MM/yyyy})";
-                }
-                sb.AppendLine($"<tr><td>{item.Description}</td><td>{statusGarantia}</td><td>{item.Price:N2}</td></tr>");
-            }
+            sb.AppendLine("<table border='1' width='100%'><tr><th>Item</th><th>Preço</th></tr>");
+            foreach (var item in os.Items) { sb.AppendLine($"<tr><td>{item.Description}</td><td>{item.Price:N2}</td></tr>"); }
             sb.AppendLine("</table><p>Total: " + os.TotalAmount.ToString("C2") + "</p></body></html>");
             return sb.ToString();
         }
