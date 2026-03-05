@@ -7,7 +7,6 @@
 
 <PageTitle>Catálogo & Estoque - FJ Centro Automotivo</PageTitle>
 
-@* --- SISTEMA DE TOASTS --- *@
 <div class="toast-container position-fixed bottom-0 end-0 p-3 no-print" style="z-index: 1100;">
     @if (mostrarToast)
     {
@@ -23,7 +22,6 @@
     }
 </div>
 
-@* --- MODAL EXCLUSÃO PRODUTO --- *@
 @if (mostrarModalExclusao)
 {
     <div class="modal fade show d-block no-print" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
@@ -47,7 +45,7 @@
 
 <div class="container py-4 no-print">
 
-    @* Cabeçalho *@
+    @* Cabeçalho Principal *@
     <div class="row align-items-center mb-4 position-relative">
         <div class="col-md-3">
             <a href="/" class="btn btn-outline-secondary border-0 text-white">
@@ -61,12 +59,13 @@
         </div>
         <div class="col-md-3 text-end">
             <button class="btn btn-light fw-bold shadow-sm" @onclick="ImprimirRelatorio">
-                <i class="bi bi-file-pdf-fill text-danger me-2"></i>PDF ESTOQUE
+                <i class="bi bi-file-pdf-fill text-danger me-2"></i>
+                @(abaAtiva == "pecas" ? "PDF ESTOQUE" : "PDF MÃO DE OBRA")
             </button>
         </div>
     </div>
 
-    @* --- ABAS DE NAVEGAÇÃO --- *@
+    @* Abas de Navegação *@
     <ul class="nav nav-pills nav-fill mb-4 p-1 bg-black rounded border border-secondary">
         <li class="nav-item">
             <button class="nav-link @(abaAtiva == "pecas" ? "active bg-warning text-dark fw-bold" : "text-white")" @onclick='() => abaAtiva = "pecas"'>
@@ -82,7 +81,7 @@
 
     @if (abaAtiva == "pecas")
     {
-        @* Form de Peças *@
+        @* Cadastro de Peças *@
         <div class="card border-0 shadow-sm mb-5" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
             <div class="card-body p-4">
                 <h5 class="mb-3 fw-bold" style="color: #ffeb3b;">Novo Produto</h5>
@@ -96,12 +95,12 @@
             </div>
         </div>
 
-        @* Tabela de Peças *@
+        @* Listagem de Peças com Busca *@
         @if (produtos != null)
         {
             <div class="input-group mb-3">
                 <span class="input-group-text bg-dark text-secondary border-secondary"><i class="bi bi-search"></i></span>
-                <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Buscar peça..." @bind="termoBusca" @bind:event="oninput" />
+                <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Buscar peça por nome ou código..." @bind="termoBusca" @bind:event="oninput" />
             </div>
             <div class="table-responsive">
                 <table class="table table-dark table-hover align-middle">
@@ -117,7 +116,8 @@
                     <tbody>
                         @foreach (var p in produtosFiltrados)
                         {
-                            var rowColor = (p.stockQuantity ?? 0) <= p.minimumStock ? "#ff4444" : "#fff";
+                            var qtdAtual = p.stockQuantity ?? 0;
+                            var rowColor = qtdAtual <= 0 ? "#ff4444" : (qtdAtual <= p.minimumStock ? "#ff8800" : "#fff");
                             <tr>
                                 <td style="color: @rowColor;">@p.code.ToUpper()</td>
                                 <td style="color: @rowColor;">@p.name</td>
@@ -125,7 +125,7 @@
                                 <td class="text-center">
                                     <div class="d-flex align-items-center justify-content-center gap-2">
                                         <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, -1)"><i class="bi bi-dash-lg"></i></button>
-                                        <span class="fw-bold">@p.stockQuantity</span>
+                                        <span class="fw-bold" style="min-width: 30px;">@qtdAtual</span>
                                         <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, 1)"><i class="bi bi-plus-lg"></i></button>
                                     </div>
                                 </td>
@@ -142,16 +142,16 @@
     }
     else
     {
-        @* --- ABA: CATÁLOGO DE SERVIÇOS (MÃO DE OBRA) --- *@
+        @* Cadastro de Serviços *@
         <div class="card border-0 shadow-sm mb-5" style="background-color: #111; border-top: 4px solid #00bcff !important;">
             <div class="card-body p-4">
                 <h5 class="mb-3 fw-bold" style="color: #00bcff;">Novo Serviço (Mão de Obra)</h5>
                 <div class="row g-3">
                     <div class="col-md-7">
-                        <input class="form-control bg-dark text-white border-secondary" @bind="novoServico.Name" placeholder="Ex: Revisão Elétrica Geral *" />
+                        <input class="form-control bg-dark text-white border-secondary" @bind="novoServico.Name" placeholder="Ex: Limpeza de Bicos *" />
                     </div>
                     <div class="col-md-3">
-                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoServico.DefaultPrice" placeholder="R$ Valor Padrão *" />
+                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoServico.DefaultPrice" placeholder="R$ Valor Base *" />
                     </div>
                     <div class="col-md-2">
                         <button class="btn w-100 fw-bold btn-info text-dark" @onclick="SalvarServico">CADASTRAR</button>
@@ -190,7 +190,97 @@
     }
 </div>
 
-@* --- CSS DE IMPRESSÃO (O MESMO QUE JÁ FUNCIONA) --- *@
+@* SEÇÕES DE IMPRESSÃO  *@
+<div class="print-only">
+    @if (abaAtiva == "pecas" && produtos != null)
+    {
+        <div class="p-5">
+            <div class="text-center mb-4 border-bottom border-dark pb-3">
+                <h1 style="color: black !important; font-weight: bold;">RELATÓRIO DE INVENTÁRIO</h1>
+                <h3 style="color: #666 !important;">FJ Centro Automotivo</h3>
+                <p style="color: black !important;">Data: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
+            </div>
+
+            <table class="table table-bordered border-dark" style="color: black !important;">
+                <thead>
+                    <tr style="background-color: #f2f2f2 !important;">
+                        <th style="color: black !important; border: 1px solid black !important;">CÓD</th>
+                        <th style="color: black !important; border: 1px solid black !important;">NOME DO PRODUTO</th>
+                        <th style="color: black !important; border: 1px solid black !important;" class="text-end">VALOR UNIT.</th>
+                        <th style="color: black !important; border: 1px solid black !important;" class="text-center">QTD</th>
+                        <th style="color: black !important; border: 1px solid black !important;" class="text-center">STATUS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in produtos.OrderBy(x => x.stockQuantity > 0 ? 0 : 1).ThenBy(x => x.name))
+                    {
+                        var qtd = p.stockQuantity ?? 0;
+                        var isEsgotado = qtd <= 0;
+                        var isBaixo = qtd <= p.minimumStock && !isEsgotado;
+
+                        <tr style="@(isEsgotado ? "background-color: #ffebee !important;" : (isBaixo ? "background-color: #fff3e0 !important;" : ""))">
+                            <td style="color: black !important; border: 1px solid black !important;">@p.code</td>
+                            <td style="color: black !important; border: 1px solid black !important;">@p.name</td>
+                            <td style="color: black !important; border: 1px solid black !important;" class="text-end">R$ @p.salePrice?.ToString("N2")</td>
+                            <td style="color: black !important; border: 1px solid black !important; font-weight: bold;" class="text-center">@qtd</td>
+                            <td style="color: black !important; border: 1px solid black !important; font-size: 0.8rem;" class="text-center">
+                                @if (isEsgotado)
+                                {
+                                    <strong style="color: #d32f2f !important;">ESGOTADO</strong>
+                                }
+                                else if (isBaixo)
+                                {
+
+                                    <strong style="color: #ef6c00 !important;">REPOR</strong>
+                                }
+                                else
+                                {
+
+                                    <span style="color: #2e7d32 !important;">OK</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="mt-4 small" style="color: #666 !important;">
+                * Total de itens cadastrados: @produtos.Count | Relatório gerado automaticamente pelo sistema.
+            </div>
+        </div>
+    }
+    else if (abaAtiva == "servicos" && servicosCatalogo != null)
+    {
+        <div class="p-5">
+            <div class="text-center mb-4 border-bottom border-dark pb-3">
+                <h1 style="color: black !important; font-weight: bold;">TABELA DE SERVIÇOS</h1>
+                <h3 style="color: #666 !important;">FJ Centro Automotivo - Mão de Obra</h3>
+                <p style="color: black !important;">Data: @DateTime.Now.ToString("dd/MM/yyyy")</p>
+            </div>
+            <table class="table table-bordered border-dark" style="color: black !important;">
+                <thead style="background-color: #f2f2f2 !important;">
+                    <tr>
+                        <th style="width: 75%; color: black !important; border: 1px solid black !important;">DESCRIÇÃO DO SERVIÇO</th>
+                        <th style="width: 25%; color: black !important; border: 1px solid black !important;" class="text-end">VALOR BASE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in servicosCatalogo.OrderBy(x => x.Name))
+                    {
+                        <tr>
+                            <td style="color: black !important; border: 1px solid black !important; font-weight: bold;">@s.Name</td>
+                            <td style="color: black !important; border: 1px solid black !important;" class="text-end">R$ @s.DefaultPrice.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="mt-5 p-3 border border-secondary text-center" style="color: black !important;">
+                <strong>FJ Centro Automotivo</strong><br />
+                Comprometimento com a segurança do seu veículo.
+            </div>
+        </div>
+    }
+</div>
+
 <style>
     .nav-pills .nav-link {
         border-radius: 0;
@@ -200,23 +290,45 @@
         --bs-table-bg: #000;
     }
 
+    .print-only {
+        display: none;
+    }
+
     @@media print {
-        .no-print {
-            display: none !important;
+        body * {
+            visibility: hidden;
+        }
+
+        .print-only, .print-only * {
+            visibility: visible !important;
         }
 
         .print-only {
             display: block !important;
             position: absolute;
+            left: 0;
             top: 0;
             width: 100%;
-            background: white !important;
+            background-color: white !important;
+            color: black !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
 
         body {
-            background: white !important;
-            color: black !important;
+            background-color: white !important;
         }
+
+        .table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+        }
+
+            .table th, .table td {
+                border: 1px solid black !important;
+                color: black !important;
+                background-color: white !important;
+            }
     }
 </style>
 
@@ -224,7 +336,6 @@
     private string ApiUrl = "https://localhost:7082";
     private string abaAtiva = "pecas";
 
-    // DTOS
     public class ProductDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal? salePrice { get; set; } public int? stockQuantity { get; set; } public int minimumStock { get; set; } = 5; }
     public class LaborServiceDTO { public int Id { get; set; } public string Name { get; set; } = ""; public decimal DefaultPrice { get; set; } }
 
@@ -234,7 +345,6 @@
     private ProductDTO novoProduto = new();
     private LaborServiceDTO novoServico = new();
 
-    // UI Controles
     bool mostrarToast = false;
     string toastMensagem = "";
     string toastTipo = "sucesso";
@@ -253,13 +363,20 @@
     }
 
     private async Task Carregar() => produtos = await Http.GetFromJsonAsync<List<ProductDTO>>($"{ApiUrl}/api/products");
-
     private async Task CarregarServicos() => servicosCatalogo = await Http.GetFromJsonAsync<List<LaborServiceDTO>>($"{ApiUrl}/api/laborservices");
 
-    private async void MostrarSucesso(string msg) { toastMensagem = msg; toastTipo = "sucesso"; mostrarToast = true; StateHasChanged(); await Task.Delay(3000); mostrarToast = false; StateHasChanged(); }
-    private async void MostrarErro(string msg) { toastMensagem = msg; toastTipo = "erro"; mostrarToast = true; StateHasChanged(); await Task.Delay(5000); mostrarToast = false; StateHasChanged(); }
+    private async void MostrarSucesso(string msg)
+    {
+        toastMensagem = msg; toastTipo = "sucesso"; mostrarToast = true; StateHasChanged();
+        await Task.Delay(3000); mostrarToast = false; StateHasChanged();
+    }
 
-    // --- AÇÕES DE PRODUTOS ---
+    private async void MostrarErro(string msg)
+    {
+        toastMensagem = msg; toastTipo = "erro"; mostrarToast = true; StateHasChanged();
+        await Task.Delay(5000); mostrarToast = false; StateHasChanged();
+    }
+
     private async Task SalvarProduto()
     {
         if (string.IsNullOrWhiteSpace(novoProduto.code) || novoProduto.salePrice == null) return;
@@ -270,18 +387,19 @@
 
     private async Task AjustarEstoque(ProductDTO p, int delta)
     {
-        p.stockQuantity += delta;
+        p.stockQuantity = (p.stockQuantity ?? 0) + delta;
         await Http.PutAsJsonAsync($"{ApiUrl}/api/products/{p.id}", p);
+        StateHasChanged();
     }
 
     private void SolicitarExclusao(ProductDTO p) { produtoParaExcluir = p; mostrarModalExclusao = true; }
+
     private async Task ConfirmarExclusao()
     {
         await Http.DeleteAsync($"{ApiUrl}/api/products/{produtoParaExcluir?.id}");
-        mostrarModalExclusao = false; await Carregar(); MostrarSucesso("Removido!");
+        mostrarModalExclusao = false; await Carregar(); MostrarSucesso("Produto removido.");
     }
 
-    // --- AÇÕES DE SERVIÇOS ---
     private async Task SalvarServico()
     {
         if (string.IsNullOrWhiteSpace(novoServico.Name)) return;
@@ -292,11 +410,15 @@
     private async Task ExcluirServico(int id)
     {
         await Http.DeleteAsync($"{ApiUrl}/api/laborservices/{id}");
-        await CarregarServicos(); MostrarSucesso("Serviço removido!");
+        await CarregarServicos(); MostrarSucesso("Serviço removido.");
     }
 
-    private async Task ImprimirRelatorio() => await JS.InvokeVoidAsync("print");
+    // IMPRESSÃO COM DELAY PARA GARANTIR RENDERIZAÇÃO
+    private async Task ImprimirRelatorio()
+    {
+        await Task.Delay(200);
+        await JS.InvokeVoidAsync("window.print");
+    }
 
-    // Stubs para Edição (Opcional implementar modal depois)
-    private void AbrirModalEdicao(ProductDTO p) { /* Implementar se desejar */ }
+    private void AbrirModalEdicao(ProductDTO p) { }
 }
