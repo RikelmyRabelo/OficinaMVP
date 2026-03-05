@@ -64,7 +64,6 @@ namespace OficinaAPI.Controllers
             return CreatedAtAction("GetServiceOrders", new { id = os.Id }, os);
         }
 
-        // --- ADICIONAR PEÇA (APENAS ORÇAMENTO - NÃO BAIXA ESTOQUE) ---
         [HttpPost("{id}/items")]
         public async Task<ActionResult<ServiceItem>> AddItem(int id, AddItemDTO itemDto)
         {
@@ -73,12 +72,6 @@ namespace OficinaAPI.Controllers
 
             var product = await _context.Products.FindAsync(itemDto.ProductId);
             if (product == null) return BadRequest("Produto não encontrado.");
-
-            // Apenas informamos se não houver estoque, mas não descontamos ainda
-            if (product.StockQuantity < itemDto.Quantity)
-            {
-                // Opcional: Você pode retornar um aviso, ou deixar passar como "encomenda"
-            }
 
             decimal precoUnitario = itemDto.Price.HasValue ? itemDto.Price.Value : product.SalePrice;
 
@@ -92,9 +85,7 @@ namespace OficinaAPI.Controllers
                 Quantity = itemDto.Quantity
             };
 
-            // NOVA REGRA: A linha de desconto foi removida daqui
             os.TotalAmount += newItem.Price;
-
             _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
             return Ok(newItem);
@@ -151,7 +142,6 @@ namespace OficinaAPI.Controllers
             return Ok(newItem);
         }
 
-        // --- FINALIZAR O.S. (MOMENTO DA BAIXA DE ESTOQUE) ---
         [HttpPut("{id}/complete")]
         public async Task<IActionResult> CompleteOrder(int id, [FromBody] CompletionDTO completion)
         {
@@ -160,11 +150,8 @@ namespace OficinaAPI.Controllers
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (os == null) return NotFound();
-
-            // Evita processar baixa de estoque em uma O.S. já finalizada
             if (os.Status == "Completed") return BadRequest("Esta O.S. já foi finalizada.");
 
-            // PERCORRE OS ITENS PARA DAR BAIXA NO ESTOQUE
             foreach (var item in os.Items)
             {
                 if (item.ProductId != null)
@@ -172,7 +159,7 @@ namespace OficinaAPI.Controllers
                     var product = await _context.Products.FindAsync(item.ProductId);
                     if (product != null)
                     {
-                        product.StockQuantity -= item.Quantity; // Baixa acontece aqui!
+                        product.StockQuantity -= item.Quantity;
                     }
                 }
             }
@@ -249,7 +236,6 @@ namespace OficinaAPI.Controllers
             var item = await _context.ServiceItems.FirstOrDefaultAsync(i => i.Id == itemId && i.ServiceOrderId == id);
             if (item == null) return NotFound();
 
-            // NOVA REGRA: Removida a alteração de estoque aqui, pois ela só ocorre no 'Complete'
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os != null)
             {
@@ -287,6 +273,38 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
+        // --- NOVOS ENDPOINTS: GESTÃO DE CAIXA (GAVETA) ---
+
+        [HttpGet("cash-balance")]
+        public async Task<ActionResult<decimal>> GetCashBalance()
+        {
+            // 1. Soma entradas automáticas das O.S. em Dinheiro que não foram excluídas
+            var entradasOS = await _context.ServiceOrders
+                .Where(o => o.PaymentMethod == "Dinheiro" && !o.IsDeleted)
+                .SumAsync(o => o.AmountPaid);
+
+            // 2. Soma ajustes manuais (entradas positivas ou retiradas negativas)
+            var ajustes = await _context.Set<CashTransaction>().SumAsync(t => t.Amount);
+
+            return Ok(entradasOS + ajustes);
+        }
+
+        [HttpPost("cash-adjustment")]
+        public async Task<IActionResult> PostAdjustment([FromBody] CashAdjustmentDTO request)
+        {
+            var transaction = new CashTransaction
+            {
+                Amount = request.Amount,
+                Description = request.Description,
+                Date = DateTime.Now
+            };
+
+            _context.Set<CashTransaction>().Add(transaction);
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+        // --- CLASSES DTO ---
         public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
         public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
         public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }
@@ -297,5 +315,6 @@ namespace OficinaAPI.Controllers
         public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; }
         public class UpdatePaymentDTO { public decimal AmountPaid { get; set; } public string? PaymentMethod { get; set; } public DateTime? PromisedPaymentDate { get; set; } }
         public class UploadAttachmentDTO { public string FileName { get; set; } = ""; public string FileType { get; set; } = ""; public string Base64Content { get; set; } = ""; }
+        public class CashAdjustmentDTO { public decimal Amount { get; set; } public string Description { get; set; } = ""; }
     }
 }
