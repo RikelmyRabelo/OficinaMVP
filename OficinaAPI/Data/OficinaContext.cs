@@ -18,5 +18,7 @@ namespace OficinaAPI.Data
         public DbSet<PaymentRecord> PaymentRecords { get; set; }
 
         public DbSet<QuickSale> QuickSales { get; set; }
+
+        public DbSet<LaborService> LaborServices { get; set; }
     }
 }

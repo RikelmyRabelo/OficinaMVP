@@ -1,0 +1,82 @@
+﻿@page "/servicos"
+@inject HttpClient Http
+@using System.Net.Http.Json
+
+<PageTitle>Catálogo de Serviços - FJ</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="/manutencao" class="btn btn-outline-secondary border-0 text-white"><i class="bi bi-arrow-left me-2"></i>Voltar</a>
+        <h2 class="text-white fw-bold text-uppercase mb-0">Catálogo de Mão de Obra</h2>
+        <div></div>
+    </div>
+
+    @* Formulário de Cadastro Rápido *@
+    <div class="card bg-dark border-secondary mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="text-secondary small">Nome do Serviço (Ex: Revisão Geral)</label>
+                    <input class="form-control bg-black text-white border-secondary" @bind="novoServico.Name" />
+                </div>
+                <div class="col-md-3">
+                    <label class="text-secondary small">Preço Padrão (R$)</label>
+                    <input type="number" step="0.01" class="form-control bg-black text-white border-secondary" @bind="novoServico.DefaultPrice" />
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-warning w-100 fw-bold" @onclick="Salvar">CADASTRAR SERVIÇO</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Lista de Serviços *@
+    <table class="table table-dark table-hover border-secondary">
+        <thead>
+            <tr>
+                <th>Nome do Serviço</th>
+                <th class="text-end">Preço Base</th>
+                <th style="width: 50px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (servicos != null)
+            {
+                @foreach (var s in servicos)
+                {
+                    <tr>
+                        <td>@s.Name</td>
+                        <td class="text-end text-success fw-bold">R$ @s.DefaultPrice.ToString("N2")</td>
+                        <td><button class="btn btn-sm btn-outline-danger border-0" @onclick="() => Excluir(s.Id)"><i class="bi bi-trash"></i></button></td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private string ApiUrl = "https://localhost:7082";
+    private List<LaborServiceDTO>? servicos;
+    private LaborServiceDTO novoServico = new();
+
+    public class LaborServiceDTO { public int Id { get; set; } public string Name { get; set; } = ""; public decimal DefaultPrice { get; set; } }
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar() => servicos = await Http.GetFromJsonAsync<List<LaborServiceDTO>>($"{ApiUrl}/api/laborservices");
+
+    private async Task Salvar()
+    {
+        if (string.IsNullOrWhiteSpace(novoServico.Name)) return;
+        await Http.PostAsJsonAsync($"{ApiUrl}/api/laborservices", novoServico);
+        novoServico = new();
+        await Carregar();
+    }
+
+    private async Task Excluir(int id)
+    {
+        await Http.DeleteAsync($"{ApiUrl}/api/laborservices/{id}");
+        await Carregar();
+    }
+}

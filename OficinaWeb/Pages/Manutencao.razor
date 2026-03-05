@@ -373,10 +373,21 @@
                                         <div class="col-md-2"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.WarrantyPeriod" placeholder="Garantia" /></div>
                                         <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItemAvulso">ADD AVULSO</button></div>
                                     } else {
-                                        <div class="col-md-3"><input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Description" placeholder="Descrição" /></div>
+                                        @* NOVO: CATÁLOGO DE MÃO DE OBRA *@
+                                        <div class="col-md-3">
+                                            <select class="form-select bg-dark text-white border-secondary" @onchange="OnServiceSelected">
+                                                <option value="0">Serviço Cadastrado...</option>
+                                                @if(catalogoServicos != null) {
+                                                    @foreach(var s in catalogoServicos) {
+                                                        <option value="@s.Id">@s.Name</option>
+                                                    }
+                                                }
+                                            </select>
+                                            <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary mt-1" @bind="novoServico.Description" placeholder="Descrição manual..." />
+                                        </div>
                                         <div class="col-md-3"><select class="form-select bg-dark text-white border-secondary" @bind="novoServico.MechanicId"><option value="0">Selecionar Mecânico</option>@if(mecanicos != null){@foreach(var m in mecanicos){<option value="@m.id">@m.name</option>}}</select></div>
                                         <div class="col-md-1"><input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Quantity" placeholder="Qtd" min="1" /></div>
-                                        <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" placeholder="Valor Total (R$)" /></div>
+                                        <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" placeholder="Valor Total" /></div>
                                         <div class="col-md-3"><button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarServico">ADD SERVIÇO</button></div>
                                     }
                                 </div>
@@ -510,11 +521,8 @@
         public decimal AmountPaid { get; set; }
         public string? PaymentMethod { get; set; } 
         public DateTime? PromisedPaymentDate { get; set; } 
-        
-        // CORREÇÃO: "Falta pagar" nunca fica negativo. E o que pagou a mais vai pro "OverpaidAmount"
         public decimal RemainingAmount => Math.Max(0, TotalAmount - AmountPaid); 
         public decimal OverpaidAmount => Math.Max(0, AmountPaid - TotalAmount);
-
         public List<AttachmentDTO> Attachments { get; set; } = new(); 
         public DateTime EntryDate { get; set; } 
         public DateTime? CompletionDate { get; set; } 
@@ -532,8 +540,11 @@
     public class ServiceItemDTO { public int Id { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public int? ProductId { get; set; } public string? WarrantyPeriod { get; set; } public EmployeeListDTO? Mechanic { get; set; } public int Quantity { get; set; } = 1; }
     public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } }
     public class EmployeeListDTO { public int id { get; set; } public string name { get; set; } = ""; }
-    public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     
+    // NOVO: DTO para o Catálogo de Serviços
+    public class LaborServiceDTO { public int Id { get; set; } public string Name { get; set; } = ""; public decimal DefaultPrice { get; set; } }
+
+    public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }
     public class AddCustomItemInput { public string Description { get; set; } = ""; public int Quantity { get; set; } = 1; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
     public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public int Quantity { get; set; } = 1; public decimal Price { get; set; } }
@@ -551,11 +562,11 @@
     List<ServiceOrderDTO>? lixeiraOS;
     List<ProductListDTO>? produtos;
     List<EmployeeListDTO>? mecanicos;
+    List<LaborServiceDTO>? catalogoServicos; // NOVO: Lista de serviços pré-cadastrados
+
     bool mostrarFinalizadas = false;
     bool verLixeira = false;
-    
     List<ServiceOrderDTO>? listaExibicao => verLixeira ? lixeiraOS : (mostrarFinalizadas ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList() : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList());
-
     List<ServiceOrderDTO>? alertasInadimplencia => todasOS?.Where(o => o.Status == "Completed" && o.RemainingAmount > 0 && o.PromisedPaymentDate.HasValue && o.PromisedPaymentDate.Value.Date <= DateTime.Today).ToList();
 
     ServiceOrderDTO? sel;
@@ -571,20 +582,15 @@
     string toastMensagem = "";
     string toastTipo = "sucesso";
     bool mostrarModalExclusao = false;
-    
     bool editandoCabecalho = false;
     UpdateVehicleDTO editRequest = new();
-    
     bool editandoTotal = false;
     decimal novoTotal = 0;
-
     bool editandoPagamento = false;
     decimal novoValorPago = 0;
     string novoMetodoPagamento = "";
     DateTime? novaDataPromessa = null;
-
     bool isUploading = false;
-
     bool mostrarModalEdicaoItem = false;
     ServiceItemDTO? itemParaEditar;
     UpdateServiceItemDTO itemEditRequest = new();
@@ -596,8 +602,26 @@
             await CarregarProdutos(); 
             await CarregarMecanicos(); 
             await CarregarOS();
+            await CarregarCatalogoServicos(); // NOVO: Carregar catálogo de preços
         } catch (Exception) {
             MostrarErro("Falha crítica ao conectar com o servidor.");
+        }
+    }
+
+    async Task CarregarCatalogoServicos() {
+        try { catalogoServicos = await Http.GetFromJsonAsync<List<LaborServiceDTO>>($"{ApiUrl}/api/laborservices"); }
+        catch { /* Opcional: Avisar que catálogo não carregou */ }
+    }
+
+    // NOVO: Lógica para quando selecionar um serviço no dropdown
+    private void OnServiceSelected(ChangeEventArgs e)
+    {
+        int idSelected = int.Parse(e.Value?.ToString() ?? "0");
+        var servico = catalogoServicos?.FirstOrDefault(s => s.Id == idSelected);
+        if (servico != null)
+        {
+            novoServico.Description = servico.Name;
+            novoServico.Price = servico.DefaultPrice;
         }
     }
 
@@ -830,7 +854,7 @@
             await AtualizarTela();
             MostrarSucesso("Item atualizado com sucesso!");
         } catch {
-            MostrarErro("Erro de conexão ao atualizar o item.");
+            MostrarErro("Erro de conexão ao atualizar the item.");
         }
     }
 
