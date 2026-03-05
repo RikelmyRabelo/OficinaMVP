@@ -402,43 +402,76 @@
                             </div>
                         }
 
-                        <table class="table table-dark table-hover align-middle">
+                        <style>
+                            .table-fixed {
+                                table-layout: fixed;
+                                width: 100%;
+                            }
+                            .table-fixed td, .table-fixed th {
+                                white-space: normal;
+                                word-wrap: break-word;
+                                vertical-align: middle;
+                            }
+                            .text-nowrap-custom {
+                                white-space: nowrap !important;
+                            }
+                            .badge-service {
+                                font-size: 0.6rem;
+                                background-color: #007bff;
+                                padding: 2px 6px;
+                                border-radius: 4px;
+                            }
+                        </style>
+
+                        <table class="table table-dark table-hover align-middle table-fixed">
                             <thead>
-                                <tr>
-                                    <th>Cód</th>
-                                    <th>Descrição</th>
-                                    <th class="text-center">Qtd</th>
-                                    <th class="text-end text-white-50">V. Unitário</th>
-                                    <th class="text-end">V. Total</th>
-                                    @if(!verLixeira && sel.Status != "Completed") { <th style="width: 40px;"></th> }
+                                <tr class="text-secondary" style="border-bottom: 2px solid #333;">
+                                    <th style="width: 10%;">Cód</th>
+                                    <th style="width: 45%;">Descrição do Item / Serviço</th>
+                                    <th class="text-center" style="width: 10%;">Qtd</th>
+                                    <th class="text-end" style="width: 15%;">V. Unitário</th>
+                                    <th class="text-end" style="width: 15%;">V. Total</th>
+                                    @if(!verLixeira && sel.Status != "Completed") { <th style="width: 5%;"></th> }
                                 </tr>
                             </thead>
+
                             <tbody>
                                 @if (sel.Items != null) { @foreach (var item in sel.Items) {
-                                    bool isServico = item.ProductId == null; @* Se não tem ID de produto, é serviço *@
+                                    bool isServico = item.ProductId == null;
                                     <tr>
+                                        @* CÓDIGO *@
+                                        <td class="text-warning small">
+                                            @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : (item.Mechanic == null && item.ProductId == null ? "AVULSO" : "-"))
+                                        </td>
+
+                                        @* DESCRIÇÃO *@
                                         <td>
-                                            @item.Description
-                                            @if(isServico){ <span class="badge bg-primary ms-1" style="font-size:0.6rem">SERVIÇO</span> }
+                                            <span class="text-white fw-bold">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description)</span>
+                                            @if(isServico){ <span class="badge-service ms-1">SERVIÇO</span> }
+                                            @if (!string.IsNullOrEmpty(item.WarrantyPeriod)) { <br /><small class="text-muted">Garantia: @item.WarrantyPeriod</small> }
                                         </td>
 
-                                        <td class="text-center">
-                                            @(isServico ? "-" : item.Quantity)
+                                        @* QUANTIDADE *@
+                                        <td class="text-center text-nowrap-custom">
+                                            @if(isServico) { <span class="text-muted">-</span> }
+                                            else { <span class="badge bg-secondary">@item.Quantity</span> }
                                         </td>
 
-                                        <td class="text-end text-white-50">
-                                            @if(!isServico) {
-                                                <small>R$ @((item.Price / (item.Quantity > 0 ? item.Quantity : 1)).ToString("N2"))</small>
-                                            } else {
-                                                <span>-</span>
-                                            }
+                                        @* VALOR UNITÁRIO *@
+                                        <td class="text-end text-nowrap-custom text-white-50 small">
+                                            @if(!isServico) { @($"R$ {(item.Price / (item.Quantity > 0 ? item.Quantity : 1)):N2}") }
+                                            else { <span class="text-muted">-</span> }
                                         </td>
 
-                                        <td class="text-end fw-bold text-success">R$ @item.Price.ToString("N2")</td>
+                                        @* VALOR TOTAL *@
+                                        <td class="text-end text-nowrap-custom">
+                                            <span class="text-success fw-bold">R$ @item.Price.ToString("N2")</span>
+                                        </td>
 
+                                        @* AÇÕES *@
                                         @if(!verLixeira && sel.Status != "Completed") {
                                             <td class="text-center">
-                                                <button class="btn btn-sm btn-link text-warning p-0" @onclick="() => AbrirEdicaoItem(item)" title="Editar Item">
+                                                <button class="btn btn-sm btn-link text-warning p-0" @onclick="() => AbrirEdicaoItem(item)">
                                                     <i class="bi bi-pencil-fill"></i>
                                                 </button>
                                             </td>
@@ -542,7 +575,7 @@
     public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } }
     public class EmployeeListDTO { public int id { get; set; } public string name { get; set; } = ""; }
     
-    // NOVO: DTO para o Catálogo de Serviços
+    // DTO para o Catálogo de Serviços
     public class LaborServiceDTO { public int Id { get; set; } public string Name { get; set; } = ""; public decimal DefaultPrice { get; set; } }
 
     public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
@@ -563,7 +596,7 @@
     List<ServiceOrderDTO>? lixeiraOS;
     List<ProductListDTO>? produtos;
     List<EmployeeListDTO>? mecanicos;
-    List<LaborServiceDTO>? catalogoServicos; // NOVO: Lista de serviços pré-cadastrados
+    List<LaborServiceDTO>? catalogoServicos; // Lista de serviços pré-cadastrados
 
     bool mostrarFinalizadas = false;
     bool verLixeira = false;
