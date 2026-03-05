@@ -64,7 +64,7 @@ namespace OficinaAPI.Controllers
             return CreatedAtAction("GetServiceOrders", new { id = os.Id }, os);
         }
 
-        //ADICIONAR PEÇA DO ESTOQUE
+        // --- ADICIONAR PEÇA (APENAS ORÇAMENTO - NÃO BAIXA ESTOQUE) ---
         [HttpPost("{id}/items")]
         public async Task<ActionResult<ServiceItem>> AddItem(int id, AddItemDTO itemDto)
         {
@@ -74,9 +74,12 @@ namespace OficinaAPI.Controllers
             var product = await _context.Products.FindAsync(itemDto.ProductId);
             if (product == null) return BadRequest("Produto não encontrado.");
 
-            if (product.StockQuantity < itemDto.Quantity) return BadRequest("Estoque insuficiente.");
+            // Apenas informamos se não houver estoque, mas não descontamos ainda
+            if (product.StockQuantity < itemDto.Quantity)
+            {
+                // Opcional: Você pode retornar um aviso, ou deixar passar como "encomenda"
+            }
 
-            // Lógica robusta para evitar erro CS0019
             decimal precoUnitario = itemDto.Price.HasValue ? itemDto.Price.Value : product.SalePrice;
 
             var newItem = new ServiceItem
@@ -89,7 +92,7 @@ namespace OficinaAPI.Controllers
                 Quantity = itemDto.Quantity
             };
 
-            product.StockQuantity -= itemDto.Quantity;
+            // NOVA REGRA: A linha de desconto foi removida daqui
             os.TotalAmount += newItem.Price;
 
             _context.ServiceItems.Add(newItem);
@@ -97,7 +100,6 @@ namespace OficinaAPI.Controllers
             return Ok(newItem);
         }
 
-        //ADICIONAR MÃO DE OBRA
         [HttpPost("{id}/labor")]
         public async Task<ActionResult<ServiceItem>> AddLabor(int id, AddLaborDTO laborDto)
         {
@@ -127,7 +129,6 @@ namespace OficinaAPI.Controllers
             return Ok(newItem);
         }
 
-        // ADICIONAR ITEM AVULSO
         [HttpPost("{id}/custom-items")]
         public async Task<ActionResult<ServiceItem>> AddCustomItem(int id, AddCustomItemDTO customDto)
         {
@@ -150,11 +151,32 @@ namespace OficinaAPI.Controllers
             return Ok(newItem);
         }
 
+        // --- FINALIZAR O.S. (MOMENTO DA BAIXA DE ESTOQUE) ---
         [HttpPut("{id}/complete")]
         public async Task<IActionResult> CompleteOrder(int id, [FromBody] CompletionDTO completion)
         {
-            var os = await _context.ServiceOrders.FindAsync(id);
+            var os = await _context.ServiceOrders
+                .Include(o => o.Items)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
             if (os == null) return NotFound();
+
+            // Evita processar baixa de estoque em uma O.S. já finalizada
+            if (os.Status == "Completed") return BadRequest("Esta O.S. já foi finalizada.");
+
+            // PERCORRE OS ITENS PARA DAR BAIXA NO ESTOQUE
+            foreach (var item in os.Items)
+            {
+                if (item.ProductId != null)
+                {
+                    var product = await _context.Products.FindAsync(item.ProductId);
+                    if (product != null)
+                    {
+                        product.StockQuantity -= item.Quantity; // Baixa acontece aqui!
+                    }
+                }
+            }
+
             os.Status = "Completed";
             os.CompletionDate = completion.CompletionDate;
             await _context.SaveChangesAsync();
@@ -188,6 +210,7 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.Include(o => o.Vehicle).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null || os.Vehicle == null) return NotFound();
+
             os.Vehicle.CustomerName = request.CustomerName;
             os.Vehicle.Model = request.VehicleModel;
             os.Vehicle.CustomerAddress = request.CustomerAddress;
@@ -201,6 +224,7 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
+
             os.TotalAmount = request.TotalAmount;
             await _context.SaveChangesAsync();
             return NoContent();
@@ -211,6 +235,7 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
+
             os.AmountPaid = request.AmountPaid;
             os.PaymentMethod = request.PaymentMethod;
             os.PromisedPaymentDate = request.PromisedPaymentDate;
@@ -224,17 +249,7 @@ namespace OficinaAPI.Controllers
             var item = await _context.ServiceItems.FirstOrDefaultAsync(i => i.Id == itemId && i.ServiceOrderId == id);
             if (item == null) return NotFound();
 
-            if (item.ProductId != null && item.Quantity != request.Quantity)
-            {
-                var product = await _context.Products.FindAsync(item.ProductId);
-                if (product != null)
-                {
-                    int diferenca = request.Quantity - item.Quantity;
-                    if (diferenca > 0 && product.StockQuantity < diferenca) return BadRequest("Estoque insuficiente.");
-                    product.StockQuantity -= diferenca;
-                }
-            }
-
+            // NOVA REGRA: Removida a alteração de estoque aqui, pois ela só ocorre no 'Complete'
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os != null)
             {
