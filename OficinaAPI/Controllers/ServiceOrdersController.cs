@@ -19,6 +19,7 @@ namespace OficinaAPI.Controllers
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items).ThenInclude(i => i.Mechanic)
                 .Include(o => o.Attachments)
+                .Include(o => o.Payments)
                 .Where(o => !o.IsDeleted)
                 .OrderByDescending(o => o.Id).ToListAsync();
         }
@@ -31,6 +32,7 @@ namespace OficinaAPI.Controllers
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items).ThenInclude(i => i.Mechanic)
                 .Include(o => o.Attachments)
+                .Include(o => o.Payments)
                 .Where(o => o.IsDeleted && o.DeletionDate >= threshold)
                 .OrderByDescending(o => o.DeletionDate).ToListAsync();
         }
@@ -217,15 +219,33 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
+        //MÉTODO DE PAGAMENTO MÚLTIPLO
         [HttpPut("{id}/payment")]
         public async Task<IActionResult> UpdateAmountPaid(int id, [FromBody] UpdatePaymentDTO request)
         {
-            var os = await _context.ServiceOrders.FindAsync(id);
+            var os = await _context.ServiceOrders.Include(o => o.Payments).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
 
             os.AmountPaid = request.AmountPaid;
-            os.PaymentMethod = request.PaymentMethod;
+            os.PaymentMethod = request.PaymentMethod; // Salva o principal para manter compatibilidade com sistemas antigos
             os.PromisedPaymentDate = request.PromisedPaymentDate;
+
+            // Remove todos os registros antigos e insere os novos (substituição total)
+            _context.ServiceOrderPayments.RemoveRange(os.Payments);
+
+            if (request.Payments != null && request.Payments.Any())
+            {
+                foreach (var split in request.Payments)
+                {
+                    os.Payments.Add(new ServiceOrderPayment
+                    {
+                        ServiceOrderId = id,
+                        PaymentMethod = split.PaymentMethod,
+                        Amount = split.Amount
+                    });
+                }
+            }
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -273,20 +293,27 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        //NOVOS ENDPOINTS: GESTÃO DE CAIXA
+        //GESTÃO DE CAIXA
 
         [HttpGet("cash-balance")]
         public async Task<ActionResult<decimal>> GetCashBalance()
         {
-            // 1. Soma entradas automáticas das O.S. em Dinheiro que não foram excluídas
-            var entradasOS = await _context.ServiceOrders
-                .Where(o => o.PaymentMethod == "Dinheiro" && !o.IsDeleted)
+
+            // 1. Pega todas as frações de pagamento em dinheiro de O.S que NÃO foram excluídas
+            var entradasMultiplasDinheiro = await _context.ServiceOrderPayments
+                .Include(p => p.ServiceOrder) // Precisamos da O.S para saber se ela foi excluída
+                .Where(p => p.PaymentMethod == "Dinheiro" && p.ServiceOrder != null && !p.ServiceOrder.IsDeleted)
+                .SumAsync(p => p.Amount);
+
+            // 2. Busca pagamentos "antigos" (Legado) que não têm divisão na tabela nova, mas estão marcados como Dinheiro
+            var entradasLegadoDinheiro = await _context.ServiceOrders
+                .Where(o => o.PaymentMethod == "Dinheiro" && !o.IsDeleted && !o.Payments.Any())
                 .SumAsync(o => o.AmountPaid);
 
-            // 2. Soma ajustes manuais (entradas positivas ou retiradas negativas)
+            // 3. Soma ajustes manuais (entradas positivas ou retiradas negativas)
             var ajustes = await _context.Set<CashTransaction>().SumAsync(t => t.Amount);
 
-            return Ok(entradasOS + ajustes);
+            return Ok(entradasMultiplasDinheiro + entradasLegadoDinheiro + ajustes);
         }
 
         [HttpPost("cash-adjustment")]
@@ -313,7 +340,17 @@ namespace OficinaAPI.Controllers
         public class CompletionDTO { public DateTime CompletionDate { get; set; } }
         public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
         public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; }
-        public class UpdatePaymentDTO { public decimal AmountPaid { get; set; } public string? PaymentMethod { get; set; } public DateTime? PromisedPaymentDate { get; set; } }
+
+        // --- DTOs DE PAGAMENTO ATUALIZADOS ---
+        public class PaymentSplitDTO { public string PaymentMethod { get; set; } = ""; public decimal Amount { get; set; } }
+        public class UpdatePaymentDTO
+        {
+            public decimal AmountPaid { get; set; }
+            public string? PaymentMethod { get; set; }
+            public DateTime? PromisedPaymentDate { get; set; }
+            public List<PaymentSplitDTO> Payments { get; set; } = new();
+        }
+
         public class UploadAttachmentDTO { public string FileName { get; set; } = ""; public string FileType { get; set; } = ""; public string Base64Content { get; set; } = ""; }
         public class CashAdjustmentDTO { public decimal Amount { get; set; } public string Description { get; set; } = ""; }
     }

@@ -22,5 +22,7 @@ namespace OficinaAPI.Data
         public DbSet<LaborService> LaborServices { get; set; }
 
         public DbSet<CashTransaction> CashTransactions { get; set; }
+
+        public DbSet<ServiceOrderPayment> ServiceOrderPayments { get; set; }
     }
 }
