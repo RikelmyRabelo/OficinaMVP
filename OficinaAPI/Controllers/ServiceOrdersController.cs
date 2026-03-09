@@ -273,7 +273,7 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        // --- NOVOS ENDPOINTS: GESTÃO DE CAIXA (GAVETA) ---
+        //NOVOS ENDPOINTS: GESTÃO DE CAIXA
 
         [HttpGet("cash-balance")]
         public async Task<ActionResult<decimal>> GetCashBalance()

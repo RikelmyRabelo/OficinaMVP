@@ -121,6 +121,14 @@
                         <h5 class="mb-0 fw-bold text-white"><i class="bi bi-bar-chart-line-fill me-2"></i>Resumo Geral</h5>
                     </div>
                     <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom border-secondary" style="background-color: #1a1a1a; padding: 10px; border-radius: 5px;">
+                            <div>
+                                <span class="text-info fw-bold d-block"><i class="bi bi-calendar-week me-1"></i>Ganhos da Semana:</span>
+                                <small class="text-muted" style="font-size: 0.75rem;">Reinicia todo domingo</small>
+                            </div>
+                            <span class="text-info fw-bold fs-4">R$ @faturamentoSemanal.ToString("N2")</span>
+                        </div>
+
                         <div class="d-flex justify-content-between mb-3 pb-3 border-bottom border-secondary">
                             <span class="text-white-50">Total Faturado (Recebido):</span>
                             <span class="text-success fw-bold fs-5">R$ @faturamentoTotal.ToString("N2")</span>
@@ -221,6 +229,7 @@
     private string toastTipo = "sucesso";
 
     private decimal faturamentoTotal = 0;
+    private decimal faturamentoSemanal = 0; // Nova Variável para a Semana
     private decimal totalDinheiro = 0;
     private decimal totalPix = 0;
     private decimal totalCredito = 0;
@@ -256,9 +265,13 @@
         {
             isLoading = true;
 
-            faturamentoTotal = totalPix = totalCredito = totalDebito = totalInadimplencia = totalVendasAvulsas = 0;
+            faturamentoTotal = faturamentoSemanal = totalPix = totalCredito = totalDebito = totalInadimplencia = totalVendasAvulsas = 0;
             totalDinheiro = 0;
             transacoesRecentes.Clear();
+
+            DateTime hoje = DateTime.Now.Date;
+            // Se hoje for domingo (DayOfWeek == 0), a semana começa hoje. Se for segunda (1), volta 1 dia, etc.
+            DateTime inicioDaSemana = hoje.AddDays(-(int)hoje.DayOfWeek);
 
             var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders");
             var vendasAvulsas = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/quicksales");
@@ -283,7 +296,8 @@
                         decimal valorTotal = os.TryGetProperty("totalAmount", out var t) ? t.GetDecimal() : 0;
                         decimal valorPago = os.TryGetProperty("amountPaid", out var p) ? p.GetDecimal() : 0;
 
-                        DateTime data = DateTime.Now;
+                        // Se a O.S não tiver data, definimos como MinValue para não somar na semana por acidente
+                        DateTime data = DateTime.MinValue;
                         if (os.TryGetProperty("completionDate", out var dtElement) && dtElement.ValueKind != JsonValueKind.Null)
                         {
                             DateTime.TryParse(dtElement.ToString(), out data);
@@ -304,6 +318,12 @@
                         totalInadimplencia += faltaPagar;
                         faturamentoTotal += valorPago;
 
+                        // Adiciona ao faturamento da semana se for de domingo pra cá
+                        if (data >= inicioDaSemana)
+                        {
+                            faturamentoSemanal += valorPago;
+                        }
+
                         if (valorPago > 0)
                         {
                             if (formaFormatada == "PIX") totalPix += valorPago;
@@ -314,7 +334,7 @@
                             {
                                 Id = id,
                                 Cliente = cliente,
-                                DataPagamento = data,
+                                DataPagamento = data == DateTime.MinValue ? DateTime.Now : data, // Evita exibir ano 0001
                                 Forma = formaFormatada,
                                 ValorPago = valorPago
                             });
@@ -332,8 +352,21 @@
                 foreach (var venda in vendasAvulsas)
                 {
                     decimal valorVenda = venda.TryGetProperty("price", out var vp) ? vp.GetDecimal() : 0;
+
+                    DateTime dataVenda = DateTime.MinValue;
+                    if (venda.TryGetProperty("date", out var dtVenda) && dtVenda.ValueKind != JsonValueKind.Null)
+                    {
+                        DateTime.TryParse(dtVenda.ToString(), out dataVenda);
+                    }
+
                     totalVendasAvulsas += valorVenda;
                     faturamentoTotal += valorVenda;
+
+                    // Conta vendas de balcão na semana também
+                    if (dataVenda >= inicioDaSemana)
+                    {
+                        faturamentoSemanal += valorVenda;
+                    }
                 }
             }
 

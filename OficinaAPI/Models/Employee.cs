@@ -7,7 +7,7 @@ namespace OficinaAPI.Models
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
-        public bool Active { get; set; } = true;
+        public bool Active { get; set; } = true;    
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal BaseSalary { get; set; }
