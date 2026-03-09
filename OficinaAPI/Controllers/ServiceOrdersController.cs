@@ -293,7 +293,7 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        //GESTÃO DE CAIXA
+        //GESTÃO DE CAIXA E FATURAMENTO
 
         [HttpGet("cash-balance")]
         public async Task<ActionResult<decimal>> GetCashBalance()
@@ -331,7 +331,31 @@ namespace OficinaAPI.Controllers
             return Ok();
         }
 
-        // --- CLASSES DTO ---
+        // AJUSTE DE GANHOS DA SEMANA
+
+        [HttpGet("revenue-adjustments")]
+        public async Task<ActionResult<IEnumerable<RevenueAdjustment>>> GetRevenueAdjustments()
+        {
+            return await _context.Set<RevenueAdjustment>().ToListAsync();
+        }
+
+        [HttpPost("revenue-adjustment")]
+        public async Task<IActionResult> PostRevenueAdjustment([FromBody] CashAdjustmentDTO request)
+        {
+            var adjustment = new RevenueAdjustment
+            {
+                Amount = request.Amount,
+                Description = request.Description,
+                Date = DateTime.Now
+            };
+
+            _context.Set<RevenueAdjustment>().Add(adjustment);
+            await _context.SaveChangesAsync();
+            return Ok();
+        }
+
+
+        // CLASSES DTO
         public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
         public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
         public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }
@@ -341,7 +365,7 @@ namespace OficinaAPI.Controllers
         public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
         public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; }
 
-        // --- DTOs DE PAGAMENTO ATUALIZADOS ---
+        // DTOs DE PAGAMENTO
         public class PaymentSplitDTO { public string PaymentMethod { get; set; } = ""; public decimal Amount { get; set; } }
         public class UpdatePaymentDTO
         {

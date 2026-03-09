@@ -28,7 +28,7 @@
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
         @if (mostrarToast)
         {
-            <div class="toast show align-items-center text-white @(toastTipo == "erro" ? "bg-danger" : "bg-success") border-0" role="alert">
+            <div class="toast show align-items-center text-white @(toastTipo == "erro" ? "bg-danger" : "bg-success") border-0 shadow-lg" role="alert">
                 <div class="d-flex">
                     <div class="toast-body fw-bold">
                         <i class="bi @(toastTipo == "erro" ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
@@ -121,12 +121,36 @@
                         <h5 class="mb-0 fw-bold text-white"><i class="bi bi-bar-chart-line-fill me-2"></i>Resumo Geral</h5>
                     </div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom border-secondary" style="background-color: #1a1a1a; padding: 10px; border-radius: 5px;">
-                            <div>
-                                <span class="text-info fw-bold d-block"><i class="bi bi-calendar-week me-1"></i>Ganhos da Semana:</span>
-                                <small class="text-muted" style="font-size: 0.75rem;">Reinicia todo domingo</small>
+
+                        @* --- BLOCO ATUALIZADO: GANHOS DA SEMANA COM AJUSTE --- *@
+                        <div class="mb-3 pb-3 border-bottom border-secondary" style="background-color: #1a1a1a; padding: 10px; border-radius: 5px;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="text-info fw-bold d-block"><i class="bi bi-calendar-week me-1"></i>Ganhos da Semana:</span>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Reinicia todo domingo</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="text-info fw-bold fs-4" style="cursor:pointer;" title="Clique para ajustar valor" @onclick="() => editandoSemana = !editandoSemana">
+                                        R$ @faturamentoSemanal.ToString("N2") <i class="bi bi-pencil-square text-secondary fs-6 ms-1"></i>
+                                    </span>
+                                </div>
                             </div>
-                            <span class="text-info fw-bold fs-4">R$ @faturamentoSemanal.ToString("N2")</span>
+
+                            @* Mini formulário que aparece ao clicar no lápis *@
+                            @if (editandoSemana)
+                            {
+                                <div class="mt-2 pt-2 border-top border-dark d-flex flex-column gap-2">
+                                    <small class="text-secondary fw-bold">Novo Ajuste de Faturamento:</small>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control bg-dark text-white border-secondary" @bind="descricaoAjusteSemana" placeholder="Motivo (Ex: Pgto Extra)" />
+                                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary text-end w-25" @bind="valorAjusteSemana" placeholder="R$ (+ ou -)" />
+                                    </div>
+                                    <div class="d-flex gap-1 justify-content-end">
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => editandoSemana = false">Cancelar</button>
+                                        <button class="btn btn-sm btn-info fw-bold text-dark" @onclick="LancarAjusteSemana">Salvar Ajuste</button>
+                                    </div>
+                                </div>
+                            }
                         </div>
 
                         <div class="d-flex justify-content-between mb-3 pb-3 border-bottom border-secondary">
@@ -223,13 +247,18 @@
     private bool editandoGaveta = false;
     private decimal valorAjusteGaveta = 0;
 
+    // --- VARIÁVEIS DO NOVO AJUSTE SEMANAL ---
+    private bool editandoSemana = false;
+    private decimal valorAjusteSemana = 0;
+    private string descricaoAjusteSemana = "";
+
     // Feedback
     private bool mostrarToast = false;
     private string toastMensagem = "";
     private string toastTipo = "sucesso";
 
     private decimal faturamentoTotal = 0;
-    private decimal faturamentoSemanal = 0; // Nova Variável para a Semana
+    private decimal faturamentoSemanal = 0;
     private decimal totalDinheiro = 0;
     private decimal totalPix = 0;
     private decimal totalCredito = 0;
@@ -252,6 +281,15 @@
         public string Description { get; set; } = "";
     }
 
+    // Novo DTO para ler os ajustes do banco
+    public class RevenueAdjustmentDTO
+    {
+        public int Id { get; set; }
+        public decimal Amount { get; set; }
+        public string Description { get; set; } = "";
+        public DateTime Date { get; set; }
+    }
+
     private List<TransacaoVisao> transacoesRecentes = new();
 
     protected override async Task OnInitializedAsync()
@@ -270,7 +308,6 @@
             transacoesRecentes.Clear();
 
             DateTime hoje = DateTime.Now.Date;
-            // Se hoje for domingo (DayOfWeek == 0), a semana começa hoje. Se for segunda (1), volta 1 dia, etc.
             DateTime inicioDaSemana = hoje.AddDays(-(int)hoje.DayOfWeek);
 
             var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders");
@@ -282,7 +319,7 @@
             }
             catch
             {
-                Console.WriteLine("Aviso: Falha ao buscar saldo de gaveta ajustado. Usando fallback de soma.");
+                Console.WriteLine("Aviso: Falha ao buscar saldo de gaveta ajustado.");
             }
 
             if (osList != null)
@@ -296,7 +333,6 @@
                         decimal valorTotal = os.TryGetProperty("totalAmount", out var t) ? t.GetDecimal() : 0;
                         decimal valorPago = os.TryGetProperty("amountPaid", out var p) ? p.GetDecimal() : 0;
 
-                        // Se a O.S não tiver data, definimos como MinValue para não somar na semana por acidente
                         DateTime data = DateTime.MinValue;
                         if (os.TryGetProperty("completionDate", out var dtElement) && dtElement.ValueKind != JsonValueKind.Null)
                         {
@@ -318,7 +354,6 @@
                         totalInadimplencia += faltaPagar;
                         faturamentoTotal += valorPago;
 
-                        // Adiciona ao faturamento da semana se for de domingo pra cá
                         if (data >= inicioDaSemana)
                         {
                             faturamentoSemanal += valorPago;
@@ -334,7 +369,7 @@
                             {
                                 Id = id,
                                 Cliente = cliente,
-                                DataPagamento = data == DateTime.MinValue ? DateTime.Now : data, // Evita exibir ano 0001
+                                DataPagamento = data == DateTime.MinValue ? DateTime.Now : data,
                                 Forma = formaFormatada,
                                 ValorPago = valorPago
                             });
@@ -362,12 +397,34 @@
                     totalVendasAvulsas += valorVenda;
                     faturamentoTotal += valorVenda;
 
-                    // Conta vendas de balcão na semana também
                     if (dataVenda >= inicioDaSemana)
                     {
                         faturamentoSemanal += valorVenda;
                     }
                 }
+            }
+
+            // --- NOVO: BUSCA E SOMA OS AJUSTES DA SEMANA ---
+            try
+            {
+                var ajustesSemana = await Http.GetFromJsonAsync<List<RevenueAdjustmentDTO>>($"{ApiUrl}/api/serviceorders/revenue-adjustments");
+                if (ajustesSemana != null)
+                {
+                    foreach (var ajuste in ajustesSemana)
+                    {
+                        // Soma apenas os ajustes que foram feitos DESTE domingo em diante
+                        if (ajuste.Date >= inicioDaSemana)
+                        {
+                            faturamentoSemanal += ajuste.Amount;
+                        }
+                        // Soma no Faturamento Total Histórico também!
+                        faturamentoTotal += ajuste.Amount;
+                    }
+                }
+            }
+            catch
+            {
+                Console.WriteLine("Aviso: Falha ao buscar ajustes de receita.");
             }
 
             transacoesRecentes = transacoesRecentes.OrderByDescending(t => t.DataPagamento).ToList();
@@ -382,8 +439,49 @@
         }
     }
 
-    // MÉTODOS DE CONTROLE DA GAVETA
+    // --- NOVO MÉTODO PARA SALVAR AJUSTE SEMANAL ---
+    private async Task LancarAjusteSemana()
+    {
+        if (valorAjusteSemana == 0)
+        {
+            MostrarErro("O valor não pode ser zero.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(descricaoAjusteSemana))
+        {
+            descricaoAjusteSemana = "Ajuste manual de faturamento";
+        }
 
+        try
+        {
+            var request = new CashAdjustmentDTO
+            {
+                Amount = valorAjusteSemana,
+                Description = descricaoAjusteSemana
+            };
+
+            var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/revenue-adjustment", request);
+
+            if (res.IsSuccessStatusCode)
+            {
+                valorAjusteSemana = 0;
+                descricaoAjusteSemana = "";
+                editandoSemana = false;
+                await CarregarDados();
+                MostrarSucesso("Faturamento atualizado!");
+            }
+            else
+            {
+                MostrarErro("Falha ao registrar ajuste.");
+            }
+        }
+        catch
+        {
+            MostrarErro("Erro de comunicação com a API.");
+        }
+    }
+
+    // MÉTODOS DE CONTROLE DA GAVETA
     private async Task LancarAjusteGaveta()
     {
         if (valorAjusteGaveta == 0) { editandoGaveta = false; return; }
