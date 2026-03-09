@@ -524,7 +524,8 @@
                             <tbody>
                                 @if (sel.Items != null)
                                 {
-                                    @foreach(var item in sel.Items) {
+                                    @foreach (var item in sel.Items)
+                                    {
                                         bool isServico = item.ProductId == null;
                                         <tr>
                                             @* CÓDIGO *@
@@ -543,7 +544,7 @@
                                                 {
                                                     <br />
                                                     <small class="text-muted">Garantia: @item.WarrantyPeriod</small>
-             }
+                                                }
                                             </td>
 
                                             @* QUANTIDADE *@
@@ -588,7 +589,7 @@
                                             }
                                         </tr>
                                     }
-     }
+                                }
                             </tbody>
                         </table>
                     </div>
@@ -749,7 +750,7 @@
     bool editandoTotal = false;
     decimal novoTotal = 0;
 
-    // --- CONTROLES DA NOVA EDIÇÃO DE PAGAMENTO
+    //CONTROLES DA NOVA EDIÇÃO DE PAGAMENTO
     bool editandoPagamento = false;
     List<PaymentSplitDTO> listaPagamentosEmEdicao = new();
     DateTime? novaDataPromessa = null;
@@ -844,13 +845,23 @@
         catch { MostrarErro("Falha ao restaurar O.S."); }
     }
 
-    void Selecionar(ServiceOrderDTO os)
+    async Task Selecionar(ServiceOrderDTO os)
     {
         sel = os;
         dataEntregaManual = DateTime.Now;
         editandoCabecalho = false;
         editandoTotal = false;
         editandoPagamento = false;
+
+        try
+        {
+            sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{os.Id}/attachments") ?? new();
+        }
+        catch
+        {
+            sel.Attachments = new();
+        }
+        StateHasChanged();
     }
 
     async Task ImprimirNota() { await JS.InvokeVoidAsync("print"); }
@@ -949,7 +960,15 @@
     async Task AtualizarTela()
     {
         await CarregarOS();
-        if (sel != null) sel = todasOS?.FirstOrDefault(o => o.Id == sel.Id);
+        if (sel != null)
+        {
+            var osAtualizada = todasOS?.FirstOrDefault(o => o.Id == sel.Id);
+            if (osAtualizada != null)
+            {
+                osAtualizada.Attachments = sel.Attachments;
+                sel = osAtualizada;
+            }
+        }
     }
 
     async Task VoltarInteligente()
@@ -1020,7 +1039,6 @@
 
         listaPagamentosEmEdicao.Clear();
 
-        // Se já tiver pagamentos salvos, carrega eles
         if (sel.Payments != null && sel.Payments.Any())
         {
             foreach (var p in sel.Payments)
@@ -1028,12 +1046,10 @@
                 listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = p.PaymentMethod, Amount = p.Amount });
             }
         }
-        // Se for uma O.S. antiga que só tem 1 método, transforma em lista
         else if (sel.AmountPaid > 0)
         {
             listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = sel.PaymentMethod ?? "", Amount = sel.AmountPaid });
         }
-        // Se não tiver nada, começa com 1 linha vazia
         else
         {
             listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = "", Amount = 0 });
@@ -1062,20 +1078,16 @@
     {
         if (sel == null) return;
 
-        // Validação: Não deixar salvar linha com método vazio e valor > 0
         if (listaPagamentosEmEdicao.Any(p => p.Amount > 0 && string.IsNullOrEmpty(p.PaymentMethod)))
         {
             MostrarErro("Selecione a forma de pagamento para os valores informados.");
             return;
         }
 
-        // Limpa linhas zeradas antes de enviar para não sujar o banco
         var pagamentosReais = listaPagamentosEmEdicao.Where(p => p.Amount > 0).ToList();
 
-        // O valor total pago é a soma da lista
         decimal somaPagos = pagamentosReais.Sum(p => p.Amount);
 
-        // Define o "Método Principal" como o primeiro da lista, ou "Misto" se houver mais de um.
         string metodoPrincipal = "";
         if (pagamentosReais.Count == 1) metodoPrincipal = pagamentosReais[0].PaymentMethod;
         else if (pagamentosReais.Count > 1) metodoPrincipal = "Misto";
@@ -1193,7 +1205,12 @@
         }
 
         isUploading = false;
-        await AtualizarTela();
+
+        try
+        {
+            sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new();
+        }
+        catch { }
 
         if (teveErro)
         {
@@ -1211,7 +1228,9 @@
         try
         {
             await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments/{attachmentId}");
-            await AtualizarTela();
+
+            sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new();
+            StateHasChanged();
             MostrarSucesso("Anexo apagado.");
         }
         catch

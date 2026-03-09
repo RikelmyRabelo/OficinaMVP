@@ -15,10 +15,11 @@ namespace OficinaAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetServiceOrders()
         {
+            // OTIMIZADO: Removido o carregamento de anexos pesados e adicionado AsNoTracking
             return await _context.ServiceOrders
+                .AsNoTracking()
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items).ThenInclude(i => i.Mechanic)
-                .Include(o => o.Attachments)
                 .Include(o => o.Payments)
                 .Where(o => !o.IsDeleted)
                 .OrderByDescending(o => o.Id).ToListAsync();
@@ -28,10 +29,11 @@ namespace OficinaAPI.Controllers
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetTrash()
         {
             var threshold = DateTime.Now.AddDays(-30);
+            // OTIMIZADO: Removido o carregamento de anexos pesados e adicionado AsNoTracking
             return await _context.ServiceOrders
+                .AsNoTracking()
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items).ThenInclude(i => i.Mechanic)
-                .Include(o => o.Attachments)
                 .Include(o => o.Payments)
                 .Where(o => o.IsDeleted && o.DeletionDate >= threshold)
                 .OrderByDescending(o => o.DeletionDate).ToListAsync();
@@ -272,6 +274,18 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
+        // --- GESTÃO DE ANEXOS ---
+
+        // NOVO: Endpoint exclusivo para buscar os anexos (só as fotos de UMA ordem)
+        [HttpGet("{id}/attachments")]
+        public async Task<ActionResult<IEnumerable<ServiceOrderAttachment>>> GetAttachments(int id)
+        {
+            return await _context.Set<ServiceOrderAttachment>()
+                .AsNoTracking()
+                .Where(a => a.ServiceOrderId == id)
+                .ToListAsync();
+        }
+
         [HttpPost("{id}/attachments")]
         public async Task<IActionResult> AddAttachment(int id, [FromBody] UploadAttachmentDTO request)
         {
@@ -293,7 +307,7 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        //GESTÃO DE CAIXA E FATURAMENTO
+        // --- GESTÃO DE CAIXA E FATURAMENTO ---
 
         [HttpGet("cash-balance")]
         public async Task<ActionResult<decimal>> GetCashBalance()
@@ -336,7 +350,7 @@ namespace OficinaAPI.Controllers
         [HttpGet("revenue-adjustments")]
         public async Task<ActionResult<IEnumerable<RevenueAdjustment>>> GetRevenueAdjustments()
         {
-            return await _context.Set<RevenueAdjustment>().ToListAsync();
+            return await _context.Set<RevenueAdjustment>().AsNoTracking().ToListAsync();
         }
 
         [HttpPost("revenue-adjustment")]
