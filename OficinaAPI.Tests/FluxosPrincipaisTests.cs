@@ -140,5 +140,89 @@ namespace OficinaAPI.Tests
             // Assert
             Assert.IsType<BadRequestObjectResult>(resultado.Result);
         }
+
+        [Fact]
+        public async Task PagamentoMisto_DeveSalvarMultiplasFormasDePagamento()
+        {
+            // Arrange
+            var context = GetDatabaseContext();
+            var controller = new ServiceOrdersController(context);
+
+            var resOs = await controller.PostServiceOrder(new ServiceOrdersController.CreateOSDTO { ClientName = "Cliente Pagador", VehicleModel = "Civic" });
+            var os = (resOs.Result as CreatedAtActionResult).Value as ServiceOrder;
+
+            // Simulando um pagamento de R$ 500 dividido em duas formas
+            var updatePaymentDto = new ServiceOrdersController.UpdatePaymentDTO
+            {
+                AmountPaid = 500,
+                PaymentMethod = "Misto",
+                Payments = new List<ServiceOrdersController.PaymentSplitDTO>
+                {
+                    new ServiceOrdersController.PaymentSplitDTO { PaymentMethod = "PIX", Amount = 200 },
+                    new ServiceOrdersController.PaymentSplitDTO { PaymentMethod = "Dinheiro", Amount = 300 }
+                }
+            };
+
+            // Act
+            await controller.UpdateAmountPaid(os.Id, updatePaymentDto);
+
+            // Assert
+            var osAtualizada = await context.ServiceOrders.Include(o => o.Payments).FirstAsync(o => o.Id == os.Id);
+            Assert.Equal(500, osAtualizada.AmountPaid);
+            Assert.Equal("Misto", osAtualizada.PaymentMethod);
+            Assert.Equal(2, osAtualizada.Payments.Count);
+            Assert.Contains(osAtualizada.Payments, p => p.PaymentMethod == "PIX" && p.Amount == 200);
+            Assert.Contains(osAtualizada.Payments, p => p.PaymentMethod == "Dinheiro" && p.Amount == 300);
+        }
+
+        [Fact]
+        public async Task ResumoFinanceiro_DeveCalcularTotaisEInadimplenciaCorretamente()
+        {
+            // Arrange
+            var context = GetDatabaseContext();
+            var controller = new ServiceOrdersController(context);
+
+            // O.S. 1: Paga integralmente no Dinheiro
+            var os1 = new ServiceOrder { VehicleId = 1, EntryDate = DateTime.Now, Status = "Completed", TotalAmount = 500, AmountPaid = 500, PaymentMethod = "Dinheiro", CompletionDate = DateTime.Now };
+            context.ServiceOrders.Add(os1);
+
+            // O.S. 2: Paga parcialmente no PIX (Total 1000, Pagou 600, Falta 400)
+            var os2 = new ServiceOrder { VehicleId = 2, EntryDate = DateTime.Now, Status = "Completed", TotalAmount = 1000, AmountPaid = 600, PaymentMethod = "Misto", CompletionDate = DateTime.Now };
+            context.ServiceOrders.Add(os2);
+            context.ServiceOrderPayments.Add(new ServiceOrderPayment { ServiceOrder = os2, PaymentMethod = "PIX", Amount = 600 });
+
+            await context.SaveChangesAsync();
+
+            // Act
+            var res = await controller.GetFinancialSummary();
+            var summary = (res.Result as OkObjectResult).Value as ServiceOrdersController.FinancialSummaryDTO;
+
+            // Assert
+            Assert.NotNull(summary);
+            Assert.Equal(1100, summary.FaturamentoTotal);
+            Assert.Equal(400, summary.Inadimplencia);   
+            Assert.Equal(600, summary.TotalPix);        
+        }
+
+        [Fact]
+        public async Task AjusteFinanceiro_DeveSerSalvoERecuperadoDaSemana()
+        {
+            // Arrange
+            var context = GetDatabaseContext();
+            var controller = new ServiceOrdersController(context);
+
+            var ajusteDto = new ServiceOrdersController.CashAdjustmentDTO { Amount = 150.50m, Description = "Pagamento Extra" };
+
+            // Act
+            await controller.PostRevenueAdjustment(ajusteDto);
+
+            var resList = await controller.GetRevenueAdjustments();
+            var lista = resList.Value.ToList();
+
+            // Assert
+            Assert.Single(lista);
+            Assert.Equal(150.50m, lista[0].Amount);
+            Assert.Equal("Pagamento Extra", lista[0].Description);
+        }
     }
 }
