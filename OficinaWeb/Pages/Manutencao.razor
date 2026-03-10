@@ -3,6 +3,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @using System.Net.Http.Json
+@using OficinaWeb.Models
 @using System.Text.Json
 
 <PageTitle>Oficina - FJ Centro Automotivo</PageTitle>
@@ -599,168 +600,51 @@
     </div>
 </div>
 
-@if (sel != null)
-{
-    <div id="print-section" class="d-none d-print-block">
-        <img src="images/OrdemServico.png" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: -1;" />
+<ImpressaoOS Os="sel" />
 
-        <div class="print-data" style="top: 17%; left: 81.5%; font-size: 14pt; font-weight: bold;">#@sel.Id</div>
+    @code {
+        private string ApiUrl = "https://localhost:7082";
 
-        <div class="print-data" style="top: 21%; left: 19.5%;">@sel.Vehicle?.CustomerName</div>
-        @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerPhone))
-        {
-            <div class="print-data" style="top: 26.6%; left: 65%;">@sel.Vehicle?.CustomerPhone</div>
-        }
+        List<ServiceOrderDTO>? todasOS;
+        List<ServiceOrderDTO>? lixeiraOS;
+        List<ProductListDTO>? produtos;
+        List<EmployeeListDTO>? mecanicos;
+        List<LaborServiceDTO>? catalogoServicos;
 
-        <div class="print-data" style="top: 26.6%; left: 22%;">@sel.Vehicle?.Model</div>
-        @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerAddress))
-        {
-            <div class="print-data" style="top: 24%; left: 19.5%; font-size: 10pt;">@sel.Vehicle?.CustomerAddress</div>
-        }
+        bool mostrarFinalizadas = false;
+        bool verLixeira = false;
+        List<ServiceOrderDTO>? listaExibicao => verLixeira ? lixeiraOS : (mostrarFinalizadas ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList() : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList());
+        List<ServiceOrderDTO>? alertasInadimplencia => todasOS?.Where(o => o.Status == "Completed" && o.RemainingAmount > 0 && o.PromisedPaymentDate.HasValue && o.PromisedPaymentDate.Value.Date <= DateTime.Today).ToList();
 
-        <div class="print-data" style="top: 33.9%; left: 30%;">@sel.EntryDate.ToString("dd/MM/yyyy")</div>
+        ServiceOrderDTO? sel;
+        CreateOsInput novaOsRequest = new();
+        AddItemInput novoItem = new();
+        AddCustomItemInput novoItemAvulso = new();
+        AddLaborInput novoServico = new();
+        DateTime dataEntregaManual = DateTime.Now;
+        string tipoItem = "peca";
+        string filtroProduto = "";
 
-        @if (sel.CompletionDate.HasValue)
-        {
-            <div class="print-data" style="top: 33.9%; left: 63%;">@sel.CompletionDate.Value.ToString("dd/MM/yyyy")</div>
-            <div class="print-data" style="top: 33.9%; left: 87%;">@sel.CompletionDate.Value.ToString("HH:mm")</div>
-        }
+        bool mostrarToast = false;
+        string toastMensagem = "";
+        string toastTipo = "sucesso";
+        bool mostrarModalExclusao = false;
+        bool editandoCabecalho = false;
+        UpdateVehicleDTO editRequest = new();
+        bool editandoTotal = false;
+        decimal novoTotal = 0;
 
-        <div class="print-data" style="top: 42%; left: 7.5%; width: 85%;">
-            @foreach (var item in sel.Items.Where(i => i.ProductId != null || (i.ProductId == null && i.Mechanic == null)))
-            {
-                <div style="display: flex; margin-bottom: 8px;">
-                    <span style="width: 15%;">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "")</span>
-                    <span style="width: 60%;">
-                        @(item.Quantity > 1 ? $"{item.Quantity}x (R$ {(item.Price / item.Quantity).ToString("N2")} un) " : "")
-                        @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description) @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
-                    </span>
-                    <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
-                </div>
-            }
-        </div>
+        //CONTROLES DA NOVA EDIÇÃO DE PAGAMENTO
+        bool editandoPagamento = false;
+        List<PaymentSplitDTO> listaPagamentosEmEdicao = new();
+        DateTime? novaDataPromessa = null;
 
-        <div class="print-data" style="top: 69.6%; left: 7.5%; width: 85%;">
-            @foreach (var item in sel.Items.Where(i => i.ProductId == null && i.Mechanic != null))
-            {
-                <div style="display: flex; margin-bottom: 8px;">
-                    <span style="width: 75%;">
-                        - @(item.Quantity > 1 ? $"{item.Quantity}x (R$ {(item.Price / item.Quantity).ToString("N2")} un) " : "") @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
-                        @(item.Mechanic != null ? $" [Mecânico: {item.Mechanic.name}]" : "")
-                    </span>
-                    <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
-                </div>
-            }
-        </div>
+        bool isUploading = false;
+        bool mostrarModalEdicaoItem = false;
+        ServiceItemDTO? itemParaEditar;
+        UpdateServiceItemDTO itemEditRequest = new();
 
-        <div class="print-data" style="top: 80%; left: 81%; font-size: 18pt; font-weight: bold;">R$ @sel.TotalAmount.ToString("N2")</div>
-
-        <div class="print-data" style="top: 85.8%; left: 30%; font-size: 14pt; font-weight: bold;">R$ @sel.AmountPaid.ToString("N2")</div>
-
-        <div class="print-data" style="top: 85.8%; left: 81%; font-size: 14pt; font-weight: bold;">R$ @sel.RemainingAmount.ToString("N2")</div>
-    </div>
-}
-
-@code {
-    private string ApiUrl = "https://localhost:7082";
-
-    public class ServiceOrderDTO
-    {
-        public int Id { get; set; }
-        public VehicleDTO? Vehicle { get; set; }
-        public string Status { get; set; } = "Pending";
-        public decimal TotalAmount { get; set; }
-        public decimal AmountPaid { get; set; }
-        public string? PaymentMethod { get; set; }
-        public DateTime? PromisedPaymentDate { get; set; }
-        public decimal RemainingAmount => Math.Max(0, TotalAmount - AmountPaid);
-        public decimal OverpaidAmount => Math.Max(0, AmountPaid - TotalAmount);
-        public List<AttachmentDTO> Attachments { get; set; } = new();
-        public DateTime EntryDate { get; set; }
-        public DateTime? CompletionDate { get; set; }
-        public List<ServiceItemDTO> Items { get; set; } = new();
-        public List<PaymentSplitDTO> Payments { get; set; } = new();
-    }
-
-    // NOVOS DTOs PARA PAGAMENTO MÚLTIPLO
-    public class PaymentSplitDTO
-    {
-        public string PaymentMethod { get; set; } = "";
-        public decimal Amount { get; set; }
-    }
-
-    public class UpdatePaymentDTO
-    {
-        public decimal AmountPaid { get; set; }
-        public string? PaymentMethod { get; set; }
-        public DateTime? PromisedPaymentDate { get; set; }
-        public List<PaymentSplitDTO> Payments { get; set; } = new();
-    }
-
-    public class AttachmentDTO
-    {
-        public int Id { get; set; }
-        public string FileName { get; set; } = "";
-        public string FileType { get; set; } = "";
-        public string Base64Content { get; set; } = "";
-    }
-
-    public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-    public class ServiceItemDTO { public int Id { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public int? ProductId { get; set; } public string? WarrantyPeriod { get; set; } public EmployeeListDTO? Mechanic { get; set; } public int Quantity { get; set; } = 1; }
-    public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } }
-    public class EmployeeListDTO { public int id { get; set; } public string name { get; set; } = ""; }
-
-    public class LaborServiceDTO { public int Id { get; set; } public string Name { get; set; } = ""; public decimal DefaultPrice { get; set; } }
-
-    public class CreateOsInput { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-    public class AddItemInput { public int ProductId { get; set; } public int Quantity { get; set; } = 1; public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }
-    public class AddCustomItemInput { public string Description { get; set; } = ""; public int Quantity { get; set; } = 1; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
-    public class AddLaborInput { public string Description { get; set; } = ""; public int MechanicId { get; set; } public int Quantity { get; set; } = 1; public decimal Price { get; set; } }
-
-    public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-    public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
-    public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; }
-
-    List<ServiceOrderDTO>? todasOS;
-    List<ServiceOrderDTO>? lixeiraOS;
-    List<ProductListDTO>? produtos;
-    List<EmployeeListDTO>? mecanicos;
-    List<LaborServiceDTO>? catalogoServicos;
-
-    bool mostrarFinalizadas = false;
-    bool verLixeira = false;
-    List<ServiceOrderDTO>? listaExibicao => verLixeira ? lixeiraOS : (mostrarFinalizadas ? todasOS?.Where(o => o.Status == "Completed").OrderByDescending(o => o.Id).ToList() : todasOS?.Where(o => o.Status != "Completed").OrderByDescending(o => o.Id).ToList());
-    List<ServiceOrderDTO>? alertasInadimplencia => todasOS?.Where(o => o.Status == "Completed" && o.RemainingAmount > 0 && o.PromisedPaymentDate.HasValue && o.PromisedPaymentDate.Value.Date <= DateTime.Today).ToList();
-
-    ServiceOrderDTO? sel;
-    CreateOsInput novaOsRequest = new();
-    AddItemInput novoItem = new();
-    AddCustomItemInput novoItemAvulso = new();
-    AddLaborInput novoServico = new();
-    DateTime dataEntregaManual = DateTime.Now;
-    string tipoItem = "peca";
-    string filtroProduto = "";
-
-    bool mostrarToast = false;
-    string toastMensagem = "";
-    string toastTipo = "sucesso";
-    bool mostrarModalExclusao = false;
-    bool editandoCabecalho = false;
-    UpdateVehicleDTO editRequest = new();
-    bool editandoTotal = false;
-    decimal novoTotal = 0;
-
-    //CONTROLES DA NOVA EDIÇÃO DE PAGAMENTO
-    bool editandoPagamento = false;
-    List<PaymentSplitDTO> listaPagamentosEmEdicao = new();
-    DateTime? novaDataPromessa = null;
-
-    bool isUploading = false;
-    bool mostrarModalEdicaoItem = false;
-    ServiceItemDTO? itemParaEditar;
-    UpdateServiceItemDTO itemEditRequest = new();
-
-    protected override async Task OnInitializedAsync() { await CarregarDadosIniciais(); }
+        protected override async Task OnInitializedAsync() { await CarregarDadosIniciais(); }
 
     async Task CarregarDadosIniciais()
     {

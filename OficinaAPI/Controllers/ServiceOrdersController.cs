@@ -274,9 +274,8 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        // --- GESTÃO DE ANEXOS ---
+        // GESTÃO DE ANEXOS
 
-        // NOVO: Endpoint exclusivo para buscar os anexos (só as fotos de UMA ordem)
         [HttpGet("{id}/attachments")]
         public async Task<ActionResult<IEnumerable<ServiceOrderAttachment>>> GetAttachments(int id)
         {
@@ -307,7 +306,6 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        // --- NOVO: RESUMO FINANCEIRO OTIMIZADO ---
         [HttpGet("financial-summary")]
         public async Task<ActionResult<FinancialSummaryDTO>> GetFinancialSummary()
         {
@@ -368,15 +366,13 @@ namespace OficinaAPI.Controllers
             // Adiciona as Vendas Avulsas
             try
             {
-                // Como não temos acesso direto ao DbSet do QuickSale aqui, precisaria injetar ou usar outra forma.
-                // Mas, pelo contexto, ele é puxado no frontend. Vamos deixar o Frontend somar as vendas avulsas.
             }
             catch { }
 
             return Ok(summary);
         }
 
-        // --- GESTÃO DE CAIXA E FATURAMENTO ---
+        // GESTÃO DE CAIXA E FATURAMENTO
 
         [HttpGet("cash-balance")]
         public async Task<ActionResult<decimal>> GetCashBalance()
@@ -384,7 +380,7 @@ namespace OficinaAPI.Controllers
 
             // 1. Pega todas as frações de pagamento em dinheiro de O.S que NÃO foram excluídas
             var entradasMultiplasDinheiro = await _context.ServiceOrderPayments
-                .Include(p => p.ServiceOrder) // Precisamos da O.S para saber se ela foi excluída
+                .Include(p => p.ServiceOrder)
                 .Where(p => p.PaymentMethod == "Dinheiro" && p.ServiceOrder != null && !p.ServiceOrder.IsDeleted)
                 .SumAsync(p => p.Amount);
 
