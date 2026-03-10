@@ -1,0 +1,47 @@
+﻿@using OficinaWeb.Models
+
+@if (Visivel)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold" style="color: #ffeb3b;"><i class="bi bi-pencil-square me-2"></i>Editar Item</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="OnCancelar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-secondary">Descrição</label>
+                        <input class="form-control bg-dark text-white border-secondary" @bind="Request.Description" />
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label text-secondary">Qtd</label>
+                            <input type="number" class="form-control bg-dark text-white border-secondary" @bind="Request.Quantity" min="1" />
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label text-secondary">Preço Total da Linha (R$)</label>
+                            <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="Request.Price" />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary">Garantia (Opcional)</label>
+                        <input class="form-control bg-dark text-white border-secondary" @bind="Request.WarrantyPeriod" />
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" @onclick="OnCancelar">Cancelar</button>
+                    <button type="button" class="btn fw-bold" style="background-color: #ffeb3b; color: #000;" @onclick="OnSalvar">SALVAR ALTERAÇÕES</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visivel { get; set; }
+    [Parameter] public UpdateServiceItemDTO Request { get; set; } = new();
+
+    [Parameter] public EventCallback OnSalvar { get; set; }
+    [Parameter] public EventCallback OnCancelar { get; set; }
+}

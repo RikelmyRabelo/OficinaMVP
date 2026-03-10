@@ -23,65 +23,9 @@
     }
 </div>
 
-@if (mostrarModalExclusao)
-{
-    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-white border-secondary">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title fw-bold text-danger"><i class="bi bi-trash-fill me-2"></i>Confirmar Exclusão</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="() => mostrarModalExclusao = false"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Tem certeza que deseja mover a O.S. <strong>#@sel?.Id</strong> do veículo <strong>@sel?.Vehicle?.Model</strong> para a lixeira?</p>
-                    <small class="text-secondary">Você poderá restaurá-la depois se necessário.</small>
-                </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-outline-light" @onclick="() => mostrarModalExclusao = false">Cancelar</button>
-                    <button type="button" class="btn btn-danger fw-bold" @onclick="ConfirmarExclusao">SIM, EXCLUIR</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+<ModalExclusao Visivel="mostrarModalExclusao" OsId="sel?.Id ?? 0" ModeloVeiculo="@(sel?.Vehicle?.Model ?? "")" OnConfirmar="ConfirmarExclusao" OnCancelar="() => mostrarModalExclusao = false" />
 
-@if (mostrarModalEdicaoItem && itemParaEditar != null)
-{
-    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-white border-secondary">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title fw-bold" style="color: #ffeb3b;"><i class="bi bi-pencil-square me-2"></i>Editar Item</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="FecharEdicaoItem"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label text-secondary">Descrição</label>
-                        <input class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.Description" />
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-md-3">
-                            <label class="form-label text-secondary">Qtd</label>
-                            <input type="number" class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.Quantity" min="1" />
-                        </div>
-                        <div class="col-md-9">
-                            <label class="form-label text-secondary">Preço Total da Linha (R$)</label>
-                            <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.Price" />
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-secondary">Garantia (Opcional)</label>
-                        <input class="form-control bg-dark text-white border-secondary" @bind="itemEditRequest.WarrantyPeriod" />
-                    </div>
-                </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-outline-light" @onclick="FecharEdicaoItem">Cancelar</button>
-                    <button type="button" class="btn fw-bold" style="background-color: #ffeb3b; color: #000;" @onclick="SalvarEdicaoItem">SALVAR ALTERAÇÕES</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+<ModalEdicaoItem Visivel="mostrarModalEdicaoItem" Request="itemEditRequest" OnSalvar="SalvarEdicaoItem" OnCancelar="FecharEdicaoItem" />
 
 <div class="container-fluid py-4 px-4 no-print">
     <div class="row align-items-center mb-5 position-relative">

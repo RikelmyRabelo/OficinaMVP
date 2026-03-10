@@ -1,0 +1,32 @@
+﻿@using OficinaWeb.Models
+
+@if (Visivel)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold text-danger"><i class="bi bi-trash-fill me-2"></i>Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="OnCancelar"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja mover a O.S. <strong>#@OsId</strong> do veículo <strong>@ModeloVeiculo</strong> para a lixeira?</p>
+                    <small class="text-secondary">Você poderá restaurá-la depois se necessário.</small>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" @onclick="OnCancelar">Cancelar</button>
+                    <button type="button" class="btn btn-danger fw-bold" @onclick="OnConfirmar">SIM, EXCLUIR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visivel { get; set; }
+    [Parameter] public int OsId { get; set; }
+    [Parameter] public string ModeloVeiculo { get; set; } = "";
+
+    [Parameter] public EventCallback OnConfirmar { get; set; }
+    [Parameter] public EventCallback OnCancelar { get; set; }
+}
