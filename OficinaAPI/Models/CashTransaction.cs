@@ -4,7 +4,7 @@
     {
         public int Id { get; set; }
         public DateTime Date { get; set; } = DateTime.Now;
-        public string Description { get; set; } = ""; // Ex: "Retirada para os donos"
-        public decimal Amount { get; set; } // Negativo para saída, positivo para ajuste
+        public string Description { get; set; } = "";
+        public decimal Amount { get; set; }
     }
 }   

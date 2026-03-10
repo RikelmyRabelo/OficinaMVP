@@ -345,19 +345,47 @@
             transacoesRecentes.Clear();
             if (osList != null)
             {
-                var concluidas = osList.Where(x => x.TryGetProperty("status", out var s) && s.ToString() == "Completed").Take(20).ToList();
-                foreach (var os in concluidas)
+                var comPagamento = osList
+                    .Where(x => x.TryGetProperty("amountPaid", out var p) && p.GetDecimal() > 0)
+                    .Take(25)
+                    .ToList();
+
+                foreach (var os in comPagamento)
                 {
+                    DateTime dataPagamento = DateTime.Now;
+                    if (os.TryGetProperty("completionDate", out var dt) && dt.ValueKind != JsonValueKind.Null)
+                    {
+                        DateTime.TryParse(dt.ToString(), out dataPagamento);
+                    }
+                    else if (os.TryGetProperty("entryDate", out var ed) && ed.ValueKind != JsonValueKind.Null)
+                    {
+                        DateTime.TryParse(ed.ToString(), out dataPagamento);
+                    }
+
+                    string forma = os.TryGetProperty("paymentMethod", out var m) && m.ValueKind != JsonValueKind.Null
+                                   ? m.ToString().ToUpper()
+                                   : "NÃO INFORMADO";
+
+                    string cliente = "Desconhecido";
+                    if (os.TryGetProperty("vehicle", out var v) && v.ValueKind != JsonValueKind.Null)
+                    {
+                        cliente = v.TryGetProperty("customerName", out var cn) && cn.ValueKind != JsonValueKind.Null
+                                  ? cn.ToString()
+                                  : cliente;
+                    }
+
                     transacoesRecentes.Add(new TransacaoVisao
                     {
                         Id = os.GetProperty("id").GetInt32(),
-                        Cliente = os.GetProperty("vehicle").GetProperty("customerName").ToString(),
-                        DataPagamento = DateTime.Parse(os.GetProperty("completionDate").ToString()),
-                        Forma = os.GetProperty("paymentMethod").ToString().ToUpper(),
+                        Cliente = cliente,
+                        DataPagamento = dataPagamento,
+                        Forma = forma,
                         ValorPago = os.GetProperty("amountPaid").GetDecimal()
                     });
                 }
-                transacoesRecentes = transacoesRecentes.OrderByDescending(t => t.DataPagamento).ToList();
+
+                // Ordena para os pagamentos mais recentes ficarem sempre no topo
+                transacoesRecentes = transacoesRecentes.OrderByDescending(t => t.DataPagamento).ThenByDescending(t => t.Id).ToList();
             }
         }
         catch (Exception ex)

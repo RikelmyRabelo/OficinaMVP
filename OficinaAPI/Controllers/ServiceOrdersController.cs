@@ -15,7 +15,6 @@ namespace OficinaAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetServiceOrders()
         {
-            // OTIMIZADO: Removido o carregamento de anexos pesados e adicionado AsNoTracking
             return await _context.ServiceOrders
                 .AsNoTracking()
                 .Include(o => o.Vehicle)
@@ -29,7 +28,6 @@ namespace OficinaAPI.Controllers
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetTrash()
         {
             var threshold = DateTime.Now.AddDays(-30);
-            // OTIMIZADO: Removido o carregamento de anexos pesados e adicionado AsNoTracking
             return await _context.ServiceOrders
                 .AsNoTracking()
                 .Include(o => o.Vehicle)
