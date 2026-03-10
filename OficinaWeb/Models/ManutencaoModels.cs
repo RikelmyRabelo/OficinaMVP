@@ -25,6 +25,8 @@ namespace OficinaWeb.Models
     {
         public string PaymentMethod { get; set; } = "";
         public decimal Amount { get; set; }
+
+        public DateTime PaymentDate { get; set; } = DateTime.Now;
     }
 
     public class UpdatePaymentDTO

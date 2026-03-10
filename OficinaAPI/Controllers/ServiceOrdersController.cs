@@ -241,7 +241,9 @@ namespace OficinaAPI.Controllers
                     {
                         ServiceOrderId = id,
                         PaymentMethod = split.PaymentMethod,
-                        Amount = split.Amount
+                        Amount = split.Amount,
+                        // Pega a data que veio do front, ou se for vazia, põe a data de agora:
+                        PaymentDate = split.PaymentDate != DateTime.MinValue ? split.PaymentDate : DateTime.Now
                     });
                 }
             }
@@ -443,7 +445,7 @@ namespace OficinaAPI.Controllers
         public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; }
 
         // DTOs DE PAGAMENTO
-        public class PaymentSplitDTO { public string PaymentMethod { get; set; } = ""; public decimal Amount { get; set; } }
+        public class PaymentSplitDTO { public string PaymentMethod { get; set; } = ""; public decimal Amount { get; set; } public DateTime PaymentDate { get; set; } = DateTime.Now; }
         public class UpdatePaymentDTO
         {
             public decimal AmountPaid { get; set; }

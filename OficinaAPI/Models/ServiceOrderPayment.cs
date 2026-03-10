@@ -12,6 +12,8 @@ namespace OficinaAPI.Models
 
         public decimal Amount { get; set; }
 
+        public DateTime PaymentDate { get; set; } = DateTime.Now;   
+
         [JsonIgnore]
         public ServiceOrder? ServiceOrder { get; set; }
     }
