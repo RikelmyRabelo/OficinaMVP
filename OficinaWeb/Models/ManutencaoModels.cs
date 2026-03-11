@@ -71,7 +71,6 @@ namespace OficinaWeb.Models
     public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
 
-    // AJUSTADO: Agora a edição de item também transporta o MechanicId e o ItemType
     public class UpdateServiceItemDTO
     {
         public string Description { get; set; } = "";

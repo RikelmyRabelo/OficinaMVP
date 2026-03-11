@@ -517,7 +517,9 @@
                                                 @if (!string.IsNullOrEmpty(item.WarrantyPeriod))
                                                 {
                                                     <br />
-                                                    <small class="text-muted">Garantia: @item.WarrantyPeriod</small>
+                                                    <small style="color: #00ffff !important; font-weight: bold !important; font-size: 0.85rem !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">
+                                                        <i class="bi bi-shield-check me-1"></i>GARANTIA: @item.WarrantyPeriod
+                                                    </small>
                                                 }
                                             </td>
 
@@ -549,8 +551,8 @@
 
                                             @if (!verLixeira)
                                             {
-                                                <td class="text-center">
-                                                    <button class="btn btn-sm btn-link text-warning p-0" @onclick="() => AbrirEdicaoItem(item)" title="Editar ou Excluir">
+                                                <td class="text-center text-nowrap-custom">
+                                                    <button class="btn btn-sm btn-link text-warning p-0" @onclick="() => AbrirEdicaoItem(item)" title="Editar ou Excluir item">
                                                         <i class="bi bi-pencil-fill"></i>
                                                     </button>
                                                 </td>

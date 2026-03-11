@@ -31,7 +31,6 @@
                 </div>
                 <div class="modal-footer border-secondary d-flex justify-content-between">
 
-                    @* NOVO BOTÃO DE EXCLUSÃO ALINHADO À ESQUERDA *@
                     <button type="button" class="btn btn-outline-danger" @onclick="OnExcluir" title="Remover este item da O.S.">
                         <i class="bi bi-trash-fill me-1"></i>Excluir
                     </button>
@@ -53,6 +52,5 @@
     [Parameter] public EventCallback OnSalvar { get; set; }
     [Parameter] public EventCallback OnCancelar { get; set; }
 
-    // NOVA PERMISSÃO PARA RECEBER A FUNÇÃO DE EXCLUSÃO
     [Parameter] public EventCallback OnExcluir { get; set; }
 }
