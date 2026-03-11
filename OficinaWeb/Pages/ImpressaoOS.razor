@@ -1,19 +1,32 @@
-﻿@using OficinaWeb.Models
+﻿@inject HttpClient Http
+@using OficinaWeb.Models
+
+<style>
+    .print-data {
+        position: absolute;
+        font-family: Arial, sans-serif;
+        font-size: 11pt;
+        color: black;
+    }
+</style>
 
 @if (Os != null)
 {
-    <div id="print-section" class="d-none d-print-block">
+    <div id="print-section" class="d-none d-print-block" style="position: relative; width: 210mm; height: 297mm; background-color: white;">
+        @* Imagem de fundo do formulário *@
         <img src="images/OrdemServico.png" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: -1;" />
 
+        @* Cabeçalho *@
         <div class="print-data" style="top: 17%; left: 81.5%; font-size: 14pt; font-weight: bold;">#@Os.Id</div>
-
         <div class="print-data" style="top: 21%; left: 19.5%;">@Os.Vehicle?.CustomerName</div>
+
         @if (!string.IsNullOrEmpty(Os.Vehicle?.CustomerPhone))
         {
             <div class="print-data" style="top: 26.6%; left: 65%;">@Os.Vehicle?.CustomerPhone</div>
         }
 
         <div class="print-data" style="top: 26.6%; left: 22%;">@Os.Vehicle?.Model</div>
+
         @if (!string.IsNullOrEmpty(Os.Vehicle?.CustomerAddress))
         {
             <div class="print-data" style="top: 24%; left: 19.5%; font-size: 10pt;">@Os.Vehicle?.CustomerAddress</div>
@@ -27,42 +40,72 @@
             <div class="print-data" style="top: 33.9%; left: 87%;">@Os.CompletionDate.Value.ToString("HH:mm")</div>
         }
 
+        @* --- SEÇÃO DE PEÇAS E ITENS AVULSOS (Parte Superior) --- *@
         <div class="print-data" style="top: 42%; left: 7.5%; width: 85%;">
-            @foreach (var item in Os.Items.Where(i => i.ProductId != null || (i.ProductId == null && i.Mechanic == null)))
+            @foreach (var item in Os.Items)
             {
-                <div style="display: flex; margin-bottom: 8px;">
-                    <span style="width: 15%;">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "")</span>
-                    <span style="width: 60%;">
-                        @(item.Quantity > 1 ? $"{item.Quantity}x (R$ {(item.Price / item.Quantity).ToString("N2")} un) " : "")
-                        @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description) @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
-                    </span>
-                    <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
-                </div>
+                // Verifica se é serviço para PULAR este loop
+                bool isServico = item.ItemType == "Service" ||
+                (item.ProductId == null && item.Mechanic != null) ||
+                (item.ProductId == null && (catalogoServicos?.Any(c => string.Equals(c.Name, item.Description, StringComparison.OrdinalIgnoreCase)) ?? false));
+
+                if (!isServico)
+                {
+                    <div style="display: flex; margin-bottom: 8px;">
+                        <span style="width: 15%;">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "AVULSO")</span>
+                        <span style="width: 60%;">
+                            @(item.Quantity > 1 ? $"{item.Quantity}x (R$ {(item.Price / item.Quantity).ToString("N2")} un) " : "")
+                            @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description)
+                            @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $" [Garantia: {item.WarrantyPeriod}]")
+                        </span>
+                        <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
+                    </div>
+                }
             }
         </div>
 
+        @* --- SEÇÃO DE MÃO DE OBRA / SERVIÇOS (Parte Inferior) --- *@
         <div class="print-data" style="top: 69.6%; left: 7.5%; width: 85%;">
-            @foreach (var item in Os.Items.Where(i => i.ProductId == null && i.Mechanic != null))
+            @foreach (var item in Os.Items)
             {
-                <div style="display: flex; margin-bottom: 8px;">
-                    <span style="width: 75%;">
-                        - @(item.Quantity > 1 ? $"{item.Quantity}x (R$ {(item.Price / item.Quantity).ToString("N2")} un) " : "") @item.Description @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $"({item.WarrantyPeriod})")
-                        @(item.Mechanic != null ? $" [Mecânico: {item.Mechanic.name}]" : "")
-                    </span>
-                    <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
-                </div>
+                // Lógica de identificação de serviço
+                bool isServico = item.ItemType == "Service" ||
+                (item.ProductId == null && item.Mechanic != null) ||
+                (item.ProductId == null && (catalogoServicos?.Any(c => string.Equals(c.Name, item.Description, StringComparison.OrdinalIgnoreCase)) ?? false));
+
+                if (isServico)
+                {
+                    <div style="display: flex; margin-bottom: 8px;">
+                        <span style="width: 75%;">
+                            <strong style="color: black;">[SERVIÇO]</strong> @item.Description
+                            @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $" ({item.WarrantyPeriod})")
+                            @(item.Mechanic != null ? $" - Mecânico: {item.Mechanic.name}" : "")
+                        </span>
+                        <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
+                    </div>
+                }
             }
         </div>
 
+        @* Rodapé Financeiro *@
         <div class="print-data" style="top: 80%; left: 81%; font-size: 18pt; font-weight: bold;">R$ @Os.TotalAmount.ToString("N2")</div>
-
         <div class="print-data" style="top: 85.8%; left: 30%; font-size: 14pt; font-weight: bold;">R$ @Os.AmountPaid.ToString("N2")</div>
-
         <div class="print-data" style="top: 85.8%; left: 81%; font-size: 14pt; font-weight: bold;">R$ @Os.RemainingAmount.ToString("N2")</div>
     </div>
 }
 
 @code {
-    [Parameter]
-    public ServiceOrderDTO? Os { get; set; }
+    [Parameter] public ServiceOrderDTO? Os { get; set; }
+
+    private List<LaborServiceDTO>? catalogoServicos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Carrega o catálogo para saber quais nomes de itens são "Serviços"
+            catalogoServicos = await Http.GetFromJsonAsync<List<LaborServiceDTO>>("https://localhost:7082/api/laborservices");
+        }
+        catch { }
+    }
 }

@@ -22,6 +22,15 @@ namespace OficinaAPI.Controllers
             return await _context.Products.ToListAsync();
         }
 
+        [HttpGet("low-stock")]
+        public async Task<ActionResult<IEnumerable<Product>>> GetLowStock()
+        {
+            return await _context.Products
+                .Where(p => p.StockQuantity <= 3)
+                .OrderBy(p => p.StockQuantity) 
+                .ToListAsync();
+        }
+
         [HttpGet("busca/{code}")]
         public async Task<ActionResult<Product>> GetProductByCode(string code)
         {
