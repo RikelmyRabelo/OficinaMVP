@@ -25,7 +25,6 @@ namespace OficinaWeb.Models
     {
         public string PaymentMethod { get; set; } = "";
         public decimal Amount { get; set; }
-
         public DateTime PaymentDate { get; set; } = DateTime.Now;
     }
 
@@ -46,7 +45,21 @@ namespace OficinaWeb.Models
     }
 
     public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-    public class ServiceItemDTO { public int Id { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public int? ProductId { get; set; } public string? WarrantyPeriod { get; set; } public EmployeeListDTO? Mechanic { get; set; } public int Quantity { get; set; } = 1; }
+
+    public class ServiceItemDTO
+    {
+        public int Id { get; set; }
+        public string Description { get; set; } = "";
+        public decimal Price { get; set; }
+        public int? ProductId { get; set; }
+        public string? WarrantyPeriod { get; set; }
+        public EmployeeListDTO? Mechanic { get; set; }
+        public int Quantity { get; set; } = 1;
+
+        // 👉 A PROPRIEDADE NOVA ADICIONADA AQUI:
+        public string ItemType { get; set; } = "Product";
+    }
+
     public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } }
     public class EmployeeListDTO { public int id { get; set; } public string name { get; set; } = ""; }
     public class LaborServiceDTO { public int Id { get; set; } public string Name { get; set; } = ""; public decimal DefaultPrice { get; set; } }

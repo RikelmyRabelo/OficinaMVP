@@ -43,6 +43,9 @@ namespace OficinaAPI.Models
         public decimal Price { get; set; }
         public string? WarrantyPeriod { get; set; }
         public DateTime? WarrantyExpirationDate { get; set; }
+
+        // NOVA COLUNA ADICIONADA AQUI:
+        public string ItemType { get; set; } = "Product";
     }
 
     public class Vehicle

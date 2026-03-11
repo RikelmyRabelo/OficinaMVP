@@ -97,7 +97,7 @@ namespace OficinaAPI.Controllers
         private string GerarTemplateHtmlOS(ServiceOrder os)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("<html><body style='font-family:sans-serif;'><h1>FJ CENTRO AUTOMOTIVO - OS #" + os.Id + "</h1>");
+            sb.AppendLine("<html><body style='font-family:sans-serif;'><h1>FREITAS AUTOCENTER - OS #" + os.Id + "</h1>");
             sb.AppendLine("<table border='1' width='100%'><tr><th>Item</th><th>Preço</th></tr>");
             foreach (var item in os.Items) { sb.AppendLine($"<tr><td>{item.Description}</td><td>{item.Price:N2}</td></tr>"); }
             sb.AppendLine("</table><p>Total: " + os.TotalAmount.ToString("C2") + "</p></body></html>");

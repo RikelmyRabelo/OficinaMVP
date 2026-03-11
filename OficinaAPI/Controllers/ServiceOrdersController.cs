@@ -88,6 +88,13 @@ namespace OficinaAPI.Controllers
             };
 
             os.TotalAmount += newItem.Price;
+
+            // INTELIGÊNCIA NOVA: Se a OS já está finalizada, desconta do estoque na mesma hora
+            if (os.Status == "Completed")
+            {
+                product.StockQuantity -= itemDto.Quantity;
+            }
+
             _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
             return Ok(newItem);
@@ -263,6 +270,17 @@ namespace OficinaAPI.Controllers
             {
                 os.TotalAmount -= item.Price;
                 os.TotalAmount += request.Price;
+
+                // INTELIGÊNCIA NOVA: Se a OS está fechada e o mecânico mudou a QUANTIDADE de uma peça de estoque
+                if (os.Status == "Completed" && item.ProductId != null)
+                {
+                    var product = await _context.Products.FindAsync(item.ProductId);
+                    if (product != null)
+                    {
+                        var diff = request.Quantity - item.Quantity;
+                        product.StockQuantity -= diff;
+                    }
+                }
             }
 
             item.Description = request.Description;
