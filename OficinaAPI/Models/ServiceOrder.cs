@@ -44,7 +44,6 @@ namespace OficinaAPI.Models
         public string? WarrantyPeriod { get; set; }
         public DateTime? WarrantyExpirationDate { get; set; }
 
-        // NOVA COLUNA ADICIONADA AQUI:
         public string ItemType { get; set; } = "Product";
     }
 

@@ -55,8 +55,7 @@ namespace OficinaWeb.Models
         public string? WarrantyPeriod { get; set; }
         public EmployeeListDTO? Mechanic { get; set; }
         public int Quantity { get; set; } = 1;
-
-        // 👉 A PROPRIEDADE NOVA ADICIONADA AQUI:
+        public int? MechanicId { get; set; }
         public string ItemType { get; set; } = "Product";
     }
 
@@ -71,5 +70,15 @@ namespace OficinaWeb.Models
 
     public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
-    public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; }
+
+    // AJUSTADO: Agora a edição de item também transporta o MechanicId e o ItemType
+    public class UpdateServiceItemDTO
+    {
+        public string Description { get; set; } = "";
+        public decimal Price { get; set; }
+        public string? WarrantyPeriod { get; set; }
+        public int Quantity { get; set; } = 1;
+        public int? MechanicId { get; set; }
+        public string ItemType { get; set; } = "Product";
+    }
 }

@@ -84,12 +84,12 @@ namespace OficinaAPI.Controllers
                 Description = $"{product.Code} - {product.Name}",
                 Price = precoUnitario * itemDto.Quantity,
                 WarrantyPeriod = itemDto.WarrantyPeriod,
-                Quantity = itemDto.Quantity
+                Quantity = itemDto.Quantity,
+                ItemType = "Product"
             };
 
             os.TotalAmount += newItem.Price;
 
-            // INTELIGÊNCIA NOVA: Se a OS já está finalizada, desconta do estoque na mesma hora
             if (os.Status == "Completed")
             {
                 product.StockQuantity -= itemDto.Quantity;
@@ -120,7 +120,8 @@ namespace OficinaAPI.Controllers
                 Description = laborDto.Description,
                 Price = laborDto.Price,
                 WarrantyPeriod = laborDto.WarrantyPeriod,
-                Quantity = 1
+                Quantity = 1,
+                ItemType = "Service"
             };
 
             os.TotalAmount += newItem.Price;
@@ -142,7 +143,8 @@ namespace OficinaAPI.Controllers
                 Description = customDto.Description,
                 Price = customDto.Price,
                 WarrantyPeriod = customDto.WarrantyPeriod,
-                Quantity = customDto.Quantity
+                Quantity = customDto.Quantity,
+                ItemType = "Custom"
             };
 
             os.TotalAmount += newItem.Price;
@@ -226,7 +228,6 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        //MÉTODO DE PAGAMENTO MÚLTIPLO
         [HttpPut("{id}/payment")]
         public async Task<IActionResult> UpdateAmountPaid(int id, [FromBody] UpdatePaymentDTO request)
         {
@@ -234,10 +235,9 @@ namespace OficinaAPI.Controllers
             if (os == null) return NotFound();
 
             os.AmountPaid = request.AmountPaid;
-            os.PaymentMethod = request.PaymentMethod; // Salva o principal para manter compatibilidade com sistemas antigos
+            os.PaymentMethod = request.PaymentMethod;
             os.PromisedPaymentDate = request.PromisedPaymentDate;
 
-            // Remove todos os registros antigos e insere os novos (substituição total)
             _context.ServiceOrderPayments.RemoveRange(os.Payments);
 
             if (request.Payments != null && request.Payments.Any())
@@ -249,7 +249,6 @@ namespace OficinaAPI.Controllers
                         ServiceOrderId = id,
                         PaymentMethod = split.PaymentMethod,
                         Amount = split.Amount,
-                        // Pega a data que veio do front, ou se for vazia, põe a data de agora:
                         PaymentDate = split.PaymentDate != DateTime.MinValue ? split.PaymentDate : DateTime.Now
                     });
                 }
@@ -271,7 +270,6 @@ namespace OficinaAPI.Controllers
                 os.TotalAmount -= item.Price;
                 os.TotalAmount += request.Price;
 
-                // INTELIGÊNCIA NOVA: Se a OS está fechada e o mecânico mudou a QUANTIDADE de uma peça de estoque
                 if (os.Status == "Completed" && item.ProductId != null)
                 {
                     var product = await _context.Products.FindAsync(item.ProductId);
@@ -288,11 +286,42 @@ namespace OficinaAPI.Controllers
             item.WarrantyPeriod = request.WarrantyPeriod;
             item.Quantity = request.Quantity;
 
+            if (!string.IsNullOrEmpty(request.ItemType))
+            {
+                item.ItemType = request.ItemType;
+            }
+            if (request.MechanicId.HasValue)
+            {
+                item.MechanicId = request.MechanicId;
+            }
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        // GESTÃO DE ANEXOS
+        [HttpDelete("{id}/items/{itemId}")]
+        public async Task<IActionResult> DeleteServiceItem(int id, int itemId)
+        {
+            var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
+            if (os == null) return NotFound();
+
+            var item = os.Items.FirstOrDefault(i => i.Id == itemId);
+            if (item == null) return NotFound();
+
+            if (os.Status == "Completed" && item.ProductId != null)
+            {
+                var product = await _context.Products.FindAsync(item.ProductId);
+                if (product != null)
+                {
+                    product.StockQuantity += item.Quantity;
+                }
+            }
+
+            os.TotalAmount -= item.Price;
+            _context.ServiceItems.Remove(item);
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
 
         [HttpGet("{id}/attachments")]
         public async Task<ActionResult<IEnumerable<ServiceOrderAttachment>>> GetAttachments(int id)
@@ -330,7 +359,6 @@ namespace OficinaAPI.Controllers
             DateTime hoje = DateTime.Now.Date;
             DateTime inicioDaSemana = hoje.AddDays(-(int)hoje.DayOfWeek);
 
-            // Calcula valores vindos das Ordens de Serviço Concluídas
             var osData = await _context.ServiceOrders
                 .AsNoTracking()
                 .Where(o => o.Status == "Completed" && !o.IsDeleted)
@@ -343,7 +371,6 @@ namespace OficinaAPI.Controllers
                 })
                 .ToListAsync();
 
-            // Calcula valores vindos dos pagamentos múltiplos (A tabela nova)
             var multiPaymentsData = await _context.ServiceOrderPayments
                 .AsNoTracking()
                 .Include(p => p.ServiceOrder)
@@ -368,46 +395,29 @@ namespace OficinaAPI.Controllers
                 }
             }
 
-            // Somatório por métodos de pagamento usando a tabela nova
             summary.TotalPix = multiPaymentsData.Where(p => p.Metodo == "PIX").Sum(p => p.Valor);
             summary.TotalCredito = multiPaymentsData.Where(p => p.Metodo == "Crédito" || p.Metodo == "CRÉDITO").Sum(p => p.Valor);
             summary.TotalDebito = multiPaymentsData.Where(p => p.Metodo == "Débito" || p.Metodo == "DÉBITO").Sum(p => p.Valor);
-
-            // Retro-compatibilidade com OS antigas que não tinham pagamento múltiplo
-            var osSemMultiplo = osData.Where(o => !_context.ServiceOrderPayments.Any(p => p.ServiceOrderId == o.Total)); // Simplificação lógica para manter a performance
 
             summary.TotalPix += osData.Where(o => o.Metodo == "PIX" && !_context.ServiceOrderPayments.Any()).Sum(o => o.Pago);
             summary.TotalCredito += osData.Where(o => (o.Metodo == "Crédito" || o.Metodo == "CRÉDITO") && !_context.ServiceOrderPayments.Any()).Sum(o => o.Pago);
             summary.TotalDebito += osData.Where(o => (o.Metodo == "Débito" || o.Metodo == "DÉBITO") && !_context.ServiceOrderPayments.Any()).Sum(o => o.Pago);
 
-
-            // Adiciona as Vendas Avulsas
-            try
-            {
-            }
-            catch { }
-
             return Ok(summary);
         }
-
-        // GESTÃO DE CAIXA E FATURAMENTO
 
         [HttpGet("cash-balance")]
         public async Task<ActionResult<decimal>> GetCashBalance()
         {
-
-            // 1. Pega todas as frações de pagamento em dinheiro de O.S que NÃO foram excluídas
             var entradasMultiplasDinheiro = await _context.ServiceOrderPayments
                 .Include(p => p.ServiceOrder)
                 .Where(p => p.PaymentMethod == "Dinheiro" && p.ServiceOrder != null && !p.ServiceOrder.IsDeleted)
                 .SumAsync(p => p.Amount);
 
-            // 2. Busca pagamentos "antigos" (Legado) que não têm divisão na tabela nova, mas estão marcados como Dinheiro
             var entradasLegadoDinheiro = await _context.ServiceOrders
                 .Where(o => o.PaymentMethod == "Dinheiro" && !o.IsDeleted && !o.Payments.Any())
                 .SumAsync(o => o.AmountPaid);
 
-            // 3. Soma ajustes manuais (entradas positivas ou retiradas negativas)
             var ajustes = await _context.Set<CashTransaction>().SumAsync(t => t.Amount);
 
             return Ok(entradasMultiplasDinheiro + entradasLegadoDinheiro + ajustes);
@@ -427,8 +437,6 @@ namespace OficinaAPI.Controllers
             await _context.SaveChangesAsync();
             return Ok();
         }
-
-        // AJUSTE DE GANHOS DA SEMANA
 
         [HttpGet("revenue-adjustments")]
         public async Task<ActionResult<IEnumerable<RevenueAdjustment>>> GetRevenueAdjustments()
@@ -460,9 +468,18 @@ namespace OficinaAPI.Controllers
         public class AddCustomItemDTO { public string Description { get; set; } = ""; public int Quantity { get; set; } = 1; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
         public class CompletionDTO { public DateTime CompletionDate { get; set; } }
         public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
-        public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; }
 
-        // DTOs DE PAGAMENTO
+        // DTO DE EDIÇÃO ATUALIZADO PARA SUPORTAR ITEMTYPE
+        public class UpdateServiceItemDTO
+        {
+            public string Description { get; set; } = "";
+            public decimal Price { get; set; }
+            public string? WarrantyPeriod { get; set; }
+            public int Quantity { get; set; } = 1;
+            public int? MechanicId { get; set; }
+            public string? ItemType { get; set; }
+        }
+
         public class PaymentSplitDTO { public string PaymentMethod { get; set; } = ""; public decimal Amount { get; set; } public DateTime PaymentDate { get; set; } = DateTime.Now; }
         public class UpdatePaymentDTO
         {
@@ -475,7 +492,6 @@ namespace OficinaAPI.Controllers
         public class UploadAttachmentDTO { public string FileName { get; set; } = ""; public string FileType { get; set; } = ""; public string Base64Content { get; set; } = ""; }
         public class CashAdjustmentDTO { public decimal Amount { get; set; } public string Description { get; set; } = ""; }
 
-        // DTO DO RESUMO FINANCEIRO
         public class FinancialSummaryDTO
         {
             public decimal FaturamentoTotal { get; set; }

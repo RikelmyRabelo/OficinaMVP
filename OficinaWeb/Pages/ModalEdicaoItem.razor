@@ -29,9 +29,17 @@
                         <input class="form-control bg-dark text-white border-secondary" @bind="Request.WarrantyPeriod" />
                     </div>
                 </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-outline-light" @onclick="OnCancelar">Cancelar</button>
-                    <button type="button" class="btn fw-bold" style="background-color: #ffeb3b; color: #000;" @onclick="OnSalvar">SALVAR ALTERAÇÕES</button>
+                <div class="modal-footer border-secondary d-flex justify-content-between">
+
+                    @* NOVO BOTÃO DE EXCLUSÃO ALINHADO À ESQUERDA *@
+                    <button type="button" class="btn btn-outline-danger" @onclick="OnExcluir" title="Remover este item da O.S.">
+                        <i class="bi bi-trash-fill me-1"></i>Excluir
+                    </button>
+
+                    <div>
+                        <button type="button" class="btn btn-outline-light me-2" @onclick="OnCancelar">Cancelar</button>
+                        <button type="button" class="btn fw-bold" style="background-color: #ffeb3b; color: #000;" @onclick="OnSalvar">SALVAR</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -44,4 +52,7 @@
 
     [Parameter] public EventCallback OnSalvar { get; set; }
     [Parameter] public EventCallback OnCancelar { get; set; }
+
+    // NOVA PERMISSÃO PARA RECEBER A FUNÇÃO DE EXCLUSÃO
+    [Parameter] public EventCallback OnExcluir { get; set; }
 }

@@ -25,7 +25,7 @@
 
 <ModalExclusao Visivel="mostrarModalExclusao" OsId="sel?.Id ?? 0" ModeloVeiculo="@(sel?.Vehicle?.Model ?? "")" OnConfirmar="ConfirmarExclusao" OnCancelar="() => mostrarModalExclusao = false" />
 
-<ModalEdicaoItem Visivel="mostrarModalEdicaoItem" Request="itemEditRequest" OnSalvar="SalvarEdicaoItem" OnCancelar="FecharEdicaoItem" />
+<ModalEdicaoItem Visivel="mostrarModalEdicaoItem" Request="itemEditRequest" OnSalvar="SalvarEdicaoItem" OnCancelar="FecharEdicaoItem" OnExcluir="ApagarItemEmEdicao" />
 
 <div class="container-fluid py-4 px-4 no-print">
     <div class="row align-items-center mb-5 position-relative">
@@ -462,13 +462,13 @@
                             <thead>
                                 <tr class="text-secondary" style="border-bottom: 2px solid #333;">
                                     <th style="width: 10%;">Cód</th>
-                                    <th style="width: 45%;">Descrição do Item / Serviço</th>
+                                    <th style="width: 43%;">Descrição do Item / Serviço</th>
                                     <th class="text-center" style="width: 10%;">Qtd</th>
                                     <th class="text-end" style="width: 15%;">V. Unitário</th>
                                     <th class="text-end" style="width: 15%;">V. Total</th>
                                     @if (!verLixeira)
                                     {
-                                        <th style="width: 5%;"></th>
+                                        <th style="width: 7%;" class="text-center"></th>
                                     }
                                 </tr>
                             </thead>
@@ -478,17 +478,16 @@
                                 {
                                     @foreach (var item in sel.Items)
                                     {
-                                        bool isNomeDeServico = catalogoServicos?.Any(c => string.Equals(c.Name, item.Description, StringComparison.OrdinalIgnoreCase)) == true;
+                                        bool existeNoCatalogo = catalogoServicos?.Any(c => string.Equals(c.Name, item.Description, StringComparison.OrdinalIgnoreCase)) == true;
 
                                         bool isServico = item.ItemType == "Service" ||
+                                        (item.ProductId == null && item.MechanicId != null) ||
                                         (item.ProductId == null && item.Mechanic != null) ||
-                                        (item.ProductId == null && isNomeDeServico);
+                                        (item.ProductId == null && existeNoCatalogo);
 
-                                        bool isAvulso = item.ItemType == "Custom" ||
-                                        (item.ItemType == "Product" && item.ProductId == null && !isServico);
+                                        bool isAvulso = !isServico && item.ProductId == null;
 
                                         <tr>
-                                            @* COLUNA DO CÓDIGO *@
                                             <td class="text-warning small fw-bold">
                                                 @if (isServico)
                                                 {
@@ -504,7 +503,6 @@
                                                 }
                                             </td>
 
-                                            @* COLUNA DA DESCRIÇÃO E TAGS *@
                                             <td>
                                                 <span class="text-white fw-bold">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description)</span>
                                                 @if (isServico)
@@ -523,7 +521,6 @@
                                                 }
                                             </td>
 
-                                            @* QUANTIDADE *@
                                             <td class="text-center text-nowrap-custom">
                                                 @if (isServico)
                                                 {
@@ -535,7 +532,6 @@
                                                 }
                                             </td>
 
-                                            @* VALOR UNITÁRIO *@
                                             <td class="text-end text-nowrap-custom text-white-50 small">
                                                 @if (!isServico)
                                                 {
@@ -547,16 +543,14 @@
                                                 }
                                             </td>
 
-                                            @* VALOR TOTAL *@
                                             <td class="text-end text-nowrap-custom">
                                                 <span class="text-success fw-bold">R$ @item.Price.ToString("N2")</span>
                                             </td>
 
-                                            @* BOTÃO EDITAR *@
                                             @if (!verLixeira)
                                             {
                                                 <td class="text-center">
-                                                    <button class="btn btn-sm btn-link text-warning p-0" @onclick="() => AbrirEdicaoItem(item)">
+                                                    <button class="btn btn-sm btn-link text-warning p-0" @onclick="() => AbrirEdicaoItem(item)" title="Editar ou Excluir">
                                                         <i class="bi bi-pencil-fill"></i>
                                                     </button>
                                                 </td>
@@ -607,7 +601,6 @@
     bool editandoTotal = false;
     decimal novoTotal = 0;
 
-    //CONTROLES DA NOVA EDIÇÃO DE PAGAMENTO
     bool editandoPagamento = false;
     List<PaymentSplitDTO> listaPagamentosEmEdicao = new();
     DateTime? novaDataPromessa = null;
@@ -802,6 +795,32 @@
         catch { MostrarErro("Erro ao adicionar serviço."); }
     }
 
+    async Task ApagarItemEmEdicao()
+    {
+        if (itemParaEditar == null || sel == null) return;
+
+        bool confirm = await JS.InvokeAsync<bool>("confirm", $"Tem certeza que deseja apagar '{itemParaEditar.Description}' desta O.S.?");
+        if (!confirm) return;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}");
+            if (!response.IsSuccessStatusCode)
+            {
+                MostrarErro("Erro ao remover item.");
+                return;
+            }
+
+            await AtualizarTela();
+            MostrarSucesso("Item removido!");
+            FecharEdicaoItem();
+        }
+        catch
+        {
+            MostrarErro("Erro de conexão ao remover o item.");
+        }
+    }
+
     async Task FinalizarOS()
     {
         try
@@ -978,7 +997,9 @@
             Description = item.Description,
             Price = item.Price,
             WarrantyPeriod = item.WarrantyPeriod,
-            Quantity = item.Quantity > 0 ? item.Quantity : 1
+            Quantity = item.Quantity > 0 ? item.Quantity : 1,
+            ItemType = item.ItemType,
+            MechanicId = item.MechanicId
         };
         mostrarModalEdicaoItem = true;
     }
