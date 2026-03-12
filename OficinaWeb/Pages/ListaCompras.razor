@@ -15,7 +15,7 @@
 
     <div class="row g-4">
         <div class="col-md-7">
-            <div class="card border-0 shadow-sm" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
+            <div class="card border-0 shadow-lg" style="background: #111; border-top: 4px solid #ffeb3b !important;">
                 <div class="card-body p-4">
                     <h5 class="mb-3 fw-bold" style="color: #ffeb3b;">Peças do Sistema</h5>
                     <div class="input-group mb-3">
@@ -24,9 +24,9 @@
                     </div>
 
                     <div style="max-height: 500px; overflow-y: auto;">
-                        <table class="table table-dark table-hover align-middle">
+                        <table class="table table-dark table-hover align-middle mb-0">
                             <thead>
-                                <tr class="text-secondary">
+                                <tr class="text-white-50 border-secondary">
                                     <th>Peça</th>
                                     <th class="text-center">Qtd Atual</th>
                                     <th style="width: 50px;"></th>
@@ -37,13 +37,13 @@
                                 {
                                     @foreach (var p in filteredProducts)
                                     {
-                                        <tr>
+                                        <tr class="border-secondary">
                                             <td>
                                                 <div class="fw-bold text-white">@p.name</div>
-                                                <small class="text-muted">Cód: @p.code</small>
+                                                <small class="text-white-50">Cód: @p.code</small>
                                             </td>
                                             <td class="text-center">
-                                                <span class="badge @(p.stockQuantity <= 0 ? "bg-danger" : (p.stockQuantity <= 3 ? "bg-warning text-dark" : "bg-success"))">
+                                                <span class="badge @(p.stockQuantity <= 0 ? "bg-danger" : (p.stockQuantity <= 3 ? "bg-warning text-dark" : "bg-success text-white"))">
                                                     @p.stockQuantity
                                                 </span>
                                             </td>
@@ -63,7 +63,7 @@
         </div>
 
         <div class="col-md-5">
-            <div class="card border-0 shadow-sm mb-4" style="background-color: #111; border-top: 4px solid #00ffff !important;">
+            <div class="card border-0 shadow-lg mb-4" style="background: #111; border-top: 4px solid #00ffff !important;">
                 <div class="card-body p-4">
                     <h5 class="mb-3 fw-bold" style="color: #00ffff;">Item não cadastrado</h5>
                     <div class="input-group">
@@ -73,7 +73,7 @@
                 </div>
             </div>
 
-            <div class="card border-0 shadow-sm" style="background-color: #111; border-top: 4px solid #ff6600 !important;">
+            <div class="card border-0 shadow-lg" style="background: #111; border-top: 4px solid #ff6600 !important;">
                 <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center p-3">
                     <h5 class="mb-0 fw-bold text-white">Sua Lista</h5>
                     <button class="btn btn-light btn-sm fw-bold" @onclick="ImprimirLista" disabled="@(!listaParaComprar.Any())">
@@ -84,13 +84,15 @@
                     <ul class="list-group list-group-flush bg-transparent">
                         @if (!listaParaComprar.Any())
                         {
-                            <li class="list-group-item bg-transparent text-muted text-center py-4">Nenhum item selecionado.</li>
+                            <li class="list-group-item bg-transparent text-white-50 text-center py-4 border-secondary">
+                                NENHUM ITEM SELECIONADO
+                            </li>
                         }
                         @foreach (var item in listaParaComprar)
                         {
-                            <li class="list-group-item bg-transparent text-white d-flex justify-content-between align-items-center border-secondary">
-                                <div><i class="bi bi-dot text-warning me-1"></i>@item</div>
-                                <button class="btn btn-sm text-danger" @onclick="() => RemoverDaLista(item)">
+                            <li class="list-group-item bg-transparent text-white d-flex justify-content-between align-items-center border-secondary py-3">
+                                <div><i class="bi bi-dot text-warning fs-4 me-1"></i>@item</div>
+                                <button class="btn btn-sm btn-outline-danger border-0" @onclick="() => RemoverDaLista(item)">
                                     <i class="bi bi-trash3-fill"></i>
                                 </button>
                             </li>
