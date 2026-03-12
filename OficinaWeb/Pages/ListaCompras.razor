@@ -43,7 +43,7 @@
                                         <tr class="border-secondary">
                                             <td>
                                                 <div class="fw-bold text-white">@p.name</div>
-                                                <small class="text-white-50">Cód: @p.code</small>
+                                                <small class="text-white-50">@p.code</small>
                                             </td>
                                             <td class="text-center">
                                                 <span class="badge @(p.stockQuantity <= 0 ? "bg-danger" : (p.stockQuantity <= 3 ? "bg-warning text-dark" : "bg-success text-white"))">
@@ -70,31 +70,39 @@
             </div>
         </div>
 
-        @* Coluna da Direita: Itens Selecionados *@
         <div class="col-md-6">
             <div class="card border-0 shadow-lg mb-4" style="background: #111; border-top: 4px solid #00ffff !important;">
                 <div class="card-body p-4 text-white">
                     <h5 class="mb-3 fw-bold" style="color: #00ffff;">Item não cadastrado</h5>
-                    <div class="input-group">
-                        <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Ex: Estopa, WD-40..." @bind="newItemName" @onkeyup="HandleKeyUp" />
-                        <button class="btn btn-info fw-bold" @onclick="AddManualItem">ADD</button>
+                    <div class="row g-2">
+                        <div class="col-7">
+                            <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Nome do item..." @bind="newItemName" />
+                        </div>
+                        <div class="col-3">
+                            <input type="number" class="form-control bg-dark text-white border-secondary" placeholder="Preço" @bind="newItemPrice" />
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-info fw-bold w-100" @onclick="AddManualItem">ADD</button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="card border-0 shadow-lg" style="background: #111; border-top: 4px solid #ff6600 !important;">
-                <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center p-3">
-                    <h5 class="mb-0 fw-bold text-white">Sua Lista</h5>
-                    <button class="btn btn-light btn-sm fw-bold shadow-sm" @onclick="ImprimirLista" disabled="@(!itemsParaComprar.Any())">
-                        <i class="bi bi-printer-fill me-1 text-danger"></i>GERAR PDF
-                    </button>
+                <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center p-3 text-white">
+                    <h5 class="mb-0 fw-bold">Sua Lista</h5>
+                    <div class="text-end">
+                        <small class="text-white-50 d-block">Total Estimado</small>
+                        <span class="fw-bold text-warning">R$ @itemsParaComprar.Sum(i => i.Price).ToString("N2")</span>
+                    </div>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-dark mb-0">
+                    <table class="table table-dark mb-0 table-sm">
                         <thead>
-                            <tr class="text-white-50 border-secondary" style="font-size: 0.85rem;">
-                                <th class="ps-3">Item / Preço</th>
-                                <th>Obs / Qtd</th>
+                            <tr class="text-white-50 border-secondary" style="font-size: 0.8rem;">
+                                <th class="ps-3 py-2">Item</th>
+                                <th style="width: 100px;">Preço Ref.</th>
+                                <th>Observação / Qtd</th>
                                 <th style="width: 40px;"></th>
                             </tr>
                         </thead>
@@ -102,22 +110,23 @@
                             @if (!itemsParaComprar.Any())
                             {
                                 <tr>
-                                    <td colspan="3" class="text-center py-4 text-white-50 small">NENHUM ITEM SELECIONADO</td>
+                                    <td colspan="4" class="text-center py-4 text-white-50">NENHUM ITEM SELECIONADO</td>
                                 </tr>
                             }
                             @foreach (var item in itemsParaComprar)
                             {
-                                <tr class="border-secondary">
-                                    <td class="ps-3 align-middle">
-                                        <div class="text-white fw-bold" style="font-size: 0.9rem;">@item.Name</div>
-                                        <div class="text-info small">R$ @item.Price.ToString("N2")</div>
+                                <tr class="border-secondary align-middle">
+                                    <td class="ps-3 text-white fw-bold">@item.Name</td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm bg-dark text-info border-0 fw-bold"
+                                               @bind="item.Price" @bind:event="oninput" />
                                     </td>
                                     <td>
                                         <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary"
                                                placeholder="Obs..." @bind="item.Observation" />
                                     </td>
-                                    <td class="text-end pe-2">
-                                        <button class="btn btn-sm text-danger border-0" @onclick="() => RemoverDaLista(item.Name)">
+                                    <td class="pe-2 text-center">
+                                        <button class="btn btn-link text-danger p-0" @onclick="() => RemoverDaLista(item.Name)">
                                             <i class="bi bi-trash3-fill"></i>
                                         </button>
                                     </td>
@@ -125,53 +134,54 @@
                             }
                         </tbody>
                     </table>
+                    <div class="p-3">
+                        <button class="btn btn-light w-100 fw-bold py-2" @onclick="ImprimirLista" disabled="@(!itemsParaComprar.Any())">
+                            <i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i>GERAR REQUISIÇÃO PARA VENDAS
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-@* ÁREA DE IMPRESSÃO*@
+@* ÁREA DE IMPRESSÃO *@
 <div id="print-section" class="d-none d-print-block" style="position: relative; width: 210mm; min-height: 297mm; background-color: white; color: black !important; padding: 20mm; font-family: Arial, sans-serif;">
     <div style="border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
-        <h1 style="margin: 0; font-size: 22pt;">FREITAS AUTOCENTER</h1>
-        <h3 style="margin: 5px 0; color: #444;">REQUISIÇÃO DE COMPRAS E VALORES</h3>
-        <p style="font-size: 10pt; margin: 0;">Gerado em: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
+        <h1 style="margin: 0; font-size: 24pt;">FREITAS AUTOCENTER</h1>
+        <h3 style="margin: 5px 0; color: #333;">REQUISIÇÃO DE COMPRAS E VALORES</h3>
+        <p style="font-size: 10pt;">Data: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
     </div>
 
-    <table style="width: 100%; border-collapse: collapse; color: black !important;">
+    <table style="width: 100%; border-collapse: collapse; color: black !important; margin-top: 10px;">
         <thead>
-            <tr style="background-color: #eee;">
-                <th style="border: 1px solid black; padding: 10px; width: 50px; text-align: center;">[ OK ]</th>
+            <tr style="background-color: #f2f2f2;">
+                <th style="border: 1px solid black; padding: 10px; width: 50px;">[ OK ]</th>
                 <th style="border: 1px solid black; padding: 10px; text-align: left;">DESCRIÇÃO DO ITEM</th>
-                <th style="border: 1px solid black; padding: 10px; width: 120px; text-align: center;">UNITÁRIO (REF)</th>
-                <th style="border: 1px solid black; padding: 10px; width: 150px; text-align: center;">QTD / OBS</th>
+                <th style="border: 1px solid black; padding: 10px; width: 120px;">VALOR REF.</th>
+                <th style="border: 1px solid black; padding: 10px; width: 150px;">QTD / OBS</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var item in itemsParaComprar)
             {
                 <tr>
-                    <td style="border: 1px solid black; padding: 12px; text-align: center; font-size: 14pt;">☐</td>
-                    <td style="border: 1px solid black; padding: 12px; font-weight: bold; font-size: 11pt;">@item.Name</td>
+                    <td style="border: 1px solid black; padding: 12px; text-align: center;">☐</td>
+                    <td style="border: 1px solid black; padding: 12px; font-weight: bold;">@item.Name</td>
                     <td style="border: 1px solid black; padding: 12px; text-align: center;">R$ @item.Price.ToString("N2")</td>
-                    <td style="border: 1px solid black; padding: 12px; text-align: center; font-size: 10pt;">@item.Observation</td>
+                    <td style="border: 1px solid black; padding: 12px; text-align: center;">@item.Observation</td>
                 </tr>
             }
         </tbody>
         <tfoot>
-            <tr style="background-color: #f9f9f9;">
-                <td colspan="2" style="border: 1px solid black; padding: 12px; text-align: right; font-weight: bold;">TOTAL ESTIMADO (REF):</td>
-                <td colspan="2" style="border: 1px solid black; padding: 12px; font-size: 13pt; font-weight: bold; color: #000;">
+            <tr style="background-color: #eee;">
+                <td colspan="2" style="border: 1px solid black; padding: 15px; text-align: right; font-weight: bold; font-size: 12pt;">TOTAL ESTIMADO DA REQUISIÇÃO:</td>
+                <td colspan="2" style="border: 1px solid black; padding: 15px; font-size: 14pt; font-weight: bold;">
                     R$ @itemsParaComprar.Sum(i => i.Price).ToString("N2")
                 </td>
             </tr>
         </tfoot>
     </table>
-
-    <div style="margin-top: 40px; font-size: 9pt; color: #666; font-style: italic;">
-        * Os valores acima são baseados no preço de venda do sistema para referência comercial.
-    </div>
 </div>
 
 <style>
@@ -211,35 +221,30 @@
     private List<ShoppingItem> itemsParaComprar = new();
     private string searchTerm = "";
     private string newItemName = "";
+    private decimal newItemPrice = 0;
 
     private List<LocalProduct> filteredProducts => allProducts?
-        .Where(p => string.IsNullOrEmpty(searchTerm) ||
-               (p.name?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
-               (p.code?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
-        .ToList() ?? new();
+        .Where(p => string.IsNullOrEmpty(searchTerm) || p.name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
 
     protected override async Task OnInitializedAsync()
     {
-        try { allProducts = await Http.GetFromJsonAsync<List<LocalProduct>>("https://localhost:7082/api/products") ?? new(); }
-        catch { }
+        try { allProducts = await Http.GetFromJsonAsync<List<LocalProduct>>("https://localhost:7082/api/products") ?? new(); } catch { }
     }
 
     private void AddToList(string name, decimal price)
     {
-        if (!string.IsNullOrEmpty(name) && !itemsParaComprar.Any(i => i.Name == name))
-            itemsParaComprar.Add(new ShoppingItem { Name = name, Price = price });
+        if (!itemsParaComprar.Any(i => i.Name == name)) itemsParaComprar.Add(new ShoppingItem { Name = name, Price = price });
     }
 
     private void AddManualItem()
     {
         if (!string.IsNullOrWhiteSpace(newItemName))
         {
-            itemsParaComprar.Add(new ShoppingItem { Name = newItemName.ToUpper(), Price = 0 });
-            newItemName = "";
+            itemsParaComprar.Add(new ShoppingItem { Name = newItemName.ToUpper(), Price = newItemPrice });
+            newItemName = ""; newItemPrice = 0;
         }
     }
 
-    private void HandleKeyUp(KeyboardEventArgs e) { if (e.Key == "Enter") AddManualItem(); }
     private void RemoverDaLista(string name) => itemsParaComprar.RemoveAll(i => i.Name == name);
     private async Task ImprimirLista() => await JS.InvokeVoidAsync("window.print");
 }
