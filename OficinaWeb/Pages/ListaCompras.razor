@@ -38,6 +38,7 @@
                                 {
                                     @foreach (var p in filteredProducts)
                                     {
+                                        bool jaEstaNaLista = listaParaComprar.Contains(p.name);
                                         <tr class="border-secondary">
                                             <td>
                                                 <div class="fw-bold text-white">@p.name</div>
@@ -49,8 +50,18 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                <button class="btn btn-sm btn-warning fw-bold" @onclick="() => AddToList(p.name)">
-                                                    <i class="bi bi-plus-lg"></i>
+
+                                                <button class="btn btn-sm @(jaEstaNaLista ? "btn-secondary opacity-50" : "btn-warning") fw-bold"
+                                                        @onclick="() => AddToList(p.name)"
+                                                        disabled="@jaEstaNaLista">
+                                                    @if (jaEstaNaLista)
+                                                    {
+                                                        <i class="bi bi-check-lg"></i>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-plus-lg"></i>
+                                                    }
                                                 </button>
                                             </td>
                                         </tr>
@@ -106,16 +117,14 @@
     </div>
 </div>
 
+@* ÁREA DE IMPRESSÃO *@
 <div id="print-section" class="d-none d-print-block" style="position: relative; width: 210mm; min-height: 297mm; background-color: white; color: black !important; padding: 20mm; font-family: Arial, sans-serif;">
-
-    @* Cabeçalho Estilizado *@
     <div style="border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
         <h1 style="margin: 0; font-size: 22pt;">FREITAS AUTOCENTER</h1>
         <h3 style="margin: 5px 0; color: #444;">LISTA DE COMPRAS E REPOSIÇÃO</h3>
         <p style="font-size: 10pt; margin: 0;">Gerado em: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
     </div>
 
-    @* Corpo da Lista *@
     <div style="width: 100%;">
         <table style="width: 100%; border-collapse: collapse; color: black !important;">
             <thead>
@@ -137,11 +146,6 @@
             </tbody>
         </table>
     </div>
-
-    @* Rodapé de Controle *@
-    <div style="position: absolute; bottom: 20mm; left: 20mm; right: 20mm; text-align: center; font-size: 9pt; border-top: 1px solid #ccc; padding-top: 10px; color: #666;">
-        Documento de conferência interna - Freitas Autocenter
-    </div>
 </div>
 
 <style>
@@ -158,10 +162,6 @@
 
         .d-print-block {
             display: block !important;
-        }
-        table, th, td {
-            color: black !important;
-            border-color: black !important;
         }
     }
 </style>
