@@ -13,14 +13,14 @@
     <p class="text-white-50">Gestão Profissional de Oficina</p>
 </div>
 
-@* Cards de Navegação Principal *@
+@* Cards de Navegação Principal - Restaurado para 4 colunas simétricas *@
 <div class="row g-4 mb-5 justify-content-center">
     <div class="col-md-3">
         <a href="estoque" class="card text-decoration-none h-100 border-0 shadow-lg nav-card" style="background: #111; border: 1px solid #333;">
             <div class="card-body text-center py-4">
                 <i class="bi bi-box-seam-fill fs-1 mb-3 d-block text-white"></i>
                 <h4 class="fw-bold" style="color: #ff6600;">Estoque</h4>
-                <small class="text-white-50">Peças e Insumos</small>
+                <small class="text-white-50 text-uppercase">Peças e Insumos</small>
             </div>
         </a>
     </div>
@@ -30,7 +30,7 @@
             <div class="card-body text-center py-4">
                 <i class="bi bi-people-fill fs-1 mb-3 d-block text-white"></i>
                 <h4 class="fw-bold" style="color: #ff6600;">Equipe</h4>
-                <small class="text-white-50">RH e Pagamentos</small>
+                <small class="text-white-50 text-uppercase">RH e Pagamentos</small>
             </div>
         </a>
     </div>
@@ -40,7 +40,7 @@
             <div class="card-body text-center py-4">
                 <i class="bi bi-wrench-adjustable fs-1 mb-3 d-block text-white"></i>
                 <h4 class="fw-bold" style="color: #ff6600;">Oficina</h4>
-                <small class="text-white-50">Ordens de Serviço</small>
+                <small class="text-white-50 text-uppercase">Ordens de Serviço</small>
             </div>
         </a>
     </div>
@@ -50,7 +50,7 @@
             <div class="card-body text-center py-4">
                 <i class="bi bi-cart-plus-fill fs-1 mb-3 d-block text-white"></i>
                 <h4 class="fw-bold" style="color: #ffeb3b;">Venda Avulsa</h4>
-                <small class="text-white-50">Caixa Rápido</small>
+                <small class="text-white-50 text-uppercase">Caixa Rápido</small>
             </div>
         </a>
     </div>
@@ -82,12 +82,22 @@ else
                 <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : osAbertas.ToString())</h1>
             </div>
         </div>
+
         <div class="col-md-4">
-            <div class="p-4 rounded-3 border-start border-4 border-danger h-100" style="background: #0a0a0a;">
-                <h6 class="text-white-50 text-uppercase small">Alertas de Estoque</h6>
-                <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : estoqueBaixo.ToString()) <span class="fs-5 text-white-50">itens</span></h1>
-            </div>
+            @* Atalho inteligente: Clicar no alerta leva para o Estoque (onde está a lista) *@
+            <a href="estoque" class="text-decoration-none d-block h-100 nav-card">
+                <div class="p-4 rounded-3 border-start border-4 border-danger h-100" style="background: #0a0a0a; border: 1px solid #dc3545;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 text-uppercase small">Alertas de Estoque</h6>
+                            <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : estoqueBaixo.ToString()) <span class="fs-5 text-white-50">itens</span></h1>
+                        </div>
+                        <i class="bi bi-exclamation-triangle-fill text-danger fs-3"></i>
+                    </div>
+                </div>
+            </a>
         </div>
+
         <div class="col-md-4">
             <a href="faturamento" class="text-decoration-none d-block nav-card h-100 border-0">
                 <div class="p-4 rounded-3 border-start border-4 border-success h-100" style="background: #0a0a0a; border: 1px solid #28a745;">
@@ -98,7 +108,7 @@ else
                         </div>
                         <i class="bi bi-box-arrow-in-up-right text-success fs-3 opacity-50"></i>
                     </div>
-                    <small class="text-success mt-2 d-block fw-bold"><i class="bi bi-wallet2 me-1"></i>Clique para ver o Caixa</small>
+                    <small class="text-success mt-2 d-block fw-bold small"><i class="bi bi-wallet2 me-1"></i>VER CAIXA</small>
                 </div>
             </a>
         </div>
@@ -162,8 +172,6 @@ else
 
     private bool isBusy, isBackupSistema, opSucesso;
     private string feedbackMsg = "";
-
-    // Variável para controlar a visibilidade dos valores
     private bool ocultarValores = false;
 
     protected override async Task OnInitializedAsync() => await CarregarDados();
@@ -178,13 +186,10 @@ else
                 if (!string.IsNullOrEmpty(preferenciaSalva))
                 {
                     ocultarValores = bool.Parse(preferenciaSalva);
-                    StateHasChanged(); // Atualiza a tela com o valor salvo
+                    StateHasChanged();
                 }
             }
-            catch
-            {
-                // Ignora erros caso o navegador bloqueie o acesso (ex: navegação anônima muito restrita)
-            }
+            catch { }
         }
     }
 
@@ -205,7 +210,6 @@ else
             isLoading = true;
             var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders");
             var prodList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/products");
-
             var vendasAvulsas = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/quicksales");
 
             faturamento = 0;
@@ -213,9 +217,8 @@ else
             if (osList != null && osList.Any())
             {
                 osAbertas = osList.Count(x => x.TryGetProperty("status", out var s) && s.ToString() != "Completed");
-
                 faturamento += osList.Where(x => x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
-                                     .Sum(x => x.TryGetProperty("amountPaid", out var t) ? t.GetDecimal() : 0); // Mudamos de totalAmount para amountPaid para ser mais real com o caixa
+                                     .Sum(x => x.TryGetProperty("amountPaid", out var t) ? t.GetDecimal() : 0);
             }
 
             if (vendasAvulsas != null && vendasAvulsas.Any())
@@ -231,10 +234,7 @@ else
                     q.GetInt32() <= m.GetInt32());
             }
         }
-        catch (Exception)
-        {
-
-        }
+        catch (Exception) { }
         finally
         {
             isLoading = false;
@@ -258,8 +258,8 @@ else
             var res = await Http.PostAsync($"{ApiUrl}/{rota}", null);
             opSucesso = res.IsSuccessStatusCode;
             feedbackMsg = opSucesso ?
-                (sistema ? "Cópia de segurança criada com sucesso no Google Drive/Local!" : "Relatórios em Excel gerados e salvos!") :
-                "Falha na comunicação com o servidor de backup.";
+                (sistema ? "Cópia de segurança criada com sucesso!" : "Relatórios em Excel gerados!") :
+                "Falha na comunicação com o servidor.";
         }
         catch (Exception ex)
         {

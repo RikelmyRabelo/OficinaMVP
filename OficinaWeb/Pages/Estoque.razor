@@ -45,19 +45,25 @@
 
 <div class="container py-4 no-print">
 
-    @* Cabeçalho Principal *@
+    @* Cabeçalho Principal Atualizado *@
     <div class="row align-items-center mb-4 position-relative">
-        <div class="col-md-3">
+        <div class="col-md-2">
             <a href="/" class="btn btn-outline-secondary border-0 text-white">
                 <i class="bi bi-arrow-left me-2"></i>Painel
             </a>
         </div>
-        <div class="col-md-6 text-center">
+        <div class="col-md-5 text-center">
             <h2 class="fw-bold text-uppercase mb-0" style="color: #ff6600;">
                 <i class="bi bi-box-seam-fill me-2"></i>Gerenciamento
             </h2>
         </div>
-        <div class="col-md-3 text-end">
+        <div class="col-md-5 text-end d-flex gap-2 justify-content-end">
+            @* BOTÃO LISTA DE COMPRAS - NOVO *@
+            <button class="btn btn-warning fw-bold shadow-sm" @onclick='() => Nav.NavigateTo("lista-compras")'>
+                <i class="bi bi-cart-check-fill me-1"></i>
+                LISTA DE COMPRAS
+            </button>
+
             <button class="btn btn-light fw-bold shadow-sm" @onclick="ImprimirRelatorio">
                 <i class="bi bi-file-pdf-fill text-danger me-2"></i>
                 @(abaAtiva == "pecas" ? "PDF ESTOQUE" : "PDF MÃO DE OBRA")
@@ -190,7 +196,7 @@
     }
 </div>
 
-@* SEÇÕES DE IMPRESSÃO  *@
+@* SEÇÕES DE IMPRESSÃO - MANTIDAS IGUAIS *@
 <div class="print-only">
     @if (abaAtiva == "pecas" && produtos != null)
     {
@@ -243,9 +249,6 @@
                     }
                 </tbody>
             </table>
-            <div class="mt-4 small" style="color: #666 !important;">
-                * Total de itens cadastrados: @produtos.Count | Relatório gerado automaticamente pelo sistema.
-            </div>
         </div>
     }
     else if (abaAtiva == "servicos" && servicosCatalogo != null)
@@ -257,8 +260,8 @@
                 <p style="color: black !important;">Data: @DateTime.Now.ToString("dd/MM/yyyy")</p>
             </div>
             <table class="table table-bordered border-dark" style="color: black !important;">
-                <thead style="background-color: #f2f2f2 !important;">
-                    <tr>
+                <thead>
+                    <tr style="background-color: #f2f2f2 !important;">
                         <th style="width: 75%; color: black !important; border: 1px solid black !important;">DESCRIÇÃO DO SERVIÇO</th>
                         <th style="width: 25%; color: black !important; border: 1px solid black !important;" class="text-end">VALOR BASE</th>
                     </tr>
@@ -273,10 +276,6 @@
                     }
                 </tbody>
             </table>
-            <div class="mt-5 p-3 border border-secondary text-center" style="color: black !important;">
-                <strong>FREITAS AUTOCENTER</strong><br />
-                Comprometimento com a segurança do seu veículo.
-            </div>
         </div>
     }
 </div>
@@ -311,24 +310,12 @@
             width: 100%;
             background-color: white !important;
             color: black !important;
-            padding: 0 !important;
-            margin: 0 !important;
         }
 
-        body {
-            background-color: white !important;
+        .table th, .table td {
+            border: 1px solid black !important;
+            color: black !important;
         }
-
-        .table {
-            border-collapse: collapse !important;
-            width: 100% !important;
-        }
-
-            .table th, .table td {
-                border: 1px solid black !important;
-                color: black !important;
-                background-color: white !important;
-            }
     }
 </style>
 
@@ -371,12 +358,6 @@
         await Task.Delay(3000); mostrarToast = false; StateHasChanged();
     }
 
-    private async void MostrarErro(string msg)
-    {
-        toastMensagem = msg; toastTipo = "erro"; mostrarToast = true; StateHasChanged();
-        await Task.Delay(5000); mostrarToast = false; StateHasChanged();
-    }
-
     private async Task SalvarProduto()
     {
         if (string.IsNullOrWhiteSpace(novoProduto.code) || novoProduto.salePrice == null) return;
@@ -413,7 +394,6 @@
         await CarregarServicos(); MostrarSucesso("Serviço removido.");
     }
 
-    // IMPRESSÃO COM DELAY
     private async Task ImprimirRelatorio()
     {
         await Task.Delay(200);
