@@ -7,7 +7,7 @@
 <div class="container mt-4 no-print">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold text-uppercase" style="color: #00ffff;">
-            <i class="bi bi-graph-up-arrow me-2"></i>Relatório de Saídas
+            <i class="bi bi-graph-up-arrow me-2"></i>Relatório Geral de Saídas
         </h2>
         <div>
             <button class="btn btn-outline-secondary border-0 text-white me-2" @onclick='() => Nav.NavigateTo("manutencao")'>
@@ -23,13 +23,13 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-info" role="status"></div>
-            <p class="text-white-50 mt-2">Carregando histórico de vendas e consolidando itens...</p>
+            <p class="text-white-50 mt-2">Limpando serviços e consolidando peças...</p>
         </div>
     }
     else if (!itensVendidos.Any())
     {
         <div class="alert alert-dark text-center border-secondary text-white-50">
-            Nenhuma peça ou insumo encontrado no histórico de Ordens de Serviço.
+            Nenhum material encontrado. Verifique se os itens estão marcados como Peças.
         </div>
     }
     else
@@ -82,7 +82,7 @@
     }
 </div>
 
-@* Parte de impressão *@
+@* --- PDF --- *@
 <div id="print-section" class="d-none d-print-block" style="width: 210mm; background-color: white; color: black !important; padding: 15mm; font-family: Arial, sans-serif;">
     <div style="border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
         <h1 style="margin: 0; font-size: 20pt;">FREITAS AUTOCENTER</h1>
@@ -117,7 +117,7 @@
         </tbody>
         <tfoot>
             <tr style="border-top: 2px solid black; background-color: #f9f9f9;">
-                <td colspan="4" style="padding: 15px; text-align: right; font-weight: bold; font-size: 12pt;">TOTAL GERAL DE SAÍDAS (REF):</td>
+                <td colspan="4" style="padding: 15px; text-align: right; font-weight: bold; font-size: 12pt;">TOTAL GERAL DE SAÍDAS:</td>
                 <td style="padding: 15px; text-align: right; font-weight: bold; font-size: 12pt;">R$ @TotalGeral.ToString("N2")</td>
             </tr>
         </tfoot>
@@ -154,6 +154,7 @@
         public int Quantity { get; set; }
         public bool IsAvulso { get; set; }
         public string Type { get; set; } = "";
+        public int? MechanicId { get; set; } // NOVO: Para identificar se tem mecânico vinculado
     }
 
     private List<VendidoDTO> itensVendidos = new();
@@ -184,16 +185,25 @@
                         UnitPrice = item.Quantity > 0 ? (item.Price / item.Quantity) : item.Price,
                         Quantity = item.Quantity,
                         IsAvulso = item.ProductId == null,
-                        Type = item.ItemType ?? ""
+                        Type = item.ItemType ?? "",
+                        MechanicId = item.MechanicId // Mapeia o ID do mecânico
                     }))
-                    .Where(i => i.Type.ToLower() != "service" && i.Type.ToLower() != "mão de obra" && i.Type.ToLower() != "serviço")
+                    .Where(i =>
+                        // REGRAS DE EXCLUSÃO DE MÃO DE OBRA
+                        !i.Type.Contains("Service", StringComparison.OrdinalIgnoreCase) &&
+                        !i.Type.Contains("Serviço", StringComparison.OrdinalIgnoreCase) &&
+                        !i.Type.Contains("Mão de Obra", StringComparison.OrdinalIgnoreCase) &&
+                        !i.Description.Contains("(M.O)", StringComparison.OrdinalIgnoreCase) && // Remove quem tem a tag (M.O)
+                        !i.Description.Contains("M.O", StringComparison.OrdinalIgnoreCase) && // Remove qualquer variação de M.O
+                        i.MechanicId == null // CRÍTICO: Se tiver mecânico associado, o sistema entende como serviço
+                    )
                     .OrderByDescending(i => i.ServiceOrderId)
                     .ToList();
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao carregar dados: {ex.Message}");
+            Console.WriteLine($"Erro: {ex.Message}");
         }
         finally
         {
@@ -202,8 +212,5 @@
         }
     }
 
-    private async Task ImprimirRelatorio()
-    {
-        await JS.InvokeVoidAsync("window.print");
-    }
+    private async Task ImprimirRelatorio() => await JS.InvokeVoidAsync("window.print");
 }
