@@ -5,22 +5,32 @@
 @using OficinaWeb.Models
 
 <div class="container mt-4 no-print">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold text-uppercase" style="color: #00ffff;">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
+        <h2 class="fw-bold text-uppercase m-0" style="color: #00ffff;">
             <i class="bi bi-graph-up-arrow me-2"></i>Relatório Geral de Saídas
         </h2>
-        <div>
+
+        <div class="d-flex align-items-center gap-2">
+            @* Botão Voltar *@
             <button class="btn btn-outline-secondary border-0 text-white me-2" @onclick='() => Nav.NavigateTo("manutencao")'>
-                <i class="bi bi-arrow-left me-2"></i>Voltar
+                <i class="bi bi-arrow-left me-1"></i>Voltar
             </button>
 
-            @* Botão para Relatório de Avulsos *@
-            <button class="btn btn-outline-info fw-bold me-2 shadow-sm" @onclick="ImprimirAvulsos" disabled="@(isLoading || !itensVendidos.Any(i => i.IsAvulso))">
+            @* NOVO: Botão PDF Itens de Estoque *@
+            <button class="btn btn-outline-warning fw-bold shadow-sm" @onclick="ImprimirEstoque"
+                    disabled="@(isLoading || !itensVendidos.Any(i => !i.IsAvulso))">
+                <i class="bi bi-upc-scan me-1"></i>PDF ESTOQUE
+            </button>
+
+            @* Botão PDF Avulsos *@
+            <button class="btn btn-outline-info fw-bold shadow-sm" @onclick="ImprimirAvulsos"
+                    disabled="@(isLoading || !itensVendidos.Any(i => i.IsAvulso))">
                 <i class="bi bi-tag-fill me-1"></i>PDF AVULSOS
             </button>
 
-            @* Botão para Relatório Geral *@
-            <button class="btn btn-info fw-bold shadow-sm" @onclick="ImprimirGeral" disabled="@(isLoading || !itensVendidos.Any())">
+            @* Botão PDF Geral *@
+            <button class="btn btn-info fw-bold shadow-sm" @onclick="ImprimirGeral"
+                    disabled="@(isLoading || !itensVendidos.Any())">
                 <i class="bi bi-printer-fill me-1"></i>GERAR PDF GERAL
             </button>
         </div>
@@ -64,11 +74,11 @@
                                 <td class="text-center">
                                     @if (item.IsAvulso)
                                     {
-                                        <span class="badge bg-secondary text-uppercase" style="font-size: 0.7rem;">Avulso</span>
+                                        <span class="badge bg-secondary text-uppercase" style="font-size: 0.65rem; border-radius: 50px;">Avulso</span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-info text-dark text-uppercase" style="font-size: 0.7rem;">Estoque</span>
+                                        <span class="badge bg-info text-dark text-uppercase" style="font-size: 0.65rem; border-radius: 50px;">Estoque</span>
                                     }
                                 </td>
                                 <td class="text-center">@item.Quantity</td>
@@ -89,11 +99,11 @@
     }
 </div>
 
-@* ÁREA DE IMPRESSÃO *@
+@*  ÁREA DE IMPRESSÃO  *@
 <div id="print-section" class="d-none d-print-block" style="width: 210mm; background-color: white; color: black !important; padding: 15mm; font-family: Arial, sans-serif;">
     <div style="border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
         <h1 style="margin: 0; font-size: 20pt;">FREITAS AUTOCENTER</h1>
-        <h3 style="margin: 5px 0; color: #333;">@tituloRelatorio</h3>
+        <h3 style="margin: 5px 0; color: #333; text-transform: uppercase;">@tituloRelatorio</h3>
         <p style="font-size: 9pt;">Gerado em: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
     </div>
 
@@ -124,8 +134,8 @@
         </tbody>
         <tfoot>
             <tr style="border-top: 2px solid black; background-color: #f9f9f9;">
-                <td colspan="4" style="padding: 15px; text-align: right; font-weight: bold; font-size: 12pt;">TOTAL DO RELATÓRIO:</td>
-                <td style="padding: 15px; text-align: right; font-weight: bold; font-size: 12pt;">R$ @itensParaImprimir.Sum(i => i.SubtotalManual).ToString("N2")</td>
+                <td colspan="4" style="padding: 15px; text-align: right; font-weight: bold; font-size: 11pt;">VALOR TOTAL:</td>
+                <td style="padding: 15px; text-align: right; font-weight: bold; font-size: 11pt;">R$ @itensParaImprimir.Sum(i => i.SubtotalManual).ToString("N2")</td>
             </tr>
         </tfoot>
     </table>
@@ -171,10 +181,7 @@
     private bool isLoading = true;
     private decimal TotalGeral => itensVendidos.Sum(i => i.SubtotalManual);
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CarregarDadosConsolidados();
-    }
+    protected override async Task OnInitializedAsync() => await CarregarDadosConsolidados();
 
     private async Task CarregarDadosConsolidados()
     {
@@ -182,7 +189,6 @@
         {
             isLoading = true;
             StateHasChanged();
-
             var todasOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>("https://localhost:7082/api/serviceorders");
 
             if (todasOS != null)
@@ -207,36 +213,37 @@
                         !i.Description.Contains("M.O", StringComparison.OrdinalIgnoreCase) &&
                         i.MechanicId == null
                     )
-                    .OrderByDescending(i => i.ServiceOrderId)
-                    .ToList();
+                    .OrderByDescending(i => i.ServiceOrderId).ToList();
             }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro: {ex.Message}");
-        }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
+        catch (Exception ex) { Console.WriteLine($"Erro: {ex.Message}"); }
+        finally { isLoading = false; StateHasChanged(); }
     }
 
     private async Task ImprimirGeral()
     {
-        tituloRelatorio = "RELATÓRIO CONSOLIDADO DE SAÍDA DE MATERIAIS";
+        tituloRelatorio = "Relatório Consolidado de Saída de Materiais";
         itensParaImprimir = itensVendidos;
         StateHasChanged();
-        await Task.Delay(100);
+        await Task.Delay(150);
         await JS.InvokeVoidAsync("window.print");
     }
 
     private async Task ImprimirAvulsos()
     {
-        tituloRelatorio = "RELATÓRIO DE SAÍDA - ITENS AVULSOS";
+        tituloRelatorio = "Relatório de Saída - Itens Avulsos";
         itensParaImprimir = itensVendidos.Where(i => i.IsAvulso).ToList();
         StateHasChanged();
-        await Task.Delay(100);
+        await Task.Delay(150);
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private async Task ImprimirEstoque()
+    {
+        tituloRelatorio = "Relatório de Saída - Itens de Estoque";
+        itensParaImprimir = itensVendidos.Where(i => !i.IsAvulso).ToList();
+        StateHasChanged();
+        await Task.Delay(150);
         await JS.InvokeVoidAsync("window.print");
     }
 }
