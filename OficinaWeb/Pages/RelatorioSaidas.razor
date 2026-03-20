@@ -29,7 +29,7 @@
     else if (!itensVendidos.Any())
     {
         <div class="alert alert-dark text-center border-secondary text-white-50">
-            Nenhum material encontrado. Verifique se os itens estão marcados como Peças.
+            Nenhuma peça ou insumo encontrado no histórico de Ordens de Serviço.
         </div>
     }
     else
@@ -66,7 +66,7 @@
                                 </td>
                                 <td class="text-center">@item.Quantity</td>
                                 <td class="text-end text-white-50">R$ @item.UnitPrice.ToString("N2")</td>
-                                <td class="text-end pe-4 fw-bold text-info">R$ @((item.UnitPrice * item.Quantity).ToString("N2"))</td>
+                                <td class="text-end pe-4 fw-bold text-info">R$ @item.SubtotalManual.ToString("N2")</td>
                             </tr>
                         }
                     </tbody>
@@ -82,7 +82,7 @@
     }
 </div>
 
-@* --- PDF --- *@
+@* PDF *@
 <div id="print-section" class="d-none d-print-block" style="width: 210mm; background-color: white; color: black !important; padding: 15mm; font-family: Arial, sans-serif;">
     <div style="border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
         <h1 style="margin: 0; font-size: 20pt;">FREITAS AUTOCENTER</h1>
@@ -111,7 +111,7 @@
                     <td style="padding: 8px; text-align: center;">@(item.IsAvulso ? "Avulso" : "Sistema")</td>
                     <td style="padding: 8px; text-align: center;">@item.Quantity</td>
                     <td style="padding: 8px; text-align: right;">R$ @item.UnitPrice.ToString("N2")</td>
-                    <td style="padding: 8px; text-align: right; font-weight: bold;">R$ @((item.UnitPrice * item.Quantity).ToString("N2"))</td>
+                    <td style="padding: 8px; text-align: right; font-weight: bold;">R$ @item.SubtotalManual.ToString("N2")</td>
                 </tr>
             }
         </tbody>
@@ -152,14 +152,15 @@
         public string Description { get; set; } = "";
         public decimal UnitPrice { get; set; }
         public int Quantity { get; set; }
+        public decimal SubtotalManual { get; set; }
         public bool IsAvulso { get; set; }
         public string Type { get; set; } = "";
-        public int? MechanicId { get; set; } // NOVO: Para identificar se tem mecânico vinculado
+        public int? MechanicId { get; set; }
     }
 
     private List<VendidoDTO> itensVendidos = new();
     private bool isLoading = true;
-    private decimal TotalGeral => itensVendidos.Sum(i => i.UnitPrice * i.Quantity);
+    private decimal TotalGeral => itensVendidos.Sum(i => i.SubtotalManual);
 
     protected override async Task OnInitializedAsync()
     {
@@ -184,18 +185,20 @@
                         Description = item.Description,
                         UnitPrice = item.Quantity > 0 ? (item.Price / item.Quantity) : item.Price,
                         Quantity = item.Quantity,
+
+
+                        SubtotalManual = item.Price,
                         IsAvulso = item.ProductId == null,
                         Type = item.ItemType ?? "",
-                        MechanicId = item.MechanicId // Mapeia o ID do mecânico
+                        MechanicId = item.MechanicId
                     }))
                     .Where(i =>
-                        // REGRAS DE EXCLUSÃO DE MÃO DE OBRA
                         !i.Type.Contains("Service", StringComparison.OrdinalIgnoreCase) &&
                         !i.Type.Contains("Serviço", StringComparison.OrdinalIgnoreCase) &&
                         !i.Type.Contains("Mão de Obra", StringComparison.OrdinalIgnoreCase) &&
-                        !i.Description.Contains("(M.O)", StringComparison.OrdinalIgnoreCase) && // Remove quem tem a tag (M.O)
-                        !i.Description.Contains("M.O", StringComparison.OrdinalIgnoreCase) && // Remove qualquer variação de M.O
-                        i.MechanicId == null // CRÍTICO: Se tiver mecânico associado, o sistema entende como serviço
+                        !i.Description.Contains("(M.O)", StringComparison.OrdinalIgnoreCase) &&
+                        !i.Description.Contains("M.O", StringComparison.OrdinalIgnoreCase) &&
+                        i.MechanicId == null
                     )
                     .OrderByDescending(i => i.ServiceOrderId)
                     .ToList();
