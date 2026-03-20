@@ -7,14 +7,13 @@
 <div class="container mt-4 no-print">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold text-uppercase" style="color: #00ffff;">
-            <i class="bi bi-graph-up-arrow me-2"></i>Relatório Geral de Saídas
+            <i class="bi bi-graph-up-arrow me-2"></i>Relatório de Saídas
         </h2>
         <div>
-            @* Botão de voltar agora aponta corretamente para Manutenção *@
             <button class="btn btn-outline-secondary border-0 text-white me-2" @onclick='() => Nav.NavigateTo("manutencao")'>
                 <i class="bi bi-arrow-left me-2"></i>Voltar
             </button>
-            <button class="btn btn-info fw-bold shadow-sm" @onclick="ImprimirRelatorio" disabled="@(!itensVendidos.Any())">
+            <button class="btn btn-info fw-bold shadow-sm" @onclick="ImprimirRelatorio" disabled="@(isLoading || !itensVendidos.Any())">
                 <i class="bi bi-printer-fill me-1"></i>GERAR PDF
             </button>
         </div>
@@ -83,7 +82,7 @@
     }
 </div>
 
-@* --- ÁREA DE IMPRESSÃO DO PDF (LAYOUT A4) --- *@
+@* Parte de impressão *@
 <div id="print-section" class="d-none d-print-block" style="width: 210mm; background-color: white; color: black !important; padding: 15mm; font-family: Arial, sans-serif;">
     <div style="border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
         <h1 style="margin: 0; font-size: 20pt;">FREITAS AUTOCENTER</h1>
@@ -147,7 +146,6 @@
 </style>
 
 @code {
-    // DTO local para processar as informações de saída
     public class VendidoDTO
     {
         public int ServiceOrderId { get; set; }
@@ -172,45 +170,40 @@
         try
         {
             isLoading = true;
-            // Carrega todas as Ordens de Serviço do banco
+            StateHasChanged();
+
             var todasOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>("https://localhost:7082/api/serviceorders");
 
             if (todasOS != null)
             {
-                // Varrer todas as OSs e achatar (flatten) os itens em uma única lista de VendidoDTO
                 itensVendidos = todasOS
                     .SelectMany(os => os.Items.Select(item => new VendidoDTO
                     {
                         ServiceOrderId = os.Id,
                         Description = item.Description,
-                        // Calcula unitário baseado no preço total gravado na OS / Quantidade
                         UnitPrice = item.Quantity > 0 ? (item.Price / item.Quantity) : item.Price,
                         Quantity = item.Quantity,
                         IsAvulso = item.ProductId == null,
-                        Type = item.ItemType // "Part", "Service", etc
+                        Type = item.ItemType ?? ""
                     }))
-                    // Filtro: Apenas o que não for Serviço ou Mão de Obra
                     .Where(i => i.Type.ToLower() != "service" && i.Type.ToLower() != "mão de obra" && i.Type.ToLower() != "serviço")
                     .OrderByDescending(i => i.ServiceOrderId)
                     .ToList();
             }
         }
-        catch { }
-        finally { isLoading = false; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar dados: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
 
-    private async Task ImprimirRelatorio() => await JS.InvokeVoidAsync("window.print");
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private async Task ImprimirRelatorio()
     {
-        if (firstRender)
-        {
-            // Tempo para garantir que o OnInitialized terminou e o HTML foi desenhado
-            await Task.Delay(1200);
-            if (itensVendidos.Any())
-            {
-                await JS.InvokeVoidAsync("window.print");
-            }
-        }
+        await JS.InvokeVoidAsync("window.print");
     }
 }
