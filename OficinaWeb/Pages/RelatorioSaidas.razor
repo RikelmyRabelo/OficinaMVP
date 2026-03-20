@@ -13,8 +13,15 @@
             <button class="btn btn-outline-secondary border-0 text-white me-2" @onclick='() => Nav.NavigateTo("manutencao")'>
                 <i class="bi bi-arrow-left me-2"></i>Voltar
             </button>
-            <button class="btn btn-info fw-bold shadow-sm" @onclick="ImprimirRelatorio" disabled="@(isLoading || !itensVendidos.Any())">
-                <i class="bi bi-printer-fill me-1"></i>GERAR PDF
+
+            @* Botão para Relatório de Avulsos *@
+            <button class="btn btn-outline-info fw-bold me-2 shadow-sm" @onclick="ImprimirAvulsos" disabled="@(isLoading || !itensVendidos.Any(i => i.IsAvulso))">
+                <i class="bi bi-tag-fill me-1"></i>PDF AVULSOS
+            </button>
+
+            @* Botão para Relatório Geral *@
+            <button class="btn btn-info fw-bold shadow-sm" @onclick="ImprimirGeral" disabled="@(isLoading || !itensVendidos.Any())">
+                <i class="bi bi-printer-fill me-1"></i>GERAR PDF GERAL
             </button>
         </div>
     </div>
@@ -82,11 +89,11 @@
     }
 </div>
 
-@* PDF *@
+@* ÁREA DE IMPRESSÃO *@
 <div id="print-section" class="d-none d-print-block" style="width: 210mm; background-color: white; color: black !important; padding: 15mm; font-family: Arial, sans-serif;">
     <div style="border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
         <h1 style="margin: 0; font-size: 20pt;">FREITAS AUTOCENTER</h1>
-        <h3 style="margin: 5px 0; color: #333;">RELATÓRIO CONSOLIDADO DE SAÍDA DE MATERIAIS</h3>
+        <h3 style="margin: 5px 0; color: #333;">@tituloRelatorio</h3>
         <p style="font-size: 9pt;">Gerado em: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
     </div>
 
@@ -101,7 +108,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var item in itensVendidos)
+            @foreach (var item in itensParaImprimir)
             {
                 <tr style="border-bottom: 1px solid #ddd;">
                     <td style="padding: 8px;">
@@ -117,8 +124,8 @@
         </tbody>
         <tfoot>
             <tr style="border-top: 2px solid black; background-color: #f9f9f9;">
-                <td colspan="4" style="padding: 15px; text-align: right; font-weight: bold; font-size: 12pt;">TOTAL GERAL DE SAÍDAS:</td>
-                <td style="padding: 15px; text-align: right; font-weight: bold; font-size: 12pt;">R$ @TotalGeral.ToString("N2")</td>
+                <td colspan="4" style="padding: 15px; text-align: right; font-weight: bold; font-size: 12pt;">TOTAL DO RELATÓRIO:</td>
+                <td style="padding: 15px; text-align: right; font-weight: bold; font-size: 12pt;">R$ @itensParaImprimir.Sum(i => i.SubtotalManual).ToString("N2")</td>
             </tr>
         </tfoot>
     </table>
@@ -159,6 +166,8 @@
     }
 
     private List<VendidoDTO> itensVendidos = new();
+    private List<VendidoDTO> itensParaImprimir = new();
+    private string tituloRelatorio = "";
     private bool isLoading = true;
     private decimal TotalGeral => itensVendidos.Sum(i => i.SubtotalManual);
 
@@ -185,8 +194,6 @@
                         Description = item.Description,
                         UnitPrice = item.Quantity > 0 ? (item.Price / item.Quantity) : item.Price,
                         Quantity = item.Quantity,
-
-
                         SubtotalManual = item.Price,
                         IsAvulso = item.ProductId == null,
                         Type = item.ItemType ?? "",
@@ -215,5 +222,21 @@
         }
     }
 
-    private async Task ImprimirRelatorio() => await JS.InvokeVoidAsync("window.print");
+    private async Task ImprimirGeral()
+    {
+        tituloRelatorio = "RELATÓRIO CONSOLIDADO DE SAÍDA DE MATERIAIS";
+        itensParaImprimir = itensVendidos;
+        StateHasChanged();
+        await Task.Delay(100);
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private async Task ImprimirAvulsos()
+    {
+        tituloRelatorio = "RELATÓRIO DE SAÍDA - ITENS AVULSOS";
+        itensParaImprimir = itensVendidos.Where(i => i.IsAvulso).ToList();
+        StateHasChanged();
+        await Task.Delay(100);
+        await JS.InvokeVoidAsync("window.print");
+    }
 }
