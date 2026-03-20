@@ -8,6 +8,52 @@
 
 <PageTitle>Oficina - FREITAS AUTOCENTER</PageTitle>
 
+@*  ÁREA DE IMPRESSÃO DO RELATÓRIO GERAL *@
+@if (imprimindoRelatorioGeral)
+{
+    <div id="print-relatorio-geral" class="print-overlay" style="color: black !important;">
+        <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
+            <h1 style="margin: 0; font-size: 24pt; color: black !important;">FREITAS AUTOCENTER</h1>
+            <h3 style="margin: 5px 0; color: black !important;">RELATÓRIO CONSOLIDADO DE SAÍDA DE MATERIAIS</h3>
+            <p style="font-size: 10pt; color: black !important;">Gerado em: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; background: white !important; color: black !important;">
+            <thead>
+                <tr style="background-color: #f2f2f2 !important; border: 1px solid black;">
+                    <th style="border: 1px solid black; padding: 8px; text-align: center; width: 60px;">O.S.</th>
+                    <th style="border: 1px solid black; padding: 8px; text-align: left;">DESCRIÇÃO DO ITEM</th>
+                    <th style="border: 1px solid black; padding: 8px; text-align: center; width: 80px;">QTD</th>
+                    <th style="border: 1px solid black; padding: 8px; text-align: right; width: 120px;">VALOR TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (todasOS != null)
+                {
+                    decimal totalGeralPecas = 0;
+                    @foreach (var os in todasOS)
+                    {
+                        @foreach (var item in os.Items.Where(i => i.ItemType != "Service" && (i.ProductId != null || (i.ProductId == null && i.MechanicId == null))))
+                        {
+                            totalGeralPecas += item.Price;
+                            <tr>
+                                <td style="border: 1px solid black; padding: 8px; text-align: center;">#@os.Id</td>
+                                <td style="border: 1px solid black; padding: 8px;">@item.Description</td>
+                                <td style="border: 1px solid black; padding: 8px; text-align: center;">@item.Quantity</td>
+                                <td style="border: 1px solid black; padding: 8px; text-align: right;">R$ @item.Price.ToString("N2")</td>
+                            </tr>
+                        }
+                    }
+                    <tr style="background-color: #eee !important; font-weight: bold; font-size: 12pt;">
+                        <td colspan="3" style="border: 1px solid black; padding: 12px; text-align: right;">VALOR TOTAL DAS SAÍDAS:</td>
+                        <td style="border: 1px solid black; padding: 12px; text-align: right;">R$ @totalGeralPecas.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
 <div class="toast-container position-fixed bottom-0 end-0 p-3 no-print" style="z-index: 1100;">
     @if (mostrarToast)
     {
@@ -21,6 +67,7 @@
             </div>
         </div>
     }
+
 </div>
 
 <ModalExclusao Visivel="mostrarModalExclusao" OsId="sel?.Id ?? 0" ModeloVeiculo="@(sel?.Vehicle?.Model ?? "")" OnConfirmar="ConfirmarExclusao" OnCancelar="() => mostrarModalExclusao = false" />
@@ -38,6 +85,9 @@
             <h2 class="fw-bold text-uppercase mb-0" style="color: #ff6600;"><i class="bi bi-wrench-adjustable me-2"></i>Gestão de Oficina</h2>
         </div>
         <div class="col-md-3 text-end">
+            <button class="btn btn-info fw-bold me-2" @onclick="GerarRelatorioGeralSaidas">
+                <i class="bi bi-file-earmark-pdf-fill me-1"></i>RELATÓRIO GERAL DE SAÍDAS
+            </button>
             <button class="btn @(verLixeira ? "btn-danger" : "btn-outline-danger") fw-bold" @onclick="AlternarLixeira">
                 <i class="bi @(verLixeira ? "bi-arrow-left-circle" : "bi-trash") me-2"></i>@(verLixeira ? "VOLTAR" : "LIXEIRA")
             </button>
@@ -93,7 +143,7 @@
                     foreach (var os in listaExibicao)
                     {
                         var isActive = sel?.Id == os.Id;
-                        <button class="list-group-item list-group-item-action border-secondary text-white mb-2 rounded-0" style="@(isActive ? "background-color: #222; border-left: 4px solid #ff6600;" : "background-color: #111;")" @onclick="() => Selecionar(os)">
+                        <div class="list-group-item list-group-item-action border-secondary text-white mb-2 rounded-0" style="@(isActive ? "background-color: #222; border-left: 4px solid #ff6600;" : "background-color: #111;")" @onclick="() => Selecionar(os)">
                             <div class="d-flex w-100 justify-content-between align-items-center">
                                 <div>
                                     <h6>
@@ -105,9 +155,14 @@
                                     </h6>
                                     <small class="text-warning">@(os.Vehicle?.Model)</small>
                                 </div>
-                                <span class="badge bg-dark border border-secondary">#@os.Id</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-sm btn-outline-info border-0" title="Relatório de Saídas" @onclick="() => GerarRelatorioSaida(os)" @onclick:stopPropagation="true">
+                                        <i class="bi bi-box-seam-fill"></i>
+                                    </button>
+                                    <span class="badge bg-dark border border-secondary">#@os.Id</span>
+                                </div>
                             </div>
-                        </button>
+                        </div>
                     }
                 }
             </div>
@@ -252,7 +307,7 @@
                                             <div class="text-end" style="cursor: pointer;" @onclick="IniciarEdicaoPagamento" title="Clique para registrar pagamento">
                                                 <h6 class="text-info fw-bold mb-0">
                                                     <small class="text-secondary fw-bold me-1">PAGO:</small> R$ @sel.AmountPaid.ToString("N2")
-                                                    <i class="bi bi-pencil text-secondary ms-1" style="font-size: 0.8rem;"></i>
+                                                    <i class="bi bi-pencil textsecondary ms-1" style="font-size: 0.8rem;"></i>
                                                 </h6>
                                                 @if (sel.Payments != null && sel.Payments.Any())
                                                 {
@@ -435,6 +490,27 @@
                         }
 
                         <style>
+                            .print-overlay { display: none; }
+
+                            @@media print {
+                                .no-print, .container-fluid, .sidebar, .top-row, nav { 
+                                    display: none !important; 
+                                }
+                                
+                                .print-overlay {
+                                    display: block !important;
+                                    position: relative !important;
+                                    width: 100% !important;
+                                    margin: 0 !important;
+                                    padding: 0 !important;
+                                    background: white !important;
+                                }
+
+                                body { 
+                                    background: white !important; 
+                                }
+                            }
+
                             .table-fixed {
                                 table-layout: fixed;
                                 width: 100%;
@@ -571,7 +647,67 @@
 
 <ImpressaoOS Os="sel" />
 
+@* AREA DE IMPRESSAO ESPECIFICA PARA SAIDAS DE PEÇAS *@
+@if (osParaRelatorio != null)
+{
+    <div id="print-saidas" class="d-none d-print-block" style="width: 210mm; background: white; color: black; padding: 15mm; font-family: Arial;">
+        <div style="text-align: center; border-bottom: 2px solid black; margin-bottom: 20px;">
+            <h2 style="margin: 0;">FREITAS AUTOCENTER</h2>
+            <h4 style="margin: 5px 0;">COMPROVANTE DE SAÍDA DE MATERIAIS</h4>
+            <p style="font-size: 10pt;">Referente à OS: #@osParaRelatorio.Id | Cliente: @osParaRelatorio.Vehicle?.CustomerName</p>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #eee; border: 1px solid black;">
+                    <th style="padding: 10px; text-align: left;">Peça / Insumo</th>
+                    <th style="padding: 10px; text-align: center;">Qtd</th>
+                    <th style="padding: 10px; text-align: right;">Vlr. Unitário</th>
+                    <th style="padding: 10px; text-align: right;">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in osParaRelatorio.Items.Where(i => i.ItemType != "Service"))
+                {
+                    <tr style="border-bottom: 1px solid #ccc;">
+                        <td style="padding: 10px;">
+                            <strong>@item.Description</strong>
+                            <br/><small>@(item.ProductId == null ? "Item Avulso" : "Item de Estoque")</small>
+                        </td>
+                        <td style="padding: 10px; text-align: center;">@item.Quantity</td>
+                        <td style="padding: 10px; text-align: right;">R$ @item.Price.ToString("N2")</td>
+                        <td style="padding: 10px; text-align: right; font-weight: bold;">R$ @((item.Price * item.Quantity).ToString("N2"))</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" style="text-align: right; padding: 20px; font-weight: bold; font-size: 12pt;">TOTAL DE MATERIAIS:</td>
+                    <td style="text-align: right; padding: 20px; font-weight: bold, font-size: 12pt;">
+                        R$ @osParaRelatorio.Items.Where(i => i.ItemType != "Service").Sum(i => i.Price * i.Quantity).ToString("N2")
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+}
+
 @code {
+    private ServiceOrderDTO? osParaRelatorio;
+
+    private async Task GerarRelatorioSaida(ServiceOrderDTO os)
+    {
+        osParaRelatorio = os;
+        StateHasChanged();
+        await Task.Delay(150);
+        await JS.InvokeVoidAsync("window.print");
+        osParaRelatorio = null;
+    }
+
+    private void GerarRelatorioGeralSaidas()
+    {
+        Nav.NavigateTo("relatorio-saidas");
+    }
     private string ApiUrl = "https://localhost:7082";
 
     List<ServiceOrderDTO>? todasOS;
@@ -611,6 +747,7 @@
     bool mostrarModalEdicaoItem = false;
     ServiceItemDTO? itemParaEditar;
     UpdateServiceItemDTO itemEditRequest = new();
+    bool imprimindoRelatorioGeral = false;
 
     protected override async Task OnInitializedAsync() { await CarregarDadosIniciais(); }
 
