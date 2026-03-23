@@ -28,12 +28,25 @@ namespace OficinaAPI.Controllers
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetTrash()
         {
             var threshold = DateTime.Now.AddDays(-30);
+
+            // 1. LIMPEZA AUTOMÁTICA: Remove do banco tudo que foi excluído há mais de 30 dias
+            var expiredOrders = await _context.ServiceOrders
+                .Where(o => o.IsDeleted && o.DeletionDate < threshold)
+                .ToListAsync();
+
+            if (expiredOrders.Any())
+            {
+                _context.ServiceOrders.RemoveRange(expiredOrders);
+                await _context.SaveChangesAsync();
+            }
+
+            // 2. Retorna o que ainda resta na lixeira
             return await _context.ServiceOrders
                 .AsNoTracking()
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items).ThenInclude(i => i.Mechanic)
                 .Include(o => o.Payments)
-                .Where(o => o.IsDeleted && o.DeletionDate >= threshold)
+                .Where(o => o.IsDeleted)
                 .OrderByDescending(o => o.DeletionDate).ToListAsync();
         }
 
@@ -188,6 +201,18 @@ namespace OficinaAPI.Controllers
             if (os == null) return NotFound();
             os.IsDeleted = true;
             os.DeletionDate = DateTime.Now;
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // NOVO: Método para exclusão definitiva (Apaga do banco)
+        [HttpDelete("{id}/permanent")]
+        public async Task<IActionResult> PermanentDeleteServiceOrder(int id)
+        {
+            var os = await _context.ServiceOrders.FindAsync(id);
+            if (os == null) return NotFound();
+
+            _context.ServiceOrders.Remove(os);
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -469,7 +494,6 @@ namespace OficinaAPI.Controllers
         public class CompletionDTO { public DateTime CompletionDate { get; set; } }
         public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
 
-        // DTO DE EDIÇÃO ATUALIZADO PARA SUPORTAR ITEMTYPE
         public class UpdateServiceItemDTO
         {
             public string Description { get; set; } = "";

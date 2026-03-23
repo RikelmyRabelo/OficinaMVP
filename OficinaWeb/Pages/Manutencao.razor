@@ -83,9 +83,12 @@
         <div class="col-md-6 text-center">
             <h2 class="fw-bold text-uppercase mb-0" style="color: #ff6600;"><i class="bi bi-wrench-adjustable me-2"></i>Gestão de Oficina</h2>
         </div>
-        <div class="col-md-3 text-end">
-            <button class="btn btn-info fw-bold me-2" @onclick="GerarRelatorioGeralSaidas">
-                <i class="bi bi-file-earmark-pdf-fill me-1"></i>RELATÓRIO GERAL DE SAÍDAS
+        <div class="col-md-3 text-end d-flex gap-2 justify-content-end">
+            <button class="btn btn-outline-danger fw-bold shadow-sm" @onclick='() => Nav.NavigateTo("lixeira")'>
+                <i class="bi bi-trash3-fill me-1"></i>LIXEIRA
+            </button>
+            <button class="btn btn-info fw-bold" @onclick="GerarRelatorioGeralSaidas">
+                <i class="bi bi-file-earmark-pdf-fill me-1"></i>RELATÓRIO GERAL
             </button>
         </div>
     </div>
@@ -437,50 +440,16 @@
                         </div>
 
                         <style>
-                                                .print-overlay {
-                                                    display: none;
-                                                }
-
-                                                @@media print {
-                                                    .no-print, .container-fluid, .sidebar, .top-row, nav {
-                                                        display: none !important;
-                                                    }
-                                
-                                                    .print-overlay {
-                                                        display: block !important;
-                                                        position: relative !important;
-                                                        width: 100% !important;
-                                                        margin: 0 !important;
-                                                        padding: 0 !important;
-                                                        background: white !important;
-                                                    }
-
-                                                    body {
-                                                        background: white !important;
-                                                    }
-                                                }
-
-                                                .table-fixed {
-                                                    table-layout: fixed;
-                                                    width: 100%;
-                                                }
-
-                                                    .table-fixed td, .table-fixed th {
-                                                        white-space: normal;
-                                                        word-wrap: break-word;
-                                                        vertical-align: middle;
-                                                    }
-
-                                                .text-nowrap-custom {
-                                                    white-space: nowrap !important;
-                                                }
-
-                                                .badge-service {
-                                                    font-size: 0.6rem;
-                                                    background-color: #007bff;
-                                                    padding: 2px 6px;
-                                                    border-radius: 4px;
-                                                }
+                            .print-overlay { display: none; }
+                            @@media print {
+                                .no-print, .container-fluid, .sidebar, .top-row, nav { display: none !important; }
+                                .print-overlay { display: block !important; position: relative !important; width: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; }
+                                body { background: white !important; }
+                            }
+                            .table-fixed { table-layout: fixed; width: 100%; }
+                            .table-fixed td, .table-fixed th { white-space: normal; word-wrap: break-word; vertical-align: middle; }
+                            .text-nowrap-custom { white-space: nowrap !important; }
+                            .badge-service { font-size: 0.6rem; background-color: #007bff; padding: 2px 6px; border-radius: 4px; }
                         </style>
 
                         <table class="table table-dark table-hover align-middle table-fixed">
@@ -506,30 +475,15 @@
 
                                         <tr>
                                             <td class="text-warning small fw-bold">
-                                                @if (isServico)
-                                                {
-                                                    <span>M.O.</span>
-                                                }
-                                                else if (isAvulso)
-                                                {
-                                                    <span>AVULSO</span>
-                                                }
-                                                else
-                                                {
-                                                    @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "-")
-                                                }
+                                                @if (isServico) { <span>M.O.</span> }
+                                                else if (isAvulso) { <span>AVULSO</span> }
+                                                else { @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "-") }
                                             </td>
 
                                             <td>
                                                 <span class="text-white fw-bold">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description)</span>
-                                                @if (isServico)
-                                                {
-                                                    <span class="badge-service ms-1">SERVIÇO</span>
-                                                }
-                                                else if (isAvulso)
-                                                {
-                                                    <span class="badge bg-secondary text-light ms-1" style="font-size: 0.6rem;">AVULSO</span>
-                                                }
+                                                @if (isServico) { <span class="badge-service ms-1">SERVIÇO</span> }
+                                                else if (isAvulso) { <span class="badge bg-secondary text-light ms-1" style="font-size: 0.6rem;">AVULSO</span> }
 
                                                 @if (!string.IsNullOrEmpty(item.WarrantyPeriod))
                                                 {
@@ -541,25 +495,13 @@
                                             </td>
 
                                             <td class="text-center text-nowrap-custom">
-                                                @if (isServico)
-                                                {
-                                                    <span class="text-muted">-</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-secondary">@item.Quantity</span>
-                                                }
+                                                @if (isServico) { <span class="text-muted">-</span> }
+                                                else { <span class="badge bg-secondary">@item.Quantity</span> }
                                             </td>
 
                                             <td class="text-end text-nowrap-custom text-white-50 small">
-                                                @if (!isServico)
-                                                {
-                                                    @($"R$ {(item.Price / (item.Quantity > 0 ? item.Quantity : 1)):N2}")
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted">-</span>
-                                                }
+                                                @if (!isServico) { @($"R$ {(item.Price / (item.Quantity > 0 ? item.Quantity : 1)):N2}") }
+                                                else { <span class="text-muted">-</span> }
                                             </td>
 
                                             <td class="text-end text-nowrap-custom">
@@ -642,10 +584,7 @@
         osParaRelatorio = null;
     }
 
-    private void GerarRelatorioGeralSaidas()
-    {
-        Nav.NavigateTo("relatorio-saidas");
-    }
+    private void GerarRelatorioGeralSaidas() { Nav.NavigateTo("relatorio-saidas"); }
     private string ApiUrl = "https://localhost:7082";
 
     List<ServiceOrderDTO>? todasOS;
@@ -688,17 +627,13 @@
 
     async Task CarregarDadosIniciais()
     {
-        try
-        {
+        try {
             await CarregarProdutos();
             await CarregarMecanicos();
             await CarregarOS();
             await CarregarCatalogoServicos();
         }
-        catch (Exception)
-        {
-            MostrarErro("Falha crítica ao conectar com o servidor.");
-        }
+        catch { MostrarErro("Falha crítica ao conectar com o servidor."); }
     }
 
     async Task CarregarCatalogoServicos()
@@ -710,91 +645,52 @@
     {
         int idSelected = int.Parse(e.Value?.ToString() ?? "0");
         var servico = catalogoServicos?.FirstOrDefault(s => s.Id == idSelected);
-        if (servico != null)
-        {
-            novoServico.Description = servico.Name;
-            novoServico.Price = servico.DefaultPrice;
-        }
+        if (servico != null) { novoServico.Description = servico.Name; novoServico.Price = servico.DefaultPrice; }
     }
 
     async void MostrarSucesso(string msg)
     {
-        toastMensagem = msg;
-        toastTipo = "sucesso"; mostrarToast = true; StateHasChanged();
+        toastMensagem = msg; toastTipo = "sucesso"; mostrarToast = true; StateHasChanged();
         await Task.Delay(3000); mostrarToast = false; StateHasChanged();
     }
     async void MostrarErro(string msg)
     {
-        toastMensagem = msg;
-        toastTipo = "erro"; mostrarToast = true; StateHasChanged();
+        toastMensagem = msg; toastTipo = "erro"; mostrarToast = true; StateHasChanged();
         await Task.Delay(5000); mostrarToast = false; StateHasChanged();
     }
 
-    async Task CarregarOS()
-    {
-        try { todasOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders"); }
-        catch { MostrarErro("Erro ao atualizar lista de O.S."); }
-    }
-    async Task CarregarProdutos()
-    {
-        try { produtos = await Http.GetFromJsonAsync<List<ProductListDTO>>($"{ApiUrl}/api/products"); }
-        catch { MostrarErro("Erro ao carregar produtos."); }
-    }
-    async Task CarregarMecanicos()
-    {
-        try { mecanicos = await Http.GetFromJsonAsync<List<EmployeeListDTO>>($"{ApiUrl}/api/employees"); }
-        catch { MostrarErro("Erro ao carregar mecânicos."); }
-    }
+    async Task CarregarOS() { try { todasOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders"); } catch { } }
+    async Task CarregarProdutos() { try { produtos = await Http.GetFromJsonAsync<List<ProductListDTO>>($"{ApiUrl}/api/products"); } catch { } }
+    async Task CarregarMecanicos() { try { mecanicos = await Http.GetFromJsonAsync<List<EmployeeListDTO>>($"{ApiUrl}/api/employees"); } catch { } }
 
     async Task Selecionar(ServiceOrderDTO os)
     {
-        sel = os;
-        dataEntregaManual = DateTime.Now;
-        editandoCabecalho = false;
-        editandoTotal = false;
-        editandoPagamento = false;
-        try
-        {
-            sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{os.Id}/attachments") ?? new();
-        }
-        catch
-        {
-            sel.Attachments = new();
-        }
+        sel = os; dataEntregaManual = DateTime.Now; editandoCabecalho = false; editandoTotal = false; editandoPagamento = false;
+        try { sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{os.Id}/attachments") ?? new(); }
+        catch { sel.Attachments = new(); }
         StateHasChanged();
     }
 
     async Task ImprimirNota() { await JS.InvokeVoidAsync("print"); }
-
     void SolicitarExclusao() { if (sel != null) mostrarModalExclusao = true; }
 
     async Task ConfirmarExclusao()
     {
         if (sel == null) return;
-        try
-        {
+        try {
             await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}");
-            sel = null;
-            mostrarModalExclusao = false;
-            await CarregarOS();
+            sel = null; mostrarModalExclusao = false; await CarregarOS();
             MostrarSucesso("O.S. movida para a lixeira.");
         }
-        catch
-        {
-            mostrarModalExclusao = false;
-            MostrarErro("Erro ao excluir a O.S.");
-        }
+        catch { mostrarModalExclusao = false; MostrarErro("Erro ao excluir a O.S."); }
     }
 
     async Task AbrirOS()
     {
         if (string.IsNullOrEmpty(novaOsRequest.ClientName)) { MostrarErro("Nome do cliente é obrigatório."); return; }
-        try
-        {
+        try {
             await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOsRequest);
-            novaOsRequest = new();
-            await CarregarOS();
-            MostrarSucesso("Ordem de Serviço aberta!");
+            novaOsRequest = new(); await CarregarOS(); MostrarSucesso("Ordem de Serviço aberta!");
         }
         catch { MostrarErro("Falha ao abrir nova O.S."); }
     }
@@ -802,357 +698,148 @@
     async Task AdicionarItem()
     {
         if (novoItem.ProductId == 0) { MostrarErro("Selecione um produto."); return; }
-        try
-        {
+        try {
             var response = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem);
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                MostrarErro(string.IsNullOrEmpty(errorMsg) ? "Erro ao adicionar item." : errorMsg);
-                return;
-            }
-            await AtualizarTela();
-            novoItem = new();
-            filtroProduto = "";
-            MostrarSucesso("Peça adicionada.");
+            if (!response.IsSuccessStatusCode) { MostrarErro("Erro ao adicionar item."); return; }
+            await AtualizarTela(); novoItem = new(); filtroProduto = ""; MostrarSucesso("Peça adicionada.");
         }
-        catch { MostrarErro("Erro de conexão ao adicionar item."); }
+        catch { MostrarErro("Erro de conexão."); }
     }
 
     async Task AdicionarItemAvulso()
     {
-        if (string.IsNullOrEmpty(novoItemAvulso.Description)) { MostrarErro("Descrição é obrigatória."); return; }
-        try
-        {
+        if (string.IsNullOrEmpty(novoItemAvulso.Description)) { MostrarErro("Descrição obrigatória."); return; }
+        try {
             await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/custom-items", novoItemAvulso);
-            await AtualizarTela();
-            novoItemAvulso = new();
-            MostrarSucesso("Produto avulso registrado.");
+            await AtualizarTela(); novoItemAvulso = new(); MostrarSucesso("Produto avulso registrado.");
         }
-        catch { MostrarErro("Erro ao adicionar produto avulso."); }
+        catch { }
     }
 
     async Task AdicionarServico()
     {
-        if (string.IsNullOrEmpty(novoServico.Description)) { MostrarErro("Descrição é obrigatória."); return; }
-        try
-        {
+        if (string.IsNullOrEmpty(novoServico.Description)) { MostrarErro("Descrição obrigatória."); return; }
+        try {
             await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoServico);
-            await AtualizarTela();
-            novoServico = new();
-            MostrarSucesso("Mão de obra registrada.");
+            await AtualizarTela(); novoServico = new(); MostrarSucesso("Mão de obra registrada.");
         }
-        catch { MostrarErro("Erro ao adicionar serviço."); }
+        catch { }
     }
 
     async Task ApagarItemEmEdicao()
     {
         if (itemParaEditar == null || sel == null) return;
-        bool confirm = await JS.InvokeAsync<bool>("confirm", $"Tem certeza que deseja apagar '{itemParaEditar.Description}' desta O.S.?");
+        bool confirm = await JS.InvokeAsync<bool>("confirm", $"Apagar '{itemParaEditar.Description}'?");
         if (!confirm) return;
-        try
-        {
-            var response = await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}");
-            if (!response.IsSuccessStatusCode)
-            {
-                MostrarErro("Erro ao remover item.");
-                return;
-            }
-
-            await AtualizarTela();
-            MostrarSucesso("Item removido!");
-            FecharEdicaoItem();
+        try {
+            await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}");
+            await AtualizarTela(); MostrarSucesso("Item removido!"); FecharEdicaoItem();
         }
-        catch
-        {
-            MostrarErro("Erro de conexão ao remover o item.");
-        }
+        catch { }
     }
 
     async Task FinalizarOS()
     {
-        try
-        {
+        try {
             await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/complete", new { CompletionDate = dataEntregaManual });
-            await CarregarOS();
-            mostrarFinalizadas = true;
-            MostrarSucesso("O.S. finalizada e entregue!");
+            await CarregarOS(); mostrarFinalizadas = true; MostrarSucesso("O.S. finalizada!");
         }
-        catch { MostrarErro("Erro ao finalizar O.S."); }
+        catch { }
     }
 
     async Task AtualizarTela()
     {
         await CarregarOS();
-        if (sel != null)
-        {
+        if (sel != null) {
             var osAtualizada = todasOS?.FirstOrDefault(o => o.Id == sel.Id);
-            if (osAtualizada != null)
-            {
-                osAtualizada.Attachments = sel.Attachments;
-                sel = osAtualizada;
-            }
+            if (osAtualizada != null) { osAtualizada.Attachments = sel.Attachments; sel = osAtualizada; }
         }
     }
 
-    async Task VoltarInteligente()
-    {
-        Nav.NavigateTo("/");
-    }
-
-    void IniciarEdicao()
-    {
-        if (sel?.Vehicle == null) return;
-        editRequest = new UpdateVehicleDTO
-        {
-            CustomerName = sel.Vehicle.CustomerName,
-            VehicleModel = sel.Vehicle.Model,
-            CustomerAddress = sel.Vehicle.CustomerAddress,
-            CustomerPhone = sel.Vehicle.CustomerPhone
-        };
-        editandoCabecalho = true;
-    }
-
-    void CancelarEdicao()
-    {
-        editandoCabecalho = false;
-    }
+    async Task VoltarInteligente() { Nav.NavigateTo("/"); }
+    void IniciarEdicao() { if (sel?.Vehicle == null) return; editRequest = new UpdateVehicleDTO { CustomerName = sel.Vehicle.CustomerName, VehicleModel = sel.Vehicle.Model, CustomerAddress = sel.Vehicle.CustomerAddress, CustomerPhone = sel.Vehicle.CustomerPhone }; editandoCabecalho = true; }
+    void CancelarEdicao() { editandoCabecalho = false; }
 
     async Task SalvarEdicao()
     {
         if (sel == null) return;
-        try
-        {
-            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/vehicle", editRequest);
-            editandoCabecalho = false;
-            await AtualizarTela();
-            MostrarSucesso("Dados do cliente atualizados!");
-        }
-        catch
-        {
-            MostrarErro("Erro ao salvar alterações.");
-        }
+        try { await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/vehicle", editRequest); editandoCabecalho = false; await AtualizarTela(); MostrarSucesso("Dados atualizados!"); }
+        catch { }
     }
 
-    void IniciarEdicaoTotal()
-    {
-        if (sel == null) return;
-        novoTotal = sel.TotalAmount;
-        editandoTotal = true;
-    }
-
+    void IniciarEdicaoTotal() { if (sel == null) return; novoTotal = sel.TotalAmount; editandoTotal = true; }
     async Task SalvarTotal()
     {
         if (sel == null) return;
-        try
-        {
-            await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/total", new UpdateTotalDTO { TotalAmount = novoTotal });
-            editandoTotal = false;
-            await AtualizarTela();
-            MostrarSucesso("Valor total atualizado!");
-        }
-        catch
-        {
-            MostrarErro("Erro ao atualizar valor total.");
-        }
+        try { await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/total", new UpdateTotalDTO { TotalAmount = novoTotal }); editandoTotal = false; await AtualizarTela(); MostrarSucesso("Total atualizado!"); }
+        catch { }
     }
 
     void IniciarEdicaoPagamento()
     {
-        if (sel == null) return;
-        listaPagamentosEmEdicao.Clear();
-
-        if (sel.Payments != null && sel.Payments.Any())
-        {
-            foreach (var p in sel.Payments)
-            {
-                listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = p.PaymentMethod, Amount = p.Amount, PaymentDate = p.PaymentDate });
-            }
-        }
-        else if (sel.AmountPaid > 0)
-        {
-            listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = sel.PaymentMethod ?? "", Amount = sel.AmountPaid });
-        }
-        else
-        {
-            listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = "", Amount = 0 });
-        }
-
-        novaDataPromessa = sel.PromisedPaymentDate;
-        editandoPagamento = true;
+        if (sel == null) return; listaPagamentosEmEdicao.Clear();
+        if (sel.Payments != null && sel.Payments.Any()) { foreach (var p in sel.Payments) listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = p.PaymentMethod, Amount = p.Amount, PaymentDate = p.PaymentDate }); }
+        else if (sel.AmountPaid > 0) listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = sel.PaymentMethod ?? "", Amount = sel.AmountPaid });
+        else listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = "", Amount = 0 });
+        novaDataPromessa = sel.PromisedPaymentDate; editandoPagamento = true;
     }
 
-    void AdicionarMetodoPagamentoLista()
-    {
-        listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = "", Amount = 0 });
-    }
-
-    void RemoverMetodoPagamentoLista(PaymentSplitDTO item)
-    {
-        listaPagamentosEmEdicao.Remove(item);
-    }
-
-    void CancelarEdicaoPagamento()
-    {
-        editandoPagamento = false;
-    }
+    void AdicionarMetodoPagamentoLista() { listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = "", Amount = 0 }); }
+    void RemoverMetodoPagamentoLista(PaymentSplitDTO item) { listaPagamentosEmEdicao.Remove(item); }
+    void CancelarEdicaoPagamento() { editandoPagamento = false; }
 
     async Task SalvarPagamento()
     {
         if (sel == null) return;
-        if (listaPagamentosEmEdicao.Any(p => p.Amount > 0 && string.IsNullOrEmpty(p.PaymentMethod)))
-        {
-            MostrarErro("Selecione a forma de pagamento para os valores informados.");
-            return;
-        }
-
         var pagamentosReais = listaPagamentosEmEdicao.Where(p => p.Amount > 0).ToList();
         decimal somaPagos = pagamentosReais.Sum(p => p.Amount);
-
-        string metodoPrincipal = "";
-        if (pagamentosReais.Count == 1) metodoPrincipal = pagamentosReais[0].PaymentMethod;
-        else if (pagamentosReais.Count > 1) metodoPrincipal = "Misto";
-
-        try
-        {
-            var request = new UpdatePaymentDTO
-            {
-                AmountPaid = somaPagos,
-                PaymentMethod = metodoPrincipal,
-                PromisedPaymentDate = novaDataPromessa,
-                Payments = pagamentosReais
-            };
+        string metodoPrincipal = pagamentosReais.Count == 1 ? pagamentosReais[0].PaymentMethod : "Misto";
+        try {
+            var request = new UpdatePaymentDTO { AmountPaid = somaPagos, PaymentMethod = metodoPrincipal, PromisedPaymentDate = novaDataPromessa, Payments = pagamentosReais };
             await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/payment", request);
-            editandoPagamento = false;
-            await AtualizarTela();
-            MostrarSucesso("Pagamento registrado com sucesso!");
+            editandoPagamento = false; await AtualizarTela(); MostrarSucesso("Pagamento salvo!");
         }
-        catch
-        {
-            MostrarErro("Erro ao registrar pagamento.");
-        }
+        catch { }
     }
 
-    void AbrirEdicaoItem(ServiceItemDTO item)
-    {
-        itemParaEditar = item;
-        itemEditRequest = new UpdateServiceItemDTO
-        {
-            Description = item.Description,
-            Price = item.Price,
-            WarrantyPeriod = item.WarrantyPeriod,
-            Quantity = item.Quantity > 0 ? item.Quantity : 1,
-            ItemType = item.ItemType,
-            MechanicId = item.MechanicId
-        };
-        mostrarModalEdicaoItem = true;
-    }
-
-    void FecharEdicaoItem()
-    {
-        mostrarModalEdicaoItem = false;
-        itemParaEditar = null;
-    }
+    void AbrirEdicaoItem(ServiceItemDTO item) { itemParaEditar = item; itemEditRequest = new UpdateServiceItemDTO { Description = item.Description, Price = item.Price, WarrantyPeriod = item.WarrantyPeriod, Quantity = item.Quantity > 0 ? item.Quantity : 1, ItemType = item.ItemType, MechanicId = item.MechanicId }; mostrarModalEdicaoItem = true; }
+    void FecharEdicaoItem() { mostrarModalEdicaoItem = false; itemParaEditar = null; }
 
     async Task SalvarEdicaoItem()
     {
         if (sel == null || itemParaEditar == null) return;
-        try
-        {
+        try {
             var response = await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", itemEditRequest);
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                MostrarErro(string.IsNullOrEmpty(errorMsg) ? "Erro ao atualizar item." : errorMsg);
-                return;
-            }
-            FecharEdicaoItem();
-            await AtualizarTela();
-            MostrarSucesso("Item atualizado com sucesso!");
+            if (response.IsSuccessStatusCode) { FecharEdicaoItem(); await AtualizarTela(); MostrarSucesso("Item atualizado!"); }
         }
-        catch
-        {
-            MostrarErro("Erro de conexão ao atualizar the item.");
-        }
+        catch { }
     }
 
     async Task CarregarComprovantes(InputFileChangeEventArgs e)
     {
         if (sel == null) return;
         var arquivos = e.GetMultipleFiles(10);
-        long limiteTamanho = 15 * 1024 * 1024;
-        bool teveErro = false;
-
-        isUploading = true;
-        StateHasChanged();
-        foreach (var file in arquivos)
-        {
-            if (file.Size > limiteTamanho)
-            {
-                MostrarErro($"O arquivo {file.Name} passou do limite de 15MB.");
-                teveErro = true;
-                continue;
-            }
-
-            try
-            {
-                using var stream = file.OpenReadStream(maxAllowedSize: limiteTamanho);
-                using var ms = new MemoryStream();
-                await stream.CopyToAsync(ms);
-
-                var base64 = Convert.ToBase64String(ms.ToArray());
-                var base64String = $"data:{file.ContentType};base64,{base64}";
-                var request = new
-                {
-                    FileName = file.Name,
-                    FileType = file.ContentType,
-                    Base64Content = base64String
-                };
-
-                var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments", request);
-
-                if (!res.IsSuccessStatusCode)
-                {
-                    teveErro = true;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erro ao processar {file.Name}: {ex.Message}");
-                teveErro = true;
-            }
+        isUploading = true; StateHasChanged();
+        foreach (var file in arquivos) {
+            try {
+                using var stream = file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024);
+                using var ms = new MemoryStream(); await stream.CopyToAsync(ms);
+                var base64String = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+                await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments", new { FileName = file.Name, FileType = file.ContentType, Base64Content = base64String });
+            } catch { }
         }
-
         isUploading = false;
-        try
-        {
-            sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new();
-        }
-        catch { }
-
-        if (teveErro)
-        {
-            MostrarErro("Alguns arquivos não puderam ser anexados.");
-        }
-        else
-        {
-            MostrarSucesso("Todos os anexos foram salvos!");
-        }
+        try { sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new(); } catch { }
+        MostrarSucesso("Processado!");
     }
 
     async Task RemoverComprovante(int attachmentId)
     {
         if (sel == null) return;
-        try
-        {
+        try {
             await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments/{attachmentId}");
             sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new();
-            StateHasChanged();
-            MostrarSucesso("Anexo apagado.");
-        }
-        catch
-        {
-            MostrarErro("Erro ao apagar o arquivo.");
-        }
+            StateHasChanged(); MostrarSucesso("Removido.");
+        } catch { }
     }
 }

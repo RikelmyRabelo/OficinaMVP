@@ -2,22 +2,134 @@
 @inject HttpClient Http
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@using System.Net.Http.Json
 @using OficinaWeb.Models
 
 <PageTitle>Lixeira - FREITAS AUTOCENTER</PageTitle>
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <button class="btn btn-outline-secondary border-0 text-white" @onclick='() => Nav.NavigateTo("/manutencao")'>
-            <i class="bi bi-arrow-left me-2"></i>Voltar para Gestão
-        </button>
-        <h2 class="fw-bold text-uppercase mb-0 text-danger">
-            <i class="bi bi-trash3-fill me-2"></i>Lixeira de O.S.
-        </h2>
-        <div>
-            <button class="btn btn-outline-warning btn-sm fw-bold" @onclick="CarregarLixeira">
-                <i class="bi bi-arrow-clockwise me-1"></i>ATUALIZAR
+<div class="toast-container position-fixed bottom-0 end-0 p-3 no-print" style="z-index: 1100;">
+    @if (mostrarToast)
+    {
+        <div class="toast show align-items-center text-white @(toastTipo == "erro" ? "bg-danger" : "bg-success") border-0 shadow-lg" role="alert">
+            <div class="d-flex">
+                <div class="toast-body fw-bold">
+                    <i class="bi @(toastTipo == "erro" ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
+                    @toastMensagem
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => mostrarToast = false"></button>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="container-fluid py-4 px-4">
+    <div class="row align-items-center mb-5">
+        <div class="col-md-3">
+            <button class="btn btn-outline-secondary border-0 text-white" @onclick='() => Nav.NavigateTo("/manutencao")'>
+                <i class="bi bi-arrow-left me-2"></i>Voltar para Oficina
             </button>
+        </div>
+        <div class="col-md-6 text-center">
+            <h2 class="fw-bold text-uppercase mb-0" style="color: #dc3545;"><i class="bi bi-trash me-2"></i>Lixeira de O.S.</h2>
+            <small class="text-secondary">Os itens abaixo serão removidos permanentemente após 30 dias da data de exclusão.</small>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        @* Lista de O.S. na Lixeira *@
+        <div class="col-md-4">
+            <div class="list-group shadow-sm" style="max-height: 75vh; overflow-y: auto;">
+                @if (lixeiraOS != null && lixeiraOS.Any())
+                {
+                    foreach (var os in lixeiraOS)
+                    {
+                        var isActive = sel?.Id == os.Id;
+                        <div class="list-group-item list-group-item-action border-secondary text-white mb-2 rounded-0"
+                             style="@(isActive ? "background-color: #222; border-left: 4px solid #dc3545;" : "background-color: #111;")"
+                             @onclick="() => Selecionar(os)">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">@(os.Vehicle?.CustomerName)</h6>
+                                    <small class="text-warning d-block">@(os.Vehicle?.Model)</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Excluído em: @os.DeletionDate?.ToString("dd/MM/yyyy")</small>
+                                </div>
+                                <span class="badge bg-dark border border-secondary">#@os.Id</span>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-center p-5 text-muted border border-secondary rounded bg-dark">
+                        <i class="bi bi-trash3 fs-1 d-block mb-3"></i>
+                        <p>Nenhuma Ordem de Serviço na lixeira.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Detalhes e Ações *@
+        <div class="col-md-8">
+            @if (sel != null)
+            {
+                <div class="card border-0 shadow-sm h-100" style="background-color: #111; border-top: 4px solid #dc3545 !important;">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between mb-4 border-bottom border-secondary pb-3">
+                            <div>
+                                <h2 class="fw-bold text-white mb-0">@(sel.Vehicle?.Model)</h2>
+                                <span class="text-warning">Cliente: @(sel.Vehicle?.CustomerName)</span>
+                                <div class="text-danger small mt-2 fw-bold">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Este item será removido definitivamente em @(sel.DeletionDate?.AddDays(30).ToString("dd/MM/yyyy"))
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="d-flex gap-2 justify-content-end mb-3">
+                                    <button class="btn btn-success fw-bold" @onclick="RestaurarOS">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i> RESTAURAR
+                                    </button>
+                                    <button class="btn btn-outline-danger fw-bold" @onclick="ExcluirDefinitivamente">
+                                        <i class="bi bi-x-circle me-1"></i> APAGAR DEFINITIVO
+                                    </button>
+                                </div>
+                                <h5 class="text-white fw-bold mb-0">
+                                    <small class="text-secondary fw-bold me-1 fs-6">TOTAL:</small> R$ @sel.TotalAmount.ToString("N2")
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover align-middle">
+                                <thead>
+                                    <tr class="text-secondary">
+                                        <th>Cód/Tipo</th>
+                                        <th>Descrição</th>
+                                        <th class="text-center">Qtd</th>
+                                        <th class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in sel.Items)
+                                    {
+                                        <tr>
+                                            <td class="text-warning small">@(item.ItemType == "Service" ? "M.O." : "PEÇA")</td>
+                                            <td>@item.Description</td>
+                                            <td class="text-center">@item.Quantity</td>
+                                            <td class="text-end text-success">R$ @item.Price.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="h-100 d-flex align-items-center justify-content-center border border-secondary rounded bg-black text-secondary">
+                    <p><i class="bi bi-arrow-left-circle me-2"></i>Selecione uma O.S. para visualizar detalhes</p>
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -25,38 +137,74 @@
 @code {
     private string ApiUrl = "https://localhost:7082";
     private List<ServiceOrderDTO>? lixeiraOS;
+    private ServiceOrderDTO? sel;
+    
+    bool mostrarToast = false;
+    string toastMensagem = "";
+    string toastTipo = "sucesso";
 
-    protected override async Task OnInitializedAsync() => await CarregarLixeira();
-
-    async Task CarregarLixeira()
+    protected override async Task OnInitializedAsync()
     {
-        try { lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash"); }
-        catch { await JS.InvokeVoidAsync("alert", "Erro ao carregar lixeira."); }
+        await CarregarLixeira();
     }
 
-    async Task RestaurarOS(int id)
+    private async Task CarregarLixeira()
     {
         try
         {
-            var res = await Http.PutAsync($"{ApiUrl}/api/serviceorders/{id}/restore", null);
+            lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash");
+        }
+        catch
+        {
+            MostrarErro("Erro ao conectar com a lixeira.");
+        }
+    }
+
+    private void Selecionar(ServiceOrderDTO os) => sel = os;
+
+    private async Task RestaurarOS()
+    {
+        if (sel == null) return;
+        var res = await Http.PutAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/restore", null);
+        if (res.IsSuccessStatusCode)
+        {
+            MostrarSucesso("Ordem de Serviço restaurada!");
+            sel = null;
+            await CarregarLixeira();
+        }
+    }
+
+    private async Task ExcluirDefinitivamente()
+    {
+        if (sel == null) return;
+
+        bool confirmado = await JS.InvokeAsync<bool>("confirm", $"ATENÇÃO: A O.S. #{sel.Id} será apagada permanentemente do banco de dados. Esta ação não pode ser desfeita. Confirma?");
+
+        if (confirmado)
+        {
+            var res = await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/permanent");
             if (res.IsSuccessStatusCode)
             {
+                MostrarSucesso("O.S. removida definitivamente.");
+                sel = null;
                 await CarregarLixeira();
             }
+            else
+            {
+                MostrarErro("Erro ao processar exclusão definitiva.");
+            }
         }
-        catch { await JS.InvokeVoidAsync("alert", "Falha ao restaurar."); }
     }
 
-    async Task ExcluirDefinitivamente(int id)
+    private async void MostrarSucesso(string msg)
     {
-        bool confirm = await JS.InvokeAsync<bool>("confirm", $"CUIDADO: Apagar permanentemente a O.S. #{id}? Esta ação não tem volta.");
-        if (!confirm) return;
+        toastMensagem = msg; toastTipo = "sucesso"; mostrarToast = true; StateHasChanged();
+        await Task.Delay(3000); mostrarToast = false; StateHasChanged();
+    }
 
-        try
-        {
-            var res = await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/force-delete/{id}");
-            if (res.IsSuccessStatusCode) await CarregarLixeira();
-        }
-        catch { await JS.InvokeVoidAsync("alert", "Erro ao apagar definitivamente."); }
+    private async void MostrarErro(string msg)
+    {
+        toastMensagem = msg; toastTipo = "erro"; mostrarToast = true; StateHasChanged();
+        await Task.Delay(5000); mostrarToast = false; StateHasChanged();
     }
 }
