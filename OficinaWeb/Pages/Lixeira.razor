@@ -22,6 +22,29 @@
     }
 </div>
 
+@* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO PERMANENTE *@
+@if (mostrarModalConfirmacao)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.85); z-index: 1050;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-danger">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-octagon-fill me-2"></i>Atenção: Exclusão Definitiva</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => mostrarModalConfirmacao = false"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <p class="fs-5">Deseja apagar permanentemente a O.S. <strong>#@sel?.Id</strong>?</p>
+                    <p class="text-secondary small">Esta ação não poderá ser desfeita e os dados serão removidos do banco.</p>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" @onclick="() => mostrarModalConfirmacao = false">Cancelar</button>
+                    <button type="button" class="btn btn-danger fw-bold" @onclick="ConfirmarExclusaoPermanente">APAGAR PARA SEMPRE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="container-fluid py-4 px-4">
     <div class="row align-items-center mb-5">
         <div class="col-md-3">
@@ -31,12 +54,11 @@
         </div>
         <div class="col-md-6 text-center">
             <h2 class="fw-bold text-uppercase mb-0" style="color: #dc3545;"><i class="bi bi-trash me-2"></i>Lixeira de O.S.</h2>
-            <small class="text-secondary">Os itens abaixo serão removidos permanentemente após 30 dias da data de exclusão.</small>
+            <small class="text-info fw-bold">Limpeza automática após 30 dias</small>
         </div>
     </div>
 
     <div class="row g-4">
-        @* Lista de O.S. na Lixeira *@
         <div class="col-md-4">
             <div class="list-group shadow-sm" style="max-height: 75vh; overflow-y: auto;">
                 @if (lixeiraOS != null && lixeiraOS.Any())
@@ -51,7 +73,10 @@
                                 <div>
                                     <h6 class="mb-1">@(os.Vehicle?.CustomerName)</h6>
                                     <small class="text-warning d-block">@(os.Vehicle?.Model)</small>
-                                    <small class="text-muted" style="font-size: 0.75rem;">Excluído em: @os.DeletionDate?.ToString("dd/MM/yyyy")</small>
+                                    @* TEXTO DE DATA COM MELHOR CONTRASTE *@
+                                    <small class="text-white-50 fw-bold" style="font-size: 0.8rem; background: #222; padding: 2px 5px; border-radius: 4px;">
+                                        Excluído em: <span class="text-info">@os.DeletionDate?.ToString("dd/MM/yyyy")</span>
+                                    </small>
                                 </div>
                                 <span class="badge bg-dark border border-secondary">#@os.Id</span>
                             </div>
@@ -68,7 +93,6 @@
             </div>
         </div>
 
-        @* Detalhes e Ações *@
         <div class="col-md-8">
             @if (sel != null)
             {
@@ -80,7 +104,7 @@
                                 <span class="text-warning">Cliente: @(sel.Vehicle?.CustomerName)</span>
                                 <div class="text-danger small mt-2 fw-bold">
                                     <i class="bi bi-info-circle me-1"></i>
-                                    Este item será removido definitivamente em @(sel.DeletionDate?.AddDays(30).ToString("dd/MM/yyyy"))
+                                    Remoção definitiva em: @(sel.DeletionDate?.AddDays(30).ToString("dd/MM/yyyy"))
                                 </div>
                             </div>
                             <div class="text-end">
@@ -88,7 +112,7 @@
                                     <button class="btn btn-success fw-bold" @onclick="RestaurarOS">
                                         <i class="bi bi-arrow-counterclockwise me-1"></i> RESTAURAR
                                     </button>
-                                    <button class="btn btn-outline-danger fw-bold" @onclick="ExcluirDefinitivamente">
+                                    <button class="btn btn-outline-danger fw-bold" @onclick="() => mostrarModalConfirmacao = true">
                                         <i class="bi bi-x-circle me-1"></i> APAGAR DEFINITIVO
                                     </button>
                                 </div>
@@ -102,7 +126,7 @@
                             <table class="table table-dark table-hover align-middle">
                                 <thead>
                                     <tr class="text-secondary">
-                                        <th>Cód/Tipo</th>
+                                        <th>Tipo</th>
                                         <th>Descrição</th>
                                         <th class="text-center">Qtd</th>
                                         <th class="text-end">Subtotal</th>
@@ -142,22 +166,14 @@
     bool mostrarToast = false;
     string toastMensagem = "";
     string toastTipo = "sucesso";
+    bool mostrarModalConfirmacao = false;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CarregarLixeira();
-    }
+    protected override async Task OnInitializedAsync() => await CarregarLixeira();
 
     private async Task CarregarLixeira()
     {
-        try
-        {
-            lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash");
-        }
-        catch
-        {
-            MostrarErro("Erro ao conectar com a lixeira.");
-        }
+        try { lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash"); }
+        catch { MostrarErro("Erro ao conectar com a lixeira."); }
     }
 
     private void Selecionar(ServiceOrderDTO os) => sel = os;
@@ -166,34 +182,21 @@
     {
         if (sel == null) return;
         var res = await Http.PutAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/restore", null);
+        if (res.IsSuccessStatusCode) { MostrarSucesso("Ordem de Serviço restaurada!"); sel = null; await CarregarLixeira(); }
+    }
+
+    private async Task ConfirmarExclusaoPermanente()
+    {
+        if (sel == null) return;
+        var res = await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/permanent");
         if (res.IsSuccessStatusCode)
         {
-            MostrarSucesso("Ordem de Serviço restaurada!");
+            mostrarModalConfirmacao = false;
+            MostrarSucesso("O.S. removida definitivamente.");
             sel = null;
             await CarregarLixeira();
         }
-    }
-
-    private async Task ExcluirDefinitivamente()
-    {
-        if (sel == null) return;
-
-        bool confirmado = await JS.InvokeAsync<bool>("confirm", $"ATENÇÃO: A O.S. #{sel.Id} será apagada permanentemente do banco de dados. Esta ação não pode ser desfeita. Confirma?");
-
-        if (confirmado)
-        {
-            var res = await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/permanent");
-            if (res.IsSuccessStatusCode)
-            {
-                MostrarSucesso("O.S. removida definitivamente.");
-                sel = null;
-                await CarregarLixeira();
-            }
-            else
-            {
-                MostrarErro("Erro ao processar exclusão definitiva.");
-            }
-        }
+        else { MostrarErro("Erro ao processar exclusão."); }
     }
 
     private async void MostrarSucesso(string msg)
