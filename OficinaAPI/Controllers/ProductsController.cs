@@ -19,14 +19,14 @@ namespace OficinaAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
         {
-            return await _context.Products.ToListAsync();
+            return await _context.Products.Where(p => !p.IsDeleted).ToListAsync();
         }
 
         [HttpGet("low-stock")]
         public async Task<ActionResult<IEnumerable<Product>>> GetLowStock()
         {
             return await _context.Products
-                .Where(p => p.StockQuantity <= 3)
+                .Where(p => !p.IsDeleted && p.StockQuantity <= 3)
                 .OrderBy(p => p.StockQuantity)
                 .ToListAsync();
         }
@@ -35,11 +35,11 @@ namespace OficinaAPI.Controllers
         public async Task<ActionResult<Product>> GetProductByCode(string code)
         {
             var product = await _context.Products
-                .FirstOrDefaultAsync(p => p.Code == code);
+                .FirstOrDefaultAsync(p => p.Code == code && !p.IsDeleted);
 
             if (product == null)
             {
-                return NotFound(new { message = "Produto não encontrado com esse código." });
+                return NotFound(new { message = "Produto não encontrado ou removido." });
             }
 
             return product;
@@ -48,11 +48,10 @@ namespace OficinaAPI.Controllers
         [HttpGet("historical-value")]
         public async Task<ActionResult<object>> GetHistoricalStockValue()
         {
-            // 1. Valor total do que está no estoque agora
             var currentStockValue = await _context.Products
+                .Where(p => !p.IsDeleted)
                 .SumAsync(p => p.StockQuantity * p.SalePrice);
 
-            // 2. Valor total do que já saiu em O.S. (somente itens com código/ProductId)
             var exitedItemsValue = await _context.ServiceItems
                 .Where(si => si.ProductId != null)
                 .SumAsync(si => si.Quantity * si.Price);
@@ -68,9 +67,21 @@ namespace OficinaAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<Product>> PostProduct(Product product)
         {
-            if (await _context.Products.AnyAsync(p => p.Code == product.Code))
+            var existing = await _context.Products.FirstOrDefaultAsync(p => p.Code == product.Code);
+
+            if (existing != null)
             {
-                return BadRequest("Já existe um produto com este código.");
+                if (existing.IsDeleted)
+                {
+                    existing.IsDeleted = false;
+                    existing.Name = product.Name;
+                    existing.SalePrice = product.SalePrice;
+                    existing.StockQuantity = product.StockQuantity;
+                    existing.MinimumStock = product.MinimumStock;
+                    await _context.SaveChangesAsync();
+                    return Ok(existing);
+                }
+                return BadRequest("Já existe um produto ativo com este código.");
             }
 
             _context.Products.Add(product);
@@ -92,7 +103,7 @@ namespace OficinaAPI.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!_context.Products.Any(e => e.Id == id)) return NotFound();
+                if (!_context.Products.Any(e => e.Id == id && !e.IsDeleted)) return NotFound();
                 else throw;
             }
 
@@ -103,21 +114,11 @@ namespace OficinaAPI.Controllers
         public async Task<IActionResult> DeleteProduct(int id)
         {
             var product = await _context.Products.FindAsync(id);
-            if (product == null)
-            {
-                return NotFound();
-            }
+            if (product == null) return NotFound();
 
-            try
-            {
-                _context.Products.Remove(product);
-                await _context.SaveChangesAsync();
-                return NoContent();
-            }
-            catch (Exception)
-            {
-                return StatusCode(409, new { message = "Não é possível excluir este produto pois ele já está vinculado a uma Ordem de Serviço." });
-            }
+            product.IsDeleted = true;
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
     }
 }

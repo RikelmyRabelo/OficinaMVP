@@ -25,5 +25,7 @@ namespace OficinaAPI.Models
         public int StockQuantity { get; set; }
         public int MinimumStock { get; set; } = 5;
         public string? LocationCode { get; set; }
+
+        public bool IsDeleted { get; set; } = false;
     }
 }
