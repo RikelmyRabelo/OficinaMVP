@@ -27,7 +27,7 @@ namespace OficinaAPI.Controllers
         {
             return await _context.Products
                 .Where(p => p.StockQuantity <= 3)
-                .OrderBy(p => p.StockQuantity) 
+                .OrderBy(p => p.StockQuantity)
                 .ToListAsync();
         }
 
@@ -43,6 +43,26 @@ namespace OficinaAPI.Controllers
             }
 
             return product;
+        }
+
+        [HttpGet("historical-value")]
+        public async Task<ActionResult<object>> GetHistoricalStockValue()
+        {
+            // 1. Valor total do que está no estoque agora
+            var currentStockValue = await _context.Products
+                .SumAsync(p => p.StockQuantity * p.SalePrice);
+
+            // 2. Valor total do que já saiu em O.S. (somente itens com código/ProductId)
+            var exitedItemsValue = await _context.ServiceItems
+                .Where(si => si.ProductId != null)
+                .SumAsync(si => si.Quantity * si.Price);
+
+            return Ok(new
+            {
+                currentInventoryValue = currentStockValue,
+                totalExitedValue = exitedItemsValue,
+                totalHistoricalValue = currentStockValue + exitedItemsValue
+            });
         }
 
         [HttpPost]

@@ -1,0 +1,62 @@
+﻿@page "/lixeira"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@using OficinaWeb.Models
+
+<PageTitle>Lixeira - FREITAS AUTOCENTER</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <button class="btn btn-outline-secondary border-0 text-white" @onclick='() => Nav.NavigateTo("/manutencao")'>
+            <i class="bi bi-arrow-left me-2"></i>Voltar para Gestão
+        </button>
+        <h2 class="fw-bold text-uppercase mb-0 text-danger">
+            <i class="bi bi-trash3-fill me-2"></i>Lixeira de O.S.
+        </h2>
+        <div>
+            <button class="btn btn-outline-warning btn-sm fw-bold" @onclick="CarregarLixeira">
+                <i class="bi bi-arrow-clockwise me-1"></i>ATUALIZAR
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string ApiUrl = "https://localhost:7082";
+    private List<ServiceOrderDTO>? lixeiraOS;
+
+    protected override async Task OnInitializedAsync() => await CarregarLixeira();
+
+    async Task CarregarLixeira()
+    {
+        try { lixeiraOS = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/trash"); }
+        catch { await JS.InvokeVoidAsync("alert", "Erro ao carregar lixeira."); }
+    }
+
+    async Task RestaurarOS(int id)
+    {
+        try
+        {
+            var res = await Http.PutAsync($"{ApiUrl}/api/serviceorders/{id}/restore", null);
+            if (res.IsSuccessStatusCode)
+            {
+                await CarregarLixeira();
+            }
+        }
+        catch { await JS.InvokeVoidAsync("alert", "Falha ao restaurar."); }
+    }
+
+    async Task ExcluirDefinitivamente(int id)
+    {
+        bool confirm = await JS.InvokeAsync<bool>("confirm", $"CUIDADO: Apagar permanentemente a O.S. #{id}? Esta ação não tem volta.");
+        if (!confirm) return;
+
+        try
+        {
+            var res = await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/force-delete/{id}");
+            if (res.IsSuccessStatusCode) await CarregarLixeira();
+        }
+        catch { await JS.InvokeVoidAsync("alert", "Erro ao apagar definitivamente."); }
+    }
+}

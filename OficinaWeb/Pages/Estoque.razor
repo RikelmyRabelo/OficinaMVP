@@ -45,7 +45,6 @@
 
 <div class="container py-4 no-print">
 
-    @* Cabeçalho Principal Atualizado *@
     <div class="row align-items-center mb-4 position-relative">
         <div class="col-md-2">
             <a href="/" class="btn btn-outline-secondary border-0 text-white">
@@ -58,7 +57,6 @@
             </h2>
         </div>
         <div class="col-md-5 text-end d-flex gap-2 justify-content-end">
-            @* BOTÃO LISTA DE COMPRAS - NOVO *@
             <button class="btn btn-warning fw-bold shadow-sm" @onclick='() => Nav.NavigateTo("lista-compras")'>
                 <i class="bi bi-cart-check-fill me-1"></i>
                 LISTA DE COMPRAS
@@ -71,7 +69,6 @@
         </div>
     </div>
 
-    @* Abas de Navegação *@
     <ul class="nav nav-pills nav-fill mb-4 p-1 bg-black rounded border border-secondary">
         <li class="nav-item">
             <button class="nav-link @(abaAtiva == "pecas" ? "active bg-warning text-dark fw-bold" : "text-white")" @onclick='() => abaAtiva = "pecas"'>
@@ -87,7 +84,36 @@
 
     @if (abaAtiva == "pecas")
     {
-        @* Cadastro de Peças *@
+        @if (valoresHistoricos != null)
+        {
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-dark border-secondary text-white shadow-sm h-100">
+                        <div class="card-body p-3 text-center">
+                            <small class="text-secondary fw-bold text-uppercase d-block mb-1">Valor em Prateleira (Atual)</small>
+                            <h4 class="fw-bold text-success mb-0">R$ @valoresHistoricos.currentInventoryValue.ToString("N2")</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-dark border-secondary text-white shadow-sm h-100">
+                        <div class="card-body p-3 text-center">
+                            <small class="text-secondary fw-bold text-uppercase d-block mb-1">Total Saídas (O.S.)</small>
+                            <h4 class="fw-bold text-info mb-0">R$ @valoresHistoricos.totalExitedValue.ToString("N2")</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-dark border-secondary text-white shadow-sm h-100" style="border-left: 4px solid #ff6600 !important;">
+                        <div class="card-body p-3 text-center">
+                            <small class="text-warning fw-bold text-uppercase d-block mb-1">Patrimônio Total Histórico</small>
+                            <h4 class="fw-bold text-white mb-0">R$ @valoresHistoricos.totalHistoricalValue.ToString("N2")</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
         <div class="card border-0 shadow-sm mb-5" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
             <div class="card-body p-4">
                 <h5 class="mb-3 fw-bold" style="color: #ffeb3b;">Novo Produto</h5>
@@ -101,7 +127,6 @@
             </div>
         </div>
 
-        @* Listagem de Peças com Busca *@
         @if (produtos != null)
         {
             <div class="input-group mb-3">
@@ -148,7 +173,6 @@
     }
     else
     {
-        @* Cadastro de Serviços *@
         <div class="card border-0 shadow-sm mb-5" style="background-color: #111; border-top: 4px solid #00bcff !important;">
             <div class="card-body p-4">
                 <h5 class="mb-3 fw-bold" style="color: #00bcff;">Novo Serviço (Mão de Obra)</h5>
@@ -166,7 +190,6 @@
             </div>
         </div>
 
-        @* Tabela de Serviços *@
         <div class="table-responsive">
             <table class="table table-dark table-hover align-middle">
                 <thead style="border-bottom: 2px solid #00bcff;">
@@ -196,7 +219,6 @@
     }
 </div>
 
-@* SEÇÕES DE IMPRESSÃO*@
 <div class="print-only">
     @if (abaAtiva == "pecas" && produtos != null)
     {
@@ -230,48 +252,10 @@
                             <td style="color: black !important; border: 1px solid black !important;" class="text-end">R$ @p.salePrice?.ToString("N2")</td>
                             <td style="color: black !important; border: 1px solid black !important; font-weight: bold;" class="text-center">@qtd</td>
                             <td style="color: black !important; border: 1px solid black !important; font-size: 0.8rem;" class="text-center">
-                                @if (isEsgotado)
-                                {
-                                    <strong style="color: #d32f2f !important;">ESGOTADO</strong>
-                                }
-                                else if (isBaixo)
-                                {
-
-                                    <strong style="color: #ef6c00 !important;">REPOR</strong>
-                                }
-                                else
-                                {
-
-                                    <span style="color: #2e7d32 !important;">OK</span>
-                                }
+                                @if (isEsgotado) { <strong style="color: #d32f2f !important;">ESGOTADO</strong> }
+                                else if (isBaixo) { <strong style="color: #ef6c00 !important;">REPOR</strong> }
+                                else { <span style="color: #2e7d32 !important;">OK</span> }
                             </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-    else if (abaAtiva == "servicos" && servicosCatalogo != null)
-    {
-        <div class="p-5">
-            <div class="text-center mb-4 border-bottom border-dark pb-3">
-                <h1 style="color: black !important; font-weight: bold;">TABELA DE SERVIÇOS</h1>
-                <h3 style="color: #666 !important;">FREITAS AUTOCENTER - Mão de Obra</h3>
-                <p style="color: black !important;">Data: @DateTime.Now.ToString("dd/MM/yyyy")</p>
-            </div>
-            <table class="table table-bordered border-dark" style="color: black !important;">
-                <thead>
-                    <tr style="background-color: #f2f2f2 !important;">
-                        <th style="width: 75%; color: black !important; border: 1px solid black !important;">DESCRIÇÃO DO SERVIÇO</th>
-                        <th style="width: 25%; color: black !important; border: 1px solid black !important;" class="text-end">VALOR BASE</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var s in servicosCatalogo.OrderBy(x => x.Name))
-                    {
-                        <tr>
-                            <td style="color: black !important; border: 1px solid black !important; font-weight: bold;">@s.Name</td>
-                            <td style="color: black !important; border: 1px solid black !important;" class="text-end">R$ @s.DefaultPrice.ToString("N2")</td>
                         </tr>
                     }
                 </tbody>
@@ -281,41 +265,14 @@
 </div>
 
 <style>
-    .nav-pills .nav-link {
-        border-radius: 0;
-    }
-
-    .table-dark {
-        --bs-table-bg: #000;
-    }
-
-    .print-only {
-        display: none;
-    }
-
+    .nav-pills .nav-link { border-radius: 0; }
+    .table-dark { --bs-table-bg: #000; }
+    .print-only { display: none; }
     @@media print {
-        body * {
-            visibility: hidden;
-        }
-
-        .print-only, .print-only * {
-            visibility: visible !important;
-        }
-
-        .print-only {
-            display: block !important;
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background-color: white !important;
-            color: black !important;
-        }
-
-        .table th, .table td {
-            border: 1px solid black !important;
-            color: black !important;
-        }
+        body * { visibility: hidden; }
+        .print-only, .print-only * { visibility: visible !important; }
+        .print-only { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background-color: white !important; color: black !important; }
+        .table th, .table td { border: 1px solid black !important; color: black !important; }
     }
 </style>
 
@@ -325,9 +282,11 @@
 
     public class ProductDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal? salePrice { get; set; } public int? stockQuantity { get; set; } public int minimumStock { get; set; } = 5; }
     public class LaborServiceDTO { public int Id { get; set; } public string Name { get; set; } = ""; public decimal DefaultPrice { get; set; } }
+    public class HistoricalValueDTO { public decimal currentInventoryValue { get; set; } public decimal totalExitedValue { get; set; } public decimal totalHistoricalValue { get; set; } }
 
     private List<ProductDTO>? produtos;
     private List<LaborServiceDTO>? servicosCatalogo;
+    private HistoricalValueDTO? valoresHistoricos;
 
     private ProductDTO novoProduto = new();
     private LaborServiceDTO novoServico = new();
@@ -347,10 +306,12 @@
     {
         await Carregar();
         await CarregarServicos();
+        await CarregarValoresHistoricos();
     }
 
     private async Task Carregar() => produtos = await Http.GetFromJsonAsync<List<ProductDTO>>($"{ApiUrl}/api/products");
     private async Task CarregarServicos() => servicosCatalogo = await Http.GetFromJsonAsync<List<LaborServiceDTO>>($"{ApiUrl}/api/laborservices");
+    private async Task CarregarValoresHistoricos() => valoresHistoricos = await Http.GetFromJsonAsync<HistoricalValueDTO>($"{ApiUrl}/api/products/historical-value");
 
     private async void MostrarSucesso(string msg)
     {
@@ -363,13 +324,17 @@
         if (string.IsNullOrWhiteSpace(novoProduto.code) || novoProduto.salePrice == null) return;
         novoProduto.code = novoProduto.code.ToUpper();
         await Http.PostAsJsonAsync($"{ApiUrl}/api/products", novoProduto);
-        novoProduto = new(); await Carregar(); MostrarSucesso("Peça cadastrada!");
+        novoProduto = new(); 
+        await Carregar(); 
+        await CarregarValoresHistoricos();
+        MostrarSucesso("Peça cadastrada!");
     }
 
     private async Task AjustarEstoque(ProductDTO p, int delta)
     {
         p.stockQuantity = (p.stockQuantity ?? 0) + delta;
         await Http.PutAsJsonAsync($"{ApiUrl}/api/products/{p.id}", p);
+        await CarregarValoresHistoricos();
         StateHasChanged();
     }
 
@@ -378,7 +343,10 @@
     private async Task ConfirmarExclusao()
     {
         await Http.DeleteAsync($"{ApiUrl}/api/products/{produtoParaExcluir?.id}");
-        mostrarModalExclusao = false; await Carregar(); MostrarSucesso("Produto removido.");
+        mostrarModalExclusao = false; 
+        await Carregar(); 
+        await CarregarValoresHistoricos();
+        MostrarSucesso("Produto removido.");
     }
 
     private async Task SalvarServico()
