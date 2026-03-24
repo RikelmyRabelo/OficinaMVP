@@ -208,7 +208,7 @@
                             <th style="color: #ffeb3b;">Nome</th>
                             <th style="color: #ffeb3b; width: 150px;">Preço</th>
                             <th style="color: #ffeb3b; width: 150px;" class="text-center">Estoque</th>
-                            <th class="text-end" style="width: 120px;">Ações</th>
+                            <th class="text-end" style="width: 120px; color: #ffeb3b;">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -226,16 +226,16 @@
 
                             @if (temVarios)
                             {
-                                @* LINHA DE AGRUPAMENTO  *@
+                                @* LINHA DE AGRUPAMENTO *@
                                 <tr @onclick="() => ToggleGroup(grupo.Key)" style="cursor: pointer; background-color: rgba(255, 235, 59, 0.05);">
-                                    <td class="text-muted small"><em>Múltiplos</em></td>
-                                    <td class="fw-bold">
-                                        <i class="bi @(estaExpandido ? "bi-chevron-down" : "bi-chevron-right") me-2 text-warning"></i>
+                                    <td style="color: #ff8800;" class="small"><em>Múltiplos</em></td>
+                                    <td class="fw-bold" style="color: #ff8800;">
+                                        <i class="bi @(estaExpandido ? "bi-chevron-down" : "bi-chevron-right") me-2"></i>
                                         @nomeExibicao 
-                                        <span class="badge rounded-pill bg-secondary ms-2" style="font-size: 0.7rem;">@itens.Count códigos</span>
+                                        <span class="badge rounded-pill bg-secondary ms-2" style="font-size: 0.7rem; color: #fff;">@itens.Count códigos</span>
                                     </td>
                                     <td class="text-muted">---</td>
-                                    <td class="text-center fw-bold text-warning">@totalEstoque</td>
+                                    <td class="text-center fw-bold" style="color: #ff8800;">@totalEstoque</td>
                                     <td class="text-end">
                                         <span class="text-secondary small">@(estaExpandido ? "Clique para ocultar" : "Clique para ver")</span>
                                     </td>
@@ -259,7 +259,7 @@
                                             <td class="text-center">
                                                 <div class="d-flex align-items-center justify-content-center gap-2">
                                                     <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, -1)" @onclick:stopPropagation><i class="bi bi-dash-lg"></i></button>
-                                                    <span class="fw-bold" style="min-width: 30px;">@qtd</span>
+                                                    <span class="fw-bold" style="min-width: 30px; color: @rowColor;">@qtd</span>
                                                     <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, 1)" @onclick:stopPropagation><i class="bi bi-plus-lg"></i></button>
                                                 </div>
                                             </td>
@@ -273,6 +273,7 @@
                             }
                             else
                             {
+                                @* LINHA ÚNICA *@
                                 var p = itens.First();
                                 var qtd = p.stockQuantity ?? 0;
                                 var rowColor = qtd <= 0 ? "#ff4444" : (qtd <= p.minimumStock ? "#ff8800" : "#fff");
@@ -286,7 +287,7 @@
                                     <td class="text-center">
                                         <div class="d-flex align-items-center justify-content-center gap-2">
                                             <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, -1)"><i class="bi bi-dash-lg"></i></button>
-                                            <span class="fw-bold" style="min-width: 30px;">@qtd</span>
+                                            <span class="fw-bold" style="min-width: 30px; color: @rowColor;">@qtd</span>
                                             <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, 1)"><i class="bi bi-plus-lg"></i></button>
                                         </div>
                                     </td>
