@@ -64,6 +64,26 @@ namespace OficinaAPI.Controllers
             });
         }
 
+        [HttpGet("audit-exited-items")]
+        public async Task<ActionResult> GetAuditExitedItems()
+        {
+            var audit = await _context.ServiceItems
+                .Include(si => si.ServiceOrder)
+                .Where(si => si.ProductId != null)
+                .Select(si => new
+                {
+                    OsId = si.ServiceOrderId,
+                    Data = si.ServiceOrder != null ? (si.ServiceOrder.CompletionDate ?? si.ServiceOrder.EntryDate) : DateTime.Now,
+                    Descricao = si.Description,
+                    Quantidade = si.Quantity,
+                    ValorTotal = si.Price
+                })
+                .OrderByDescending(x => x.Data)
+                .ToListAsync();
+
+            return Ok(audit);
+        }
+
         [HttpPost]
         public async Task<ActionResult<Product>> PostProduct(Product product)
         {
