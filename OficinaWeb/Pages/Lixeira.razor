@@ -66,14 +66,13 @@
                     foreach (var os in lixeiraOS)
                     {
                         var isActive = sel?.Id == os.Id;
-                        <div class="list-group-item list-group-item-action border-secondary text-white mb-2 rounded-0"
+                            <div class="list-group-item list-group-item-action border-secondary text-white mb-2 rounded-0"
                              style="@(isActive ? "background-color: #222; border-left: 4px solid #dc3545;" : "background-color: #111;")"
                              @onclick="() => Selecionar(os)">
                             <div class="d-flex w-100 justify-content-between align-items-center">
                                 <div>
                                     <h6 class="mb-1">@(os.Vehicle?.CustomerName)</h6>
                                     <small class="text-warning d-block">@(os.Vehicle?.Model)</small>
-                                    @* TEXTO DE DATA COM MELHOR CONTRASTE *@
                                     <small class="text-white-50 fw-bold" style="font-size: 0.8rem; background: #222; padding: 2px 5px; border-radius: 4px;">
                                         Excluído em: <span class="text-info">@os.DeletionDate?.ToString("dd/MM/yyyy")</span>
                                     </small>

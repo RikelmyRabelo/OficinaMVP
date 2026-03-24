@@ -20,7 +20,6 @@ namespace OficinaWeb.Models
         public List<ServiceItemDTO> Items { get; set; } = new();
         public List<PaymentSplitDTO> Payments { get; set; } = new();
 
-        // Adicione estas duas linhas abaixo
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletionDate { get; set; }
     }

@@ -7,6 +7,7 @@
 
 <PageTitle>Catálogo & Estoque - FREITAS AUTOCENTER</PageTitle>
 
+
 <div class="toast-container position-fixed bottom-0 end-0 p-3 no-print" style="z-index: 1100;">
     @if (mostrarToast)
     {
@@ -22,7 +23,6 @@
     }
 </div>
 
-@* MODAL DE EXCLUSÃO *@
 @if (mostrarModalExclusao)
 {
     <div class="modal fade show d-block no-print" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
@@ -44,7 +44,6 @@
     </div>
 }
 
-@* MODAL DE EDIÇÃO *@
 @if (mostrarModalEdicao)
 {
     <div class="modal fade show d-block no-print" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
@@ -92,7 +91,6 @@
 }
 
 <div class="container py-4 no-print">
-
     <div class="row align-items-center mb-4 position-relative">
         <div class="col-md-2">
             <a href="/" class="btn btn-outline-secondary border-0 text-white">
@@ -201,44 +199,103 @@
                 <span class="input-group-text bg-dark text-secondary border-secondary"><i class="bi bi-search"></i></span>
                 <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Buscar peça por nome ou código..." @bind="termoBusca" @bind:event="oninput" />
             </div>
+
             <div class="table-responsive">
                 <table class="table table-dark table-hover align-middle">
                     <thead style="border-bottom: 2px solid #ffeb3b;">
                         <tr>
-                            <th style="color: #ffeb3b;">Código</th>
+                            <th style="color: #ffeb3b; width: 150px;">Código</th>
                             <th style="color: #ffeb3b;">Nome</th>
-                            <th style="color: #ffeb3b;">Preço</th>
-                            <th style="color: #ffeb3b;" class="text-center">Estoque</th>
-                            <th class="text-end">Ações</th>
+                            <th style="color: #ffeb3b; width: 150px;">Preço</th>
+                            <th style="color: #ffeb3b; width: 150px;" class="text-center">Estoque</th>
+                            <th class="text-end" style="width: 120px;">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var p in produtosFiltrados)
+                        @{
+                            var grupos = produtosFiltrados.GroupBy(p => p.name.Trim().ToUpper());
+                        }
+
+                        @foreach (var grupo in grupos)
                         {
-                            var qtdAtual = p.stockQuantity ?? 0;
-                            var rowColor = qtdAtual <= 0 ? "#ff4444" : (qtdAtual <= p.minimumStock ? "#ff8800" : "#fff");
-                            <tr>
-                                <td style="color: @rowColor;">@p.code.ToUpper()</td>
-                                <td style="color: @rowColor;">
-                                    @p.name
-                                    @if (p.isExternal)
+                            var itens = grupo.ToList();
+                            var nomeExibicao = itens.First().name;
+                            var totalEstoque = itens.Sum(i => i.stockQuantity ?? 0);
+                            var temVarios = itens.Count > 1;
+                            var estaExpandido = expandedNames.Contains(grupo.Key);
+
+                            @if (temVarios)
+                            {
+                                @* LINHA DE AGRUPAMENTO  *@
+                                <tr @onclick="() => ToggleGroup(grupo.Key)" style="cursor: pointer; background-color: rgba(255, 235, 59, 0.05);">
+                                    <td class="text-muted small"><em>Múltiplos</em></td>
+                                    <td class="fw-bold">
+                                        <i class="bi @(estaExpandido ? "bi-chevron-down" : "bi-chevron-right") me-2 text-warning"></i>
+                                        @nomeExibicao 
+                                        <span class="badge rounded-pill bg-secondary ms-2" style="font-size: 0.7rem;">@itens.Count códigos</span>
+                                    </td>
+                                    <td class="text-muted">---</td>
+                                    <td class="text-center fw-bold text-warning">@totalEstoque</td>
+                                    <td class="text-end">
+                                        <span class="text-secondary small">@(estaExpandido ? "Clique para ocultar" : "Clique para ver")</span>
+                                    </td>
+                                </tr>
+
+                                @if (estaExpandido)
+                                {
+                                    @foreach (var p in itens)
                                     {
-                                        <span class="badge bg-secondary ms-2" style="font-size: 0.6rem; vertical-align: middle;">EXTERNO</span>
+                                        var qtd = p.stockQuantity ?? 0;
+                                        var rowColor = qtd <= 0 ? "#ff4444" : (qtd <= p.minimumStock ? "#ff8800" : "#fff");
+                                        
+                                        <tr style="background-color: rgba(255,255,255,0.02);">
+                                            <td style="color: @rowColor; padding-left: 30px;" class="small">@p.code.ToUpper()</td>
+                                            <td style="color: @rowColor; padding-left: 30px;">
+                                                <i class="bi bi-arrow-return-right me-2 text-secondary"></i>
+                                                @p.name
+                                                @if (p.isExternal) { <span class="badge bg-secondary ms-2" style="font-size: 0.6rem;">EXTERNO</span> }
+                                            </td>
+                                            <td style="color: @rowColor;">R$ @p.salePrice?.ToString("N2")</td>
+                                            <td class="text-center">
+                                                <div class="d-flex align-items-center justify-content-center gap-2">
+                                                    <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, -1)" @onclick:stopPropagation><i class="bi bi-dash-lg"></i></button>
+                                                    <span class="fw-bold" style="min-width: 30px;">@qtd</span>
+                                                    <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, 1)" @onclick:stopPropagation><i class="bi bi-plus-lg"></i></button>
+                                                </div>
+                                            </td>
+                                            <td class="text-end">
+                                                <button class="btn btn-sm btn-outline-warning border-0" @onclick="() => AbrirModalEdicao(p)" @onclick:stopPropagation><i class="bi bi-pencil-fill"></i></button>
+                                                <button class="btn btn-sm btn-outline-danger border-0" @onclick="() => SolicitarExclusao(p)" @onclick:stopPropagation><i class="bi bi-trash3-fill"></i></button>
+                                            </td>
+                                        </tr>
                                     }
-                                </td>
-                                <td style="color: @rowColor;">R$ @p.salePrice?.ToString("N2")</td>
-                                <td class="text-center">
-                                    <div class="d-flex align-items-center justify-content-center gap-2">
-                                        <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, -1)"><i class="bi bi-dash-lg"></i></button>
-                                        <span class="fw-bold" style="min-width: 30px;">@qtdAtual</span>
-                                        <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, 1)"><i class="bi bi-plus-lg"></i></button>
-                                    </div>
-                                </td>
-                                <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-warning border-0" @onclick="() => AbrirModalEdicao(p)"><i class="bi bi-pencil-fill"></i></button>
-                                    <button class="btn btn-sm btn-outline-danger border-0" @onclick="() => SolicitarExclusao(p)"><i class="bi bi-trash3-fill"></i></button>
-                                </td>
-                            </tr>
+                                }
+                            }
+                            else
+                            {
+                                var p = itens.First();
+                                var qtd = p.stockQuantity ?? 0;
+                                var rowColor = qtd <= 0 ? "#ff4444" : (qtd <= p.minimumStock ? "#ff8800" : "#fff");
+                                <tr>
+                                    <td style="color: @rowColor;">@p.code.ToUpper()</td>
+                                    <td style="color: @rowColor;">
+                                        @p.name
+                                        @if (p.isExternal) { <span class="badge bg-secondary ms-2" style="font-size: 0.6rem;">EXTERNO</span> }
+                                    </td>
+                                    <td style="color: @rowColor;">R$ @p.salePrice?.ToString("N2")</td>
+                                    <td class="text-center">
+                                        <div class="d-flex align-items-center justify-content-center gap-2">
+                                            <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, -1)"><i class="bi bi-dash-lg"></i></button>
+                                            <span class="fw-bold" style="min-width: 30px;">@qtd</span>
+                                            <button class="btn btn-sm text-white" @onclick="() => AjustarEstoque(p, 1)"><i class="bi bi-plus-lg"></i></button>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-warning border-0" @onclick="() => AbrirModalEdicao(p)"><i class="bi bi-pencil-fill"></i></button>
+                                        <button class="btn btn-sm btn-outline-danger border-0" @onclick="() => SolicitarExclusao(p)"><i class="bi bi-trash3-fill"></i></button>
+                                    </td>
+                                </tr>
+                            }
                         }
                     </tbody>
                 </table>
@@ -282,7 +339,7 @@
     }
     else
     {
-        @* Catalogo de Mao de Obra *@
+        @* Mão de Obra e Impressão *@
         <div class="card border-0 shadow-sm mb-5" style="background-color: #111; border-top: 4px solid #00bcff !important;">
             <div class="card-body p-4">
                 <h5 class="mb-3 fw-bold" style="color: #00bcff;">Novo Serviço (Mão de Obra)</h5>
@@ -329,7 +386,7 @@
     }
 </div>
 
-@* ÁREA EXCLUSIVA PARA IMPRESSÃO *@
+@* ÁREA DE IMPRESSÃO *@
 <div class="print-only">
     <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
         <h2 style="margin: 0; font-size: 22pt;">FREITAS AUTOCENTER</h2>
@@ -401,29 +458,14 @@
 <style>
     .nav-pills .nav-link { border-radius: 0; }
     .table-dark { --bs-table-bg: #000; }
-    
     .print-only { display: none; }
-
     @@media print {
         body * { visibility: hidden; }
         .no-print, .sidebar, .top-row, .nav, .card, .btn, .input-group, hr { 
             display: none !important; 
         }
-
-        .print-only, .print-only * { 
-            visibility: visible !important; 
-        }
-
-        .print-only { 
-            display: block !important; 
-            position: absolute; 
-            left: 0; 
-            top: 0; 
-            width: 100%; 
-            background-color: white !important; 
-            color: black !important; 
-        }
-
+        .print-only, .print-only * { visibility: visible !important; }
+        .print-only { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background-color: white !important; color: black !important; }
         table { width: 100%; color: black !important; }
         th, td { border: 1px solid black !important; }
     }
@@ -432,6 +474,14 @@
 @code {
     private string ApiUrl = "https://localhost:7082";
     private string abaAtiva = "pecas";
+
+    private HashSet<string> expandedNames = new();
+
+    private void ToggleGroup(string nameKey)
+    {
+        if (expandedNames.Contains(nameKey)) expandedNames.Remove(nameKey);
+        else expandedNames.Add(nameKey);
+    }
 
     public class ProductDTO { 
         public int id { get; set; } 
