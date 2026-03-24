@@ -329,16 +329,103 @@
     }
 </div>
 
+@* ÁREA EXCLUSIVA PARA IMPRESSÃO *@
+<div class="print-only">
+    <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
+        <h2 style="margin: 0; font-size: 22pt;">FREITAS AUTOCENTER</h2>
+        <h3 style="margin: 5px 0;">
+            @(abaAtiva == "pecas" ? "RELATÓRIO DE ESTOQUE" : "CATÁLOGO DE MÃO DE OBRA")
+        </h3>
+        <p style="font-size: 10pt;">Gerado em: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
+    </div>
+
+    @if (abaAtiva == "pecas" && produtos != null)
+    {
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th style="border: 1px solid black; padding: 8px; text-align: left;">CÓD</th>
+                    <th style="border: 1px solid black; padding: 8px; text-align: left;">DESCRIÇÃO</th>
+                    <th style="border: 1px solid black; padding: 8px; text-align: center;">QTD</th>
+                    <th style="border: 1px solid black; padding: 8px; text-align: right;">VLR. UNIT</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in produtos.OrderBy(x => x.name))
+                {
+                    <tr>
+                        <td style="border: 1px solid black; padding: 8px;">@p.code.ToUpper()</td>
+                        <td style="border: 1px solid black; padding: 8px;">@p.name @(p.isExternal ? "(EXTERNO)" : "")</td>
+                        <td style="border: 1px solid black; padding: 8px; text-align: center;">@p.stockQuantity</td>
+                        <td style="border: 1px solid black; padding: 8px; text-align: right;">R$ @(p.salePrice?.ToString("N2") ?? "0,00")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr style="background-color: #eee; font-weight: bold;">
+                    <td colspan="3" style="border: 1px solid black; padding: 10px; text-align: right;">VALOR TOTAL EM PRATELEIRA:</td>
+                    <td style="border: 1px solid black; padding: 10px; text-align: right;">R$ @produtos.Sum(p => (p.stockQuantity ?? 0) * (p.salePrice ?? 0)).ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+    }
+    else if (abaAtiva == "servicos" && servicosCatalogo != null)
+    {
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th style="border: 1px solid black; padding: 8px; text-align: left;">DESCRIÇÃO DO SERVIÇO</th>
+                    <th style="border: 1px solid black; padding: 8px; text-align: right;">PREÇO SUGERIDO</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in servicosCatalogo.OrderBy(x => x.Name))
+                {
+                    <tr>
+                        <td style="border: 1px solid black; padding: 8px;">@s.Name</td>
+                        <td style="border: 1px solid black; padding: 8px; text-align: right;">R$ @s.DefaultPrice.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr style="background-color: #eee; font-weight: bold;">
+                    <td style="border: 1px solid black; padding: 10px; text-align: right;">SOMA TOTAL DOS SERVIÇOS:</td>
+                    <td style="border: 1px solid black; padding: 10px; text-align: right;">R$ @servicosCatalogo.Sum(s => s.DefaultPrice).ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+    }
+</div>
+
 @* css *@
 <style>
     .nav-pills .nav-link { border-radius: 0; }
     .table-dark { --bs-table-bg: #000; }
+    
     .print-only { display: none; }
+
     @@media print {
         body * { visibility: hidden; }
-        .print-only, .print-only * { visibility: visible !important; }
-        .print-only { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background-color: white !important; color: black !important; }
-        .table th, .table td { border: 1px solid black !important; color: black !important; }
+        .no-print, .sidebar, .top-row, .nav, .card, .btn, .input-group, hr { 
+            display: none !important; 
+        }
+
+        .print-only, .print-only * { 
+            visibility: visible !important; 
+        }
+
+        .print-only { 
+            display: block !important; 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            background-color: white !important; 
+            color: black !important; 
+        }
+
+        table { width: 100%; color: black !important; }
+        th, td { border: 1px solid black !important; }
     }
 </style>
 
