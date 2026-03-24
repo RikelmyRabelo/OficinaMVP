@@ -72,6 +72,14 @@
                             <label class="small text-secondary">Estoque Mínimo</label>
                             <input type="number" class="form-control bg-dark text-white border-secondary" @bind="produtoEmEdicao.minimumStock" />
                         </div>
+                        <div class="col-md-12">
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" @bind="produtoEmEdicao.isExternal" id="editExterno">
+                                <label class="form-check-label text-white" for="editExterno">
+                                    Item comprado por fora (Não conta no patrimônio)
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-secondary">
@@ -157,12 +165,32 @@
         <div class="card border-0 shadow-sm mb-5" style="background-color: #111; border-top: 4px solid #ffeb3b !important;">
             <div class="card-body p-4">
                 <h5 class="mb-3 fw-bold" style="color: #ffeb3b;">Novo Produto</h5>
-                <div class="row g-3">
-                    <div class="col-md-2"><input class="form-control bg-dark text-white border-secondary text-uppercase" @bind="novoProduto.code" placeholder="Cód *" /></div>
-                    <div class="col-md-4"><input class="form-control bg-dark text-white border-secondary" @bind="novoProduto.name" placeholder="Nome *" /></div>
-                    <div class="col-md-2"><input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoProduto.salePrice" placeholder="R$ Preço *" /></div>
-                    <div class="col-md-2"><input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoProduto.stockQuantity" placeholder="Qtd *" /></div>
-                    <div class="col-md-2"><button class="btn w-100 fw-bold btn-warning text-dark" @onclick="SalvarProduto">ADICIONAR</button></div>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-2">
+                        <label class="small text-white-50">Código *</label>
+                        <input class="form-control bg-dark text-white border-secondary text-uppercase" @bind="novoProduto.code" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small text-white-50">Nome *</label>
+                        <input class="form-control bg-dark text-white border-secondary" @bind="novoProduto.name" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small text-white-50">R$ Preço *</label>
+                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoProduto.salePrice" />
+                    </div>
+                    <div class="col-md-1">
+                        <label class="small text-white-50">Qtd *</label>
+                        <input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoProduto.stockQuantity" />
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" @bind="novoProduto.isExternal" id="chkExterno">
+                            <label class="form-check-label text-white small" for="chkExterno">Item Externo</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn w-100 fw-bold btn-warning text-dark" @onclick="SalvarProduto">ADICIONAR</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -191,7 +219,13 @@
                             var rowColor = qtdAtual <= 0 ? "#ff4444" : (qtdAtual <= p.minimumStock ? "#ff8800" : "#fff");
                             <tr>
                                 <td style="color: @rowColor;">@p.code.ToUpper()</td>
-                                <td style="color: @rowColor;">@p.name</td>
+                                <td style="color: @rowColor;">
+                                    @p.name
+                                    @if (p.isExternal)
+                                    {
+                                        <span class="badge bg-secondary ms-2" style="font-size: 0.6rem; vertical-align: middle;">EXTERNO</span>
+                                    }
+                                </td>
                                 <td style="color: @rowColor;">R$ @p.salePrice?.ToString("N2")</td>
                                 <td class="text-center">
                                     <div class="d-flex align-items-center justify-content-center gap-2">
@@ -242,12 +276,13 @@
                         </tbody>
                     </table>
                 </div>
-                <small class="text-muted mt-2 d-block">* Esta lista detalha cada peça baixada via O.S. para compor o valor total de saídas.</small>
+                <small class="text-muted mt-2 d-block">* Itens externos são ignorados nesta lista e nos totais financeiros.</small>
             </div>
         }
     }
     else
     {
+        @* Catalogo de Mao de Obra *@
         <div class="card border-0 shadow-sm mb-5" style="background-color: #111; border-top: 4px solid #00bcff !important;">
             <div class="card-body p-4">
                 <h5 class="mb-3 fw-bold" style="color: #00bcff;">Novo Serviço (Mão de Obra)</h5>
@@ -294,6 +329,7 @@
     }
 </div>
 
+@* css *@
 <style>
     .nav-pills .nav-link { border-radius: 0; }
     .table-dark { --bs-table-bg: #000; }
@@ -317,6 +353,7 @@
         public decimal? salePrice { get; set; } 
         public int? stockQuantity { get; set; } 
         public int minimumStock { get; set; } = 5; 
+        public bool isExternal { get; set; }
     }
     public class LaborServiceDTO { public int Id { get; set; } public string Name { get; set; } = ""; public decimal DefaultPrice { get; set; } }
     public class HistoricalValueDTO { public decimal currentInventoryValue { get; set; } public decimal totalExitedValue { get; set; } public decimal totalHistoricalValue { get; set; } }
@@ -391,7 +428,8 @@
             name = p.name,
             salePrice = p.salePrice,
             stockQuantity = p.stockQuantity,
-            minimumStock = p.minimumStock
+            minimumStock = p.minimumStock,
+            isExternal = p.isExternal
         };
         mostrarModalEdicao = true;
     }

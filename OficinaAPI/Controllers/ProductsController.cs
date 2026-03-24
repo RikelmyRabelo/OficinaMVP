@@ -48,12 +48,15 @@ namespace OficinaAPI.Controllers
         [HttpGet("historical-value")]
         public async Task<ActionResult<object>> GetHistoricalStockValue()
         {
+            // Calcula apenas itens que NÃO são externos
             var currentStockValue = await _context.Products
-                .Where(p => !p.IsDeleted)
+                .Where(p => !p.IsDeleted && !p.IsExternal)
                 .SumAsync(p => p.StockQuantity * p.SalePrice);
 
+            // Calcula saídas apenas de itens que NÃO são externos
             var exitedItemsValue = await _context.ServiceItems
-                .Where(si => si.ProductId != null)
+                .Include(si => si.Product)
+                .Where(si => si.ProductId != null && !si.Product.IsExternal)
                 .SumAsync(si => si.Quantity * si.Price);
 
             return Ok(new
@@ -69,7 +72,8 @@ namespace OficinaAPI.Controllers
         {
             var audit = await _context.ServiceItems
                 .Include(si => si.ServiceOrder)
-                .Where(si => si.ProductId != null)
+                .Include(si => si.Product)
+                .Where(si => si.ProductId != null && !si.Product.IsExternal) // Filtra itens externos da auditoria financeira
                 .Select(si => new
                 {
                     OsId = si.ServiceOrderId,
@@ -98,6 +102,7 @@ namespace OficinaAPI.Controllers
                     existing.SalePrice = product.SalePrice;
                     existing.StockQuantity = product.StockQuantity;
                     existing.MinimumStock = product.MinimumStock;
+                    existing.IsExternal = product.IsExternal; // Atualiza o status de externo na reativação
                     await _context.SaveChangesAsync();
                     return Ok(existing);
                 }

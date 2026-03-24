@@ -27,5 +27,7 @@ namespace OficinaAPI.Models
         public string? LocationCode { get; set; }
 
         public bool IsDeleted { get; set; } = false;
+
+        public bool IsExternal { get; set; } = false;
     }
 }
