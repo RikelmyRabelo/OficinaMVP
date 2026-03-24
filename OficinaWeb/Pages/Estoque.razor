@@ -210,10 +210,44 @@
                 </table>
             </div>
         }
+
+        @if (listaAuditoria != null && listaAuditoria.Any())
+        {
+            <div class="mt-5 pt-4 border-top border-secondary">
+                <h5 class="text-white fw-bold mb-3">
+                    <i class="bi bi-journal-check me-2 text-info"></i>Conferência de Saídas (Auditoria)
+                </h5>
+                <div class="table-responsive shadow-sm" style="max-height: 400px; overflow-y: auto; border: 1px solid #333; border-radius: 8px;">
+                    <table class="table table-dark table-sm table-hover mb-0">
+                        <thead class="sticky-top bg-dark" style="z-index: 1;">
+                            <tr class="text-secondary" style="border-bottom: 2px solid #444;">
+                                <th class="ps-3 py-2">Data</th>
+                                <th class="py-2">O.S.</th>
+                                <th class="py-2">Produto / Descrição</th>
+                                <th class="text-center py-2">Qtd</th>
+                                <th class="text-end pe-3 py-2">Valor na Saída</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in listaAuditoria)
+                            {
+                                <tr>
+                                    <td class="ps-3 text-secondary">@item.data.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-info fw-bold">#@item.osId</td>
+                                    <td class="text-white-50">@item.descricao</td>
+                                    <td class="text-center">@item.quantidade</td>
+                                    <td class="text-end pe-3 text-success fw-bold">R$ @item.valorTotal.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted mt-2 d-block">* Esta lista detalha cada peça baixada via O.S. para compor o valor total de saídas.</small>
+            </div>
+        }
     }
     else
     {
-        @* Catalogo de Mao de Obra *@
         <div class="card border-0 shadow-sm mb-5" style="background-color: #111; border-top: 4px solid #00bcff !important;">
             <div class="card-body p-4">
                 <h5 class="mb-3 fw-bold" style="color: #00bcff;">Novo Serviço (Mão de Obra)</h5>
@@ -260,7 +294,6 @@
     }
 </div>
 
-@* css *@
 <style>
     .nav-pills .nav-link { border-radius: 0; }
     .table-dark { --bs-table-bg: #000; }
@@ -287,10 +320,12 @@
     }
     public class LaborServiceDTO { public int Id { get; set; } public string Name { get; set; } = ""; public decimal DefaultPrice { get; set; } }
     public class HistoricalValueDTO { public decimal currentInventoryValue { get; set; } public decimal totalExitedValue { get; set; } public decimal totalHistoricalValue { get; set; } }
+    public class AuditItemDTO { public int osId { get; set; } public DateTime data { get; set; } public string descricao { get; set; } = ""; public int quantidade { get; set; } public decimal valorTotal { get; set; } }
 
     private List<ProductDTO>? produtos;
     private List<LaborServiceDTO>? servicosCatalogo;
     private HistoricalValueDTO? valoresHistoricos;
+    private List<AuditItemDTO>? listaAuditoria;
 
     private ProductDTO novoProduto = new();
     private ProductDTO produtoEmEdicao = new();
@@ -313,11 +348,13 @@
         await Carregar();
         await CarregarServicos();
         await CarregarValoresHistoricos();
+        await CarregarAuditoria();
     }
 
     private async Task Carregar() => produtos = await Http.GetFromJsonAsync<List<ProductDTO>>($"{ApiUrl}/api/products");
     private async Task CarregarServicos() => servicosCatalogo = await Http.GetFromJsonAsync<List<LaborServiceDTO>>($"{ApiUrl}/api/laborservices");
     private async Task CarregarValoresHistoricos() => valoresHistoricos = await Http.GetFromJsonAsync<HistoricalValueDTO>($"{ApiUrl}/api/products/historical-value");
+    private async Task CarregarAuditoria() => listaAuditoria = await Http.GetFromJsonAsync<List<AuditItemDTO>>($"{ApiUrl}/api/products/audit-exited-items");
 
     private async void MostrarSucesso(string msg)
     {
@@ -333,6 +370,7 @@
         novoProduto = new(); 
         await Carregar(); 
         await CarregarValoresHistoricos();
+        await CarregarAuditoria();
         MostrarSucesso("Peça cadastrada!");
     }
 
@@ -368,6 +406,7 @@
             mostrarModalEdicao = false;
             await Carregar();
             await CarregarValoresHistoricos();
+            await CarregarAuditoria();
             MostrarSucesso("Produto atualizado!");
         }
     }
@@ -380,6 +419,7 @@
         mostrarModalExclusao = false; 
         await Carregar(); 
         await CarregarValoresHistoricos();
+        await CarregarAuditoria();
         MostrarSucesso("Produto removido.");
     }
 
