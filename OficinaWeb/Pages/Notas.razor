@@ -1,0 +1,99 @@
+﻿@page "/notas"
+@inject HttpClient Http
+@using System.Net.Http.Json
+
+<PageTitle>Notas e Registros - FREITAS AUTOCENTER</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold" style="color: #ff6600;">NOTAS E REGISTROS</h2>
+        <a href="/" class="btn btn-outline-light btn-sm">Voltar</a>
+    </div>
+
+    <div class="card mb-4 border-0 shadow-lg" style="background: #111; border-left: 4px solid #ff6600 !important;">
+        <div class="card-body">
+            <h5 class="text-white mb-3">Nova Anotação</h5>
+            <div class="input-group">
+                <input type="text" class="form-control bg-dark text-white border-secondary"
+                       placeholder="Ex: R$ 50,00 retirados para limpeza..."
+                       @bind="newNoteContent" @onkeyup="HandleKeyUp" />
+                <button class="btn btn-warning fw-bold" @onclick="SaveNote" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    SALVAR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-warning" role="status"></div>
+        </div>
+    }
+    else
+    {
+        <div class="list-group shadow-lg">
+            @foreach (var note in notes.OrderByDescending(n => n.CreatedAt))
+            {
+                <div class="list-group-item border-secondary mb-2 rounded" style="background: #0a0a0a; color: #eee;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fs-5">@note.Content</span>
+                        <small class="text-white-50">@note.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<Note> notes = new();
+    private string newNoteContent = "";
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string ApiUrl = "https://localhost:7082/api/notes";
+
+    protected override async Task OnInitializedAsync() => await LoadNotes();
+
+    private async Task LoadNotes()
+    {
+        try
+        {
+            isLoading = true;
+            notes = await Http.GetFromJsonAsync<List<Note>>(ApiUrl) ?? new();
+        }
+        catch { }
+        finally { isLoading = false; }
+    }
+
+    private async Task SaveNote()
+    {
+        if (string.IsNullOrWhiteSpace(newNoteContent)) return;
+
+        isSaving = true;
+        var res = await Http.PostAsJsonAsync(ApiUrl, new Note { Content = newNoteContent });
+        
+        if (res.IsSuccessStatusCode)
+        {
+            newNoteContent = "";
+            await LoadNotes();
+        }
+        isSaving = false;
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SaveNote();
+    }
+
+    public class Note
+    {
+        public int Id { get; set; }
+        public string Content { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+    }
+}
