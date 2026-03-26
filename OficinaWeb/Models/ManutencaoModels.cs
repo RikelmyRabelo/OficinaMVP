@@ -60,6 +60,8 @@ namespace OficinaWeb.Models
         public int Quantity { get; set; } = 1;
         public int? MechanicId { get; set; }
         public string ItemType { get; set; } = "Product";
+
+        public int PrintLine { get; set; }
     }
 
     public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } public int stockQuantity { get; set; } }

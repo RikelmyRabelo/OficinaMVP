@@ -13,8 +13,9 @@
     <p class="text-white-50">Gestão Profissional de Oficina</p>
 </div>
 
+@* Cards de Navegação Principal *@
 <div class="row g-4 mb-5 justify-content-center">
-    <div class="col-md-3">
+    <div class="col-md-4">
         <a href="estoque" class="card text-decoration-none h-100 border-0 shadow-lg nav-card" style="background: #111; border: 1px solid #333;">
             <div class="card-body text-center py-4">
                 <i class="bi bi-box-seam-fill fs-1 mb-3 d-block text-white"></i>
@@ -24,17 +25,7 @@
         </a>
     </div>
 
-    <div class="col-md-3">
-        <a href="rh" class="card text-decoration-none h-100 border-0 shadow-lg nav-card" style="background: #111; border: 1px solid #333;">
-            <div class="card-body text-center py-4">
-                <i class="bi bi-people-fill fs-1 mb-3 d-block text-white"></i>
-                <h4 class="fw-bold" style="color: #ff6600;">Equipe</h4>
-                <small class="text-white-50 text-uppercase">RH e Pagamentos</small>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-3">
+    <div class="col-md-4">
         <a href="manutencao" class="card text-decoration-none h-100 border-0 shadow-lg nav-card" style="background: #111; border: 1px solid #333;">
             <div class="card-body text-center py-4">
                 <i class="bi bi-wrench-adjustable fs-1 mb-3 d-block text-white"></i>
@@ -43,21 +34,10 @@
             </div>
         </a>
     </div>
-
-    <div class="col-md-3">
-        <a href="venda-avulsa" class="card text-decoration-none h-100 border-0 shadow-lg nav-card" style="background: #111; border: 1px solid #333;">
-            <div class="card-body text-center py-4">
-                <i class="bi bi-cart-plus-fill fs-1 mb-3 d-block text-white"></i>
-                <h4 class="fw-bold" style="color: #ffeb3b;">     Avulsa</h4>
-                <small class="text-white-50 text-uppercase">Caixa Rápido</small>
-            </div>
-        </a>
-    </div>
 </div>
 
 <hr style="border-color: #333; margin: 3rem 0;" />
 
-@* Seção de Resumo e Segurança *@
 @if (isLoading)
 {
     <div class="text-center py-5">
@@ -208,7 +188,6 @@ else
             isLoading = true;
             var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders");
             var prodList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/products");
-            var vendasAvulsas = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/quicksales");
 
             faturamento = 0;
 
@@ -217,11 +196,6 @@ else
                 osAbertas = osList.Count(x => x.TryGetProperty("status", out var s) && s.ToString() != "Completed");
                 faturamento += osList.Where(x => x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
                                      .Sum(x => x.TryGetProperty("amountPaid", out var t) ? t.GetDecimal() : 0);
-            }
-
-            if (vendasAvulsas != null && vendasAvulsas.Any())
-            {
-                faturamento += vendasAvulsas.Sum(x => x.TryGetProperty("price", out var p) ? p.GetDecimal() : 0);
             }
 
             if (prodList != null && prodList.Any())

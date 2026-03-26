@@ -36,8 +36,9 @@ namespace OficinaAPI.Models
         public string Description { get; set; } = string.Empty;
         public int? ProductId { get; set; }
         public Product? Product { get; set; }
-        public int? MechanicId { get; set; }
-        public Employee? Mechanic { get; set; }
+
+        // REMOVIDO: MechanicId e Mechanic (Employee)
+
         public int Quantity { get; set; } = 1;
         [Column(TypeName = "decimal(18,2)")]
         public decimal Price { get; set; }

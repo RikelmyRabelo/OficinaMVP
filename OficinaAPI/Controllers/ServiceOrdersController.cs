@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using OficinaAPI.Data;
 using OficinaAPI.Models;
+using System.Text.Json;
 
 namespace OficinaAPI.Controllers
 {
@@ -18,7 +19,7 @@ namespace OficinaAPI.Controllers
             return await _context.ServiceOrders
                 .AsNoTracking()
                 .Include(o => o.Vehicle)
-                .Include(o => o.Items).ThenInclude(i => i.Mechanic)
+                .Include(o => o.Items)
                 .Include(o => o.Payments)
                 .Where(o => !o.IsDeleted)
                 .OrderByDescending(o => o.Id).ToListAsync();
@@ -29,7 +30,6 @@ namespace OficinaAPI.Controllers
         {
             var threshold = DateTime.Now.AddDays(-30);
 
-            // 1. LIMPEZA AUTOMÁTICA: Remove do banco tudo que foi excluído há mais de 30 dias
             var expiredOrders = await _context.ServiceOrders
                 .Where(o => o.IsDeleted && o.DeletionDate < threshold)
                 .ToListAsync();
@@ -40,11 +40,10 @@ namespace OficinaAPI.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // 2. Retorna o que ainda resta na lixeira
             return await _context.ServiceOrders
                 .AsNoTracking()
                 .Include(o => o.Vehicle)
-                .Include(o => o.Items).ThenInclude(i => i.Mechanic)
+                .Include(o => o.Items)
                 .Include(o => o.Payments)
                 .Where(o => o.IsDeleted)
                 .OrderByDescending(o => o.DeletionDate).ToListAsync();
@@ -119,17 +118,10 @@ namespace OficinaAPI.Controllers
             var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
 
-            Employee? mechanic = null;
-            if (laborDto.MechanicId > 0)
-            {
-                mechanic = await _context.Employees.FindAsync(laborDto.MechanicId);
-            }
-
             var newItem = new ServiceItem
             {
                 ServiceOrderId = id,
                 ProductId = null,
-                MechanicId = mechanic?.Id,
                 Description = laborDto.Description,
                 Price = laborDto.Price,
                 WarrantyPeriod = laborDto.WarrantyPeriod,
@@ -205,7 +197,6 @@ namespace OficinaAPI.Controllers
             return NoContent();
         }
 
-        // NOVO: Método para exclusão definitiva (Apaga do banco)
         [HttpDelete("{id}/permanent")]
         public async Task<IActionResult> PermanentDeleteServiceOrder(int id)
         {
@@ -314,10 +305,6 @@ namespace OficinaAPI.Controllers
             if (!string.IsNullOrEmpty(request.ItemType))
             {
                 item.ItemType = request.ItemType;
-            }
-            if (request.MechanicId.HasValue)
-            {
-                item.MechanicId = request.MechanicId;
             }
 
             await _context.SaveChangesAsync();
@@ -484,12 +471,11 @@ namespace OficinaAPI.Controllers
             return Ok();
         }
 
-
         // CLASSES DTO
         public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
         public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
         public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }
-        public class AddLaborDTO { public int MechanicId { get; set; } public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
+        public class AddLaborDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
         public class AddCustomItemDTO { public string Description { get; set; } = ""; public int Quantity { get; set; } = 1; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
         public class CompletionDTO { public DateTime CompletionDate { get; set; } }
         public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
@@ -500,7 +486,6 @@ namespace OficinaAPI.Controllers
             public decimal Price { get; set; }
             public string? WarrantyPeriod { get; set; }
             public int Quantity { get; set; } = 1;
-            public int? MechanicId { get; set; }
             public string? ItemType { get; set; }
         }
 

@@ -24,7 +24,6 @@ namespace OficinaAPI.Controllers
             return caminhoCompleto;
         }
 
-        // EXPORTAR RELATÓRIOS
         [HttpPost("exportar-excel")]
         public async Task<IActionResult> ExportarExcel()
         {
@@ -32,7 +31,6 @@ namespace OficinaAPI.Controllers
             {
                 string pastaDestino = ObterPastaDoDia();
                 using var workbook = new XLWorkbook();
-                var nomesParaOcultar = new List<string> { "Taylor", "Felipe" };
 
                 // 1. ESTOQUE
                 var wsEstoque = workbook.Worksheets.Add("Estoque");
@@ -41,8 +39,8 @@ namespace OficinaAPI.Controllers
                     .ToListAsync();
                 wsEstoque.Cell(1, 1).InsertTable(produtos);
 
-                // 2. VENDAS
-                var wsVendas = workbook.Worksheets.Add("Vendas");
+                // 2. VENDAS (Ordens de Serviço)
+                var wsVendas = workbook.Worksheets.Add("Vendas_OS");
                 var ordensBanco = await _context.ServiceOrders.Include(s => s.Vehicle).Include(s => s.Items)
                     .Where(s => s.Status == "Completed" && !s.IsDeleted).ToListAsync();
 
@@ -56,11 +54,12 @@ namespace OficinaAPI.Controllers
                 }).ToList();
                 wsVendas.Cell(1, 1).InsertTable(vendasParaExcel);
 
-                // 3. EQUIPE e 4. PAGAMENTOS
-                var wsEquipe = workbook.Worksheets.Add("Equipe");
-                var equipe = await _context.Employees.AsNoTracking().Where(e => !nomesParaOcultar.Contains(e.Name))
-                    .Select(e => new { Nome = e.Name, Cargo = e.Role, Salário = e.BaseSalary }).ToListAsync();
-                wsEquipe.Cell(1, 1).InsertTable(equipe);
+                // 3. NOTAS (Antigos Avulsos e Notas Gerais)
+                var wsNotas = workbook.Worksheets.Add("Notas_e_Avulsos");
+                var notas = await _context.Notes.AsNoTracking()
+                    .Select(n => new { Data = n.CreatedAt, Conteúdo = n.Content })
+                    .ToListAsync();
+                wsNotas.Cell(1, 1).InsertTable(notas);
 
                 string caminhoExcel = Path.Combine(pastaDestino, $"Relatorio_{DateTime.Now:HHmm}.xlsx");
                 workbook.SaveAs(caminhoExcel);
@@ -80,7 +79,6 @@ namespace OficinaAPI.Controllers
                 string caminhoCompletoBak = Path.Combine(pastaDestino, nomeArquivoBak);
 
                 string dbName = _context.Database.GetDbConnection().Database;
-
                 string sqlCommand = $"BACKUP DATABASE [{dbName}] TO DISK = '{caminhoCompletoBak}' WITH FORMAT, MEDIANAME = 'OficinaBackup', NAME = 'Full Backup of {dbName}';";
 
                 await _context.Database.ExecuteSqlRawAsync(sqlCommand);
@@ -89,8 +87,7 @@ namespace OficinaAPI.Controllers
             }
             catch (Exception ex)
             {
-      
-                return BadRequest(new { erro = "Erro ao gerar .BAK. Verifique se a pasta C:\\Backups_Oficina tem permissão total para o SQL Server. Detalhe: " + ex.Message });
+                return BadRequest(new { erro = "Erro ao gerar .BAK. Verifique permissões na pasta C:\\Backups_Oficina. Detalhe: " + ex.Message });
             }
         }
 
