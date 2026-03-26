@@ -176,15 +176,34 @@
 
 @code {
     private bool isLoading = true;
-    private int selectedMonth = DateTime.Now.Month;
-    private const int selectedYear = 2026;
+    private int selectedMonth;
+    private int selectedYear;
     private decimal faturamentoMensal, totalPix, totalCredito, totalDinheiro;
     private int carrosResolvidos;
     private List<DiaValor> faturamentoDiario = new();
     private List<OSSimple> ordensNoMes = new();
-    private string ApiUrl = "https://localhost:7082/api/serviceorders";
+    private string ApiUrl = "https://localhost:7082";
 
-    protected override async Task OnInitializedAsync() => await LoadData();
+    protected override async Task OnInitializedAsync() 
+    {
+        await CarregarPeriodoAtivo();
+        await LoadData();
+    }
+
+    private async Task CarregarPeriodoAtivo()
+    {
+        try 
+        {
+            var settings = await Http.GetFromJsonAsync<JsonElement>($"{ApiUrl}/api/settings");
+            selectedMonth = settings.GetProperty("activeMonth").GetInt32();
+            selectedYear = settings.GetProperty("activeYear").GetInt32();
+        }
+        catch 
+        {
+            selectedMonth = DateTime.Now.Month;
+            selectedYear = DateTime.Now.Year;
+        }
+    }
 
     private async Task OnMonthChanged(ChangeEventArgs e)
     {
@@ -194,50 +213,70 @@
 
     private async Task LoadData()
     {
-        try {
+        try 
+        {
             isLoading = true;
-            var osList = await Http.GetFromJsonAsync<List<JsonElement>>(ApiUrl) ?? new();
+            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders") ?? new();
             
-            var filtradas = osList
-                .Where(x => x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
-                .Where(x => {
+            faturamentoMensal = 0; totalPix = 0; totalCredito = 0; totalDinheiro = 0;
+            ordensNoMes.Clear();
+
+            var filtradas = osList.Where(x => 
+            {
+                if (x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
+                {
                     if (x.TryGetProperty("completionDate", out var d) && d.ValueKind != JsonValueKind.Null)
                     {
                         var data = d.GetDateTime();
                         return data.Month == selectedMonth && data.Year == selectedYear;
                     }
-                    return false;
-                }).ToList();
+                }
+                return false;
+            }).ToList();
 
-            faturamentoMensal = filtradas.Sum(x => x.TryGetProperty("amountPaid", out var v) ? v.GetDecimal() : 0);
-            totalPix = filtradas.Where(x => x.TryGetProperty("paymentMethod", out var p) && p.ToString() == "PIX").Sum(x => x.GetProperty("amountPaid").GetDecimal());
-            totalCredito = filtradas.Where(x => x.TryGetProperty("paymentMethod", out var p) && (p.ToString().Contains("Crédito") || p.ToString().Contains("CRÉDITO"))).Sum(x => x.GetProperty("amountPaid").GetDecimal());
-            totalDinheiro = filtradas.Where(x => x.TryGetProperty("paymentMethod", out var p) && p.ToString() == "Dinheiro").Sum(x => x.GetProperty("amountPaid").GetDecimal());
-            
             carrosResolvidos = filtradas.Count;
 
-            ordensNoMes = filtradas.Select(x => new OSSimple {
-                Data = x.GetProperty("completionDate").GetDateTime(),
-                Cliente = x.GetProperty("vehicle").GetProperty("customerName").ToString(),
-                Veiculo = x.GetProperty("vehicle").GetProperty("model").ToString(),
-                Total = x.GetProperty("totalAmount").GetDecimal()
-            }).OrderByDescending(o => o.Data).ToList();
+            foreach (var os in filtradas)
+            {
+                decimal valor = os.TryGetProperty("amountPaid", out var v) ? v.GetDecimal() : 0;
+                string metodo = os.TryGetProperty("paymentMethod", out var p) ? p.ToString().ToUpper() : "";
+
+                faturamentoMensal += valor;
+                if (metodo == "PIX") totalPix += valor;
+                else if (metodo.Contains("CREDITO") || metodo.Contains("CRÉDITO")) totalCredito += valor;
+                else if (metodo == "DINHEIRO") totalDinheiro += valor;
+
+                string cliente = "Consumidor";
+                string veiculo = "Geral";
+                if (os.TryGetProperty("vehicle", out var vh))
+                {
+                    cliente = vh.TryGetProperty("customerName", out var cn) ? cn.ToString() : "Sem Nome";
+                    veiculo = vh.TryGetProperty("model", out var mod) ? mod.ToString() : "Sem Modelo";
+                }
+
+                ordensNoMes.Add(new OSSimple {
+                    Data = os.GetProperty("completionDate").GetDateTime(),
+                    Cliente = cliente,
+                    Veiculo = veiculo,
+                    Total = valor
+                });
+            }
 
             faturamentoDiario = Enumerable.Range(1, DateTime.DaysInMonth(selectedYear, selectedMonth))
                 .Select(dia => new DiaValor { 
                     Dia = dia, 
                     Valor = filtradas.Where(f => f.GetProperty("completionDate").GetDateTime().Day == dia)
-                                     .Sum(f => f.GetProperty("amountPaid").GetDecimal()) 
+                                     .Sum(f => f.TryGetProperty("amountPaid", out var ap) ? ap.GetDecimal() : 0) 
                 }).ToList();
-
-        } catch { } 
-        finally { isLoading = false; }
+        }
+        catch { } 
+        finally { isLoading = false; StateHasChanged(); }
     }
 
-    private int CalcularAltura(decimal valor) {
+    private int CalcularAltura(decimal valor) 
+    {
         var max = faturamentoDiario.Any() ? faturamentoDiario.Max(d => d.Valor) : 0;
-        if (max == 0) return 0;
-        return (int)((valor / max) * 180);
+        return max == 0 ? 0 : (int)((valor / max) * 180);
     }
 
     public class DiaValor { public int Dia { get; set; } public decimal Valor { get; set; } }

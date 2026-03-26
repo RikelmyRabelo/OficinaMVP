@@ -10,7 +10,7 @@
     <h1 class="fw-bold display-4" style="color: #ff6600; text-transform: uppercase; letter-spacing: 2px;">
         FREITAS AUTOCENTER
     </h1>
-    <p class="text-white-50">Período Ativo: <span class="text-white fw-bold">@MesNome(@activeMonth)/@activeYear</span></p>
+    <p class="text-white-50">Período Ativo: <span class="text-white fw-bold">@MesNome(activeMonth)/@activeYear</span></p>
 </div>
 
 @* Cards de Navegação Principal *@
@@ -58,7 +58,7 @@
 else
 {
     <div class="d-flex justify-content-end mb-3">
-        <button class="btn btn-sm btn-outline-secondary border-0 text-white-50" @onclick="async () => await AlternarVisibilidade()">
+        <button class="btn btn-sm btn-outline-secondary border-0 text-white-50" @onclick="AlternarVisibilidade">
             <i class="bi @(ocultarValores ? "bi-eye-fill" : "bi-eye-slash-fill") me-1"></i>
             @(ocultarValores ? "Mostrar Resumo" : "Ocultar Resumo")
         </button>
@@ -102,21 +102,31 @@ else
         </div>
     </div>
 
+    @* Painel de Gestão e Ferramentas *@
     <div class="p-4 rounded-3 border border-secondary" style="background: #111;">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
-            <div class="mb-3 mb-md-0 text-center text-md-start">
+        <div class="row align-items-center">
+            <div class="col-lg-5 mb-3 mb-lg-0 text-center text-lg-start">
                 <h4 class="fw-bold mb-1" style="color: #ff6600;">Gestão do Período Ativo</h4>
-                <p class="text-white-50 small mb-0">Zere os indicadores e avance para o próximo mês.</p>
+                <p class="text-white-50 small mb-0">Zere os indicadores locais e avance o mês.</p>
             </div>
 
-            <div class="d-flex gap-2">
-                <button class="btn btn-danger fw-bold px-4" @onclick="FecharMesManual" disabled="@isBusy">
-                    @if (isBusy) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                    <i class="bi bi-calendar-check-fill me-2"></i>FECHAR MÊS
-                </button>
-                <button class="btn btn-outline-light fw-bold" @onclick="() => ProcessarAcao(true)" disabled="@isBusy">
-                    <i class="bi bi-hdd-fill me-2"></i>Backup Sistema
-                </button>
+            <div class="col-lg-7 text-center text-lg-end">
+                <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-lg-end">
+                    <button class="btn btn-danger fw-bold px-4 shadow-sm" @onclick="FecharMesManual" disabled="@isBusy">
+                        @if (isBusy && !isBackupSistema) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        <i class="bi bi-calendar-check-fill me-2"></i>FECHAR MÊS
+                    </button>
+
+                    <button class="btn btn-outline-light fw-bold" @onclick="() => ProcessarAcao(true)" disabled="@isBusy">
+                        @if (isBusy && isBackupSistema && isBackupManual) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        <i class="bi bi-hdd-fill me-2"></i>Backup Sistema
+                    </button>
+
+                    <button class="btn fw-bold text-white px-4" style="background: #217346;" @onclick="() => ProcessarAcao(false)" disabled="@isBusy">
+                        @if (isBusy && !isBackupSistema) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        <i class="bi bi-file-earmark-excel-fill me-2"></i>Exportar Excel
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -137,12 +147,29 @@ else
 
 @code {
     private string ApiUrl = "https://localhost:7082";
-    private bool isLoading = true, isBusy, opSucesso, ocultarValores;
-    private int osAbertas, estoqueBaixo, activeMonth = 3, activeYear = 2026;
+    private bool isLoading = true, isBusy, isBackupSistema, isBackupManual, opSucesso, ocultarValores;
+    private int osAbertas, estoqueBaixo, activeMonth, activeYear;
     private decimal faturamentoTotal;
     private string feedbackMsg = "";
 
     protected override async Task OnInitializedAsync() => await CarregarDados();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var pref = await JS.InvokeAsync<string>("localStorage.getItem", "ocultarValoresHome");
+                if (!string.IsNullOrEmpty(pref))
+                {
+                    ocultarValores = bool.Parse(pref);
+                    StateHasChanged();
+                }
+            }
+            catch { }
+        }
+    }
 
     private async Task CarregarDados()
     {
@@ -158,13 +185,15 @@ else
 
             if (osList != null)
             {
+                // Indicador local: Carros concluídos no período ativo escolhido
                 osAbertas = osList.Count(x => 
-                    x.TryGetProperty("status", out var s) && s.ToString() == "Completed" &&
+                    x.GetProperty("status").ToString() == "Completed" &&
                     x.TryGetProperty("completionDate", out var d) && d.ValueKind != JsonValueKind.Null &&
                     d.GetDateTime().Month == activeMonth && d.GetDateTime().Year == activeYear);
 
+                // Faturamento Total acumulado
                 faturamentoTotal = osList
-                    .Where(x => x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
+                    .Where(x => x.GetProperty("status").ToString() == "Completed")
                     .Sum(x => x.TryGetProperty("amountPaid", out var t) ? t.GetDecimal() : 0);
             }
 
@@ -181,18 +210,45 @@ else
         if (!confirm) return;
 
         isBusy = true;
+        isBackupSistema = false;
         try {
             var res = await Http.PostAsync($"{ApiUrl}/api/settings/close-period", null);
             if (res.IsSuccessStatusCode) {
                 opSucesso = true;
-                feedbackMsg = "Período encerrado! Indicadores resetados para o novo mês.";
+                feedbackMsg = "Período encerrado! Os indicadores locais foram resetados.";
                 await CarregarDados();
             }
         } catch { opSucesso = false; feedbackMsg = "Erro ao fechar período."; }
         finally { isBusy = false; }
     }
 
-    private async Task ProcessarAcao(bool sistema) {}
-    private async Task AlternarVisibilidade(){}
-    private string MesNome(int m) => System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(m).ToUpper();
+    private async Task ProcessarAcao(bool sistema)
+    {
+        if (isBusy) return;
+
+        isBusy = true;
+        isBackupSistema = sistema;
+        isBackupManual = true;
+        feedbackMsg = sistema ? "Gerando backup do banco de dados..." : "Gerando planilhas Excel...";
+        opSucesso = false;
+
+        string rota = sistema ? "api/backup/gerar" : "api/backup/exportar-excel";
+
+        try {
+            var res = await Http.PostAsync($"{ApiUrl}/{rota}", null);
+            opSucesso = res.IsSuccessStatusCode;
+            feedbackMsg = opSucesso ? 
+                (sistema ? "Backup concluído!" : "Excel exportado!") : 
+                "Falha na comunicação com o servidor.";
+        } catch { opSucesso = false; feedbackMsg = "Erro de conexão."; }
+        finally { isBusy = false; isBackupManual = false; StateHasChanged(); }
+    }
+
+    private async Task AlternarVisibilidade()
+    {
+        ocultarValores = !ocultarValores;
+        await JS.InvokeVoidAsync("localStorage.setItem", "ocultarValoresHome", ocultarValores.ToString());
+    }
+
+    private string MesNome(int m) => System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(m > 0 && m <= 12 ? m : 1).ToUpper();
 }
