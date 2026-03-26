@@ -131,7 +131,7 @@
     else
     {
         <div class="row g-4 mb-5">
-            @* CARD DA GAVETA*@
+            @* CARD DA GAVETA *@
             <div class="col-md-3">
                 <div class="card h-100 border-0 shadow-sm position-relative" style="background: #111; border-top: 4px solid #28a745 !important;">
                     <div class="card-body p-4 text-center">
@@ -139,7 +139,6 @@
                         <h6 class="text-white-50 text-uppercase small fw-bold">Dinheiro na Gaveta</h6>
                         <h2 class="text-white fw-bold mb-3">R$ @totalDinheiro.ToString("N2")</h2>
 
-                        @* Botões de Ação para a Gaveta *@
                         <div class="d-flex flex-column gap-2 mt-3 pt-3 border-top border-secondary">
                             @if (editandoGaveta)
                             {
@@ -199,10 +198,9 @@
             <div class="col-md-4">
                 <div class="card border-secondary shadow-sm" style="background: #0a0a0a;">
                     <div class="card-header border-secondary bg-transparent py-3">
-                        <h5 class="mb-0 fw-bold text-white"><i class="bi bi-bar-chart-line-fill me-2"></i>Resumo Geral</h5>
+                        <h5 class="mb-0 fw-bold text-white"><i class="bi bi-bar-chart-line-fill me-2"></i>Resumo do Mês</h5>
                     </div>
                     <div class="card-body">
-
                         <div class="mb-3 pb-3 border-bottom border-secondary" style="background-color: #1a1a1a; padding: 10px; border-radius: 5px;">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
@@ -233,12 +231,8 @@
                         </div>
 
                         <div class="d-flex justify-content-between mb-3 pb-3 border-bottom border-secondary">
-                            <span class="text-white-50">Total Faturado (Recebido):</span>
+                            <span class="text-white-50">Faturamento Mensal (Recebido):</span>
                             <span class="text-success fw-bold fs-5">R$ @faturamentoTotal.ToString("N2")</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-3 pb-3 border-bottom border-secondary">
-                            <span class="text-white-50">Vendas Avulsas (Soma do balcão):</span>
-                            <span class="text-white fw-bold">R$ @totalVendasAvulsas.ToString("N2")</span>
                         </div>
                         <div class="d-flex justify-content-between pt-2">
                             <span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Inadimplência (A receber):</span>
@@ -251,7 +245,7 @@
             <div class="col-md-8">
                 <div class="card border-secondary shadow-sm h-100" style="background: #0a0a0a;">
                     <div class="card-header border-secondary bg-transparent py-3 d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 fw-bold text-white"><i class="bi bi-receipt-cutoff me-2"></i>Últimos Pagamentos (O.S)</h5>
+                        <h5 class="mb-0 fw-bold text-white"><i class="bi bi-receipt-cutoff me-2"></i>Pagamentos em Março/2026</h5>
                         <small class="text-white-50">Clique em uma linha para ver detalhes</small>
                     </div>
                     <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
@@ -279,25 +273,9 @@
                                                 {
                                                     <span class="badge bg-secondary border border-light text-white">MISTO</span>
                                                 }
-                                                else if (t.Forma == "DINHEIRO")
-                                                {
-                                                    <span class="badge bg-success">DINHEIRO</span>
-                                                }
-                                                else if (t.Forma == "PIX")
-                                                {
-                                                    <span class="badge bg-info text-dark">PIX</span>
-                                                }
-                                                else if (t.Forma == "CRÉDITO" || t.Forma == "CREDITO")
-                                                {
-                                                    <span class="badge bg-warning text-dark">CRÉDITO</span>
-                                                }
-                                                else if (t.Forma == "DÉBITO" || t.Forma == "DEBITO")
-                                                {
-                                                    <span class="badge" style="background-color: #fd7e14;">DÉBITO</span>
-                                                }
                                                 else
                                                 {
-                                                    <span class="badge bg-secondary">@(string.IsNullOrEmpty(t.Forma) ? "NÃO INFORMADO" : t.Forma)</span>
+                                                    <span class="badge @GetBadgeClass(t.Forma)">@t.Forma</span>
                                                 }
                                             </td>
                                             <td class="text-end border-secondary align-middle">
@@ -313,7 +291,7 @@
                                 else
                                 {
                                     <tr>
-                                        <td colspan="5" class="text-center py-4 text-white-50 border-secondary">Nenhum pagamento registrado recentemente.</td>
+                                        <td colspan="5" class="text-center py-4 text-white-50 border-secondary">Nenhum pagamento registrado em março.</td>
                                     </tr>
                                 }
                             </tbody>
@@ -328,14 +306,11 @@
 @code {
     private string ApiUrl = "https://localhost:7082";
     private bool isLoading = true;
-
     private bool editandoGaveta = false;
     private decimal valorAjusteGaveta = 0;
-
     private bool editandoSemana = false;
     private decimal valorAjusteSemana = 0;
     private string descricaoAjusteSemana = "";
-
     private bool mostrarToast = false;
     private string toastMensagem = "";
     private string toastTipo = "sucesso";
@@ -347,232 +322,114 @@
     private decimal totalCredito = 0;
     private decimal totalDebito = 0;
     private decimal totalInadimplencia = 0;
-    private decimal totalVendasAvulsas = 0;
 
-    // CONTROLE DO MODAL DE DETALHES
     private bool mostrarModalDetalhes = false;
     private TransacaoVisao? transacaoSelecionada;
-
-    public class FinancialSummaryDTO
-    {
-        public decimal FaturamentoTotal { get; set; }
-        public decimal FaturamentoSemanal { get; set; }
-        public decimal Inadimplencia { get; set; }
-        public decimal TotalPix { get; set; }
-        public decimal TotalCredito { get; set; }
-        public decimal TotalDebito { get; set; }
-    }
-
-    public class TransacaoVisao
-    {
-        public int Id { get; set; }
-        public string Cliente { get; set; } = "";
-        public DateTime DataPagamento { get; set; }
-        public string Forma { get; set; } = "";
-        public decimal ValorPago { get; set; }
-        public decimal ValorTotal { get; set; }
-        public decimal FaltaPagar { get; set; }
-        public List<PaymentSplitDTO> DivisaoPagamento { get; set; } = new();
-    }
-
-    public class CashAdjustmentDTO { public decimal Amount { get; set; } public string Description { get; set; } = ""; }
-    public class RevenueAdjustmentDTO { public int Id { get; set; } public decimal Amount { get; set; } public string Description { get; set; } = ""; public DateTime Date { get; set; } }
-
     private List<TransacaoVisao> transacoesRecentes = new();
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CarregarDados();
-    }
+    protected override async Task OnInitializedAsync() => await CarregarDados();
 
-    private void AbrirDetalhes(TransacaoVisao transacao)
-    {
-        transacaoSelecionada = transacao;
-        mostrarModalDetalhes = true;
-    }
-
-    private void FecharDetalhes()
-    {
-        mostrarModalDetalhes = false;
-        transacaoSelecionada = null;
-    }
+    private void AbrirDetalhes(TransacaoVisao transacao) { transacaoSelecionada = transacao; mostrarModalDetalhes = true; }
+    private void FecharDetalhes() { mostrarModalDetalhes = false; transacaoSelecionada = null; }
 
     private async Task CarregarDados()
     {
         try
         {
             isLoading = true;
+            DateTime agora = DateTime.Now;
 
-            var summary = await Http.GetFromJsonAsync<FinancialSummaryDTO>($"{ApiUrl}/api/serviceorders/financial-summary");
-            if (summary != null)
-            {
-                faturamentoTotal = summary.FaturamentoTotal;
-                faturamentoSemanal = summary.FaturamentoSemanal;
-                totalInadimplencia = summary.Inadimplencia;
-                totalPix = summary.TotalPix;
-                totalCredito = summary.TotalCredito;
-                totalDebito = summary.TotalDebito;
-            }
-
+            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders") ?? new();
+            var ajustes = await Http.GetFromJsonAsync<List<RevenueAdjustmentDTO>>($"{ApiUrl}/api/serviceorders/revenue-adjustments") ?? new();
             totalDinheiro = await Http.GetFromJsonAsync<decimal>($"{ApiUrl}/api/serviceorders/cash-balance");
 
-            var vendasAvulsas = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/quicksales");
-            totalVendasAvulsas = 0;
-            if (vendasAvulsas != null)
-            {
-                foreach (var v in vendasAvulsas)
-                {
-                    decimal valor = v.TryGetProperty("price", out var p) ? p.GetDecimal() : 0;
-                    totalVendasAvulsas += valor;
-                    faturamentoTotal += valor;
-
-                    if (v.TryGetProperty("date", out var d) && DateTime.TryParse(d.ToString(), out var dtVenda))
-                    {
-                        DateTime inicioSemana = DateTime.Now.Date.AddDays(-(int)DateTime.Now.DayOfWeek);
-                        if (dtVenda >= inicioSemana) faturamentoSemanal += valor;
-                    }
-                }
-            }
-
-            var ajustes = await Http.GetFromJsonAsync<List<RevenueAdjustmentDTO>>($"{ApiUrl}/api/serviceorders/revenue-adjustments");
-            if (ajustes != null)
-            {
-                DateTime inicioSemana = DateTime.Now.Date.AddDays(-(int)DateTime.Now.DayOfWeek);
-                foreach (var a in ajustes)
-                {
-                    if (a.Date >= inicioSemana) faturamentoSemanal += a.Amount;
-                    faturamentoTotal += a.Amount;
-                }
-            }
-
-            // LISTA DE TRANSAÇÕES RECENTES COM DETALHES DE PAGAMENTO PARCIAL
-            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders");
+            // Reset mensal manual para garantir "zeramento" visual de Março/2026
+            faturamentoTotal = 0; faturamentoSemanal = 0; totalPix = 0; totalCredito = 0; totalDebito = 0; totalInadimplencia = 0;
             transacoesRecentes.Clear();
-            if (osList != null)
-            {
-                var comPagamento = osList
-                    .Where(x => x.TryGetProperty("amountPaid", out var p) && p.GetDecimal() > 0)
-                    .Take(30)
-                    .ToList();
 
-                foreach (var os in comPagamento)
+            DateTime inicioSemana = agora.Date.AddDays(-(int)agora.DayOfWeek);
+
+            foreach (var os in osList)
+            {
+                if (os.TryGetProperty("status", out var s) && s.ToString() == "Completed")
                 {
-                    DateTime dataPagamento = DateTime.Now;
-                    if (os.TryGetProperty("completionDate", out var dt) && dt.ValueKind != JsonValueKind.Null)
+                    DateTime dataConclusao = os.TryGetProperty("completionDate", out var d) && d.ValueKind != JsonValueKind.Null ? d.GetDateTime() : DateTime.MinValue;
+
+                    if (dataConclusao.Month == agora.Month && dataConclusao.Year == agora.Year)
                     {
-                        DateTime.TryParse(dt.ToString(), out dataPagamento);
+                        decimal pago = os.TryGetProperty("amountPaid", out var ap) ? ap.GetDecimal() : 0;
+                        decimal total = os.TryGetProperty("totalAmount", out var ta) ? ta.GetDecimal() : 0;
+                        string metodo = os.TryGetProperty("paymentMethod", out var pm) ? pm.ToString().ToUpper() : "N/I";
+
+                        faturamentoTotal += pago;
+                        totalInadimplencia += Math.Max(0, total - pago);
+                        if (dataConclusao >= inicioSemana) faturamentoSemanal += pago;
+
+                        if (metodo == "PIX") totalPix += pago;
+                        else if (metodo.Contains("CREDITO") || metodo.Contains("CRÉDITO")) totalCredito += pago;
+                        else if (metodo.Contains("DEBITO") || metodo.Contains("DÉBITO")) totalDebito += pago;
+
+                        // Adiciona às transações recentes do mês
+                        transacoesRecentes.Add(MapearTransacao(os, dataConclusao, pago, total, metodo));
                     }
-                    else if (os.TryGetProperty("entryDate", out var ed) && ed.ValueKind != JsonValueKind.Null)
-                    {
-                        DateTime.TryParse(ed.ToString(), out dataPagamento);
-                    }
-
-                    string forma = os.TryGetProperty("paymentMethod", out var m) && m.ValueKind != JsonValueKind.Null
-                                   ? m.ToString().ToUpper()
-                                   : "NÃO INFORMADO";
-
-                    string cliente = "Desconhecido";
-                    if (os.TryGetProperty("vehicle", out var v) && v.ValueKind != JsonValueKind.Null)
-                    {
-                        cliente = v.TryGetProperty("customerName", out var cn) && cn.ValueKind != JsonValueKind.Null
-                                  ? cn.ToString()
-                                  : cliente;
-                    }
-
-                    decimal valorPago = os.GetProperty("amountPaid").GetDecimal();
-                    decimal valorTotal = os.GetProperty("totalAmount").GetDecimal();
-                    decimal faltaPagar = Math.Max(0, valorTotal - valorPago);
-
-                    // Extrai a lista de pagamentos mistos (se houver)
-                    List<PaymentSplitDTO> divisao = new();
-                    if (os.TryGetProperty("payments", out var paymentsArr) && paymentsArr.ValueKind == JsonValueKind.Array)
-                    {
-                        foreach(var pmt in paymentsArr.EnumerateArray())
-                        {
-                            // Tenta pegar a data exata do pagamento, se não achar, usa a data geral da OS
-                            DateTime dataPgt = pmt.TryGetProperty("paymentDate", out var pd) && pd.ValueKind != JsonValueKind.Null ? pd.GetDateTime() : dataPagamento;
-
-                            divisao.Add(new PaymentSplitDTO {
-                                PaymentMethod = pmt.GetProperty("paymentMethod").GetString() ?? "",
-                                Amount = pmt.GetProperty("amount").GetDecimal(),
-                                PaymentDate = dataPgt
-                            });
-                        }
-                    }
-
-                    transacoesRecentes.Add(new TransacaoVisao
-                    {
-                        Id = os.GetProperty("id").GetInt32(),
-                        Cliente = cliente,
-                        DataPagamento = dataPagamento,
-                        Forma = forma,
-                        ValorPago = valorPago,
-                        ValorTotal = valorTotal,
-                        FaltaPagar = faltaPagar,
-                        DivisaoPagamento = divisao
-                    });
                 }
-
-                transacoesRecentes = transacoesRecentes.OrderByDescending(t => t.DataPagamento).ThenByDescending(t => t.Id).ToList();
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-            MostrarErro("Erro ao carregar resumo financeiro.");
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
 
-    private async Task LancarAjusteSemana()
-    {
-        if (valorAjusteSemana == 0) return;
-        try
-        {
-            var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/revenue-adjustment", new CashAdjustmentDTO { Amount = valorAjusteSemana, Description = descricaoAjusteSemana });
-            if (res.IsSuccessStatusCode)
+            foreach (var a in ajustes.Where(x => x.Date.Month == agora.Month && x.Date.Year == agora.Year))
             {
-                valorAjusteSemana = 0; descricaoAjusteSemana = ""; editandoSemana = false;
-                await CarregarDados();
-                MostrarSucesso("Ajuste semanal registrado!");
+                faturamentoTotal += a.Amount;
+                if (a.Date >= inicioSemana) faturamentoSemanal += a.Amount;
             }
+
+            transacoesRecentes = transacoesRecentes.OrderByDescending(t => t.DataPagamento).ToList();
         }
-        catch { MostrarErro("Falha na API."); }
+        catch { MostrarErro("Falha ao sincronizar financeiro."); }
+        finally { isLoading = false; StateHasChanged(); }
     }
 
-    private async Task LancarAjusteGaveta()
+    private TransacaoVisao MapearTransacao(JsonElement os, DateTime dt, decimal pago, decimal total, string forma)
     {
-        if (valorAjusteGaveta == 0) { editandoGaveta = false; return; }
-        try
+        string cliente = "Consumidor";
+        if (os.TryGetProperty("vehicle", out var v))
+            cliente = v.TryGetProperty("customerName", out var cn) ? cn.ToString() : cliente;
+
+        return new TransacaoVisao
         {
-            var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/cash-adjustment", new CashAdjustmentDTO { Amount = valorAjusteGaveta, Description = "Ajuste de Gaveta" });
-            if (res.IsSuccessStatusCode)
-            {
-                valorAjusteGaveta = 0; editandoGaveta = false;
-                await CarregarDados();
-                MostrarSucesso("Ajuste de gaveta registrado!");
-            }
-        }
-        catch { MostrarErro("Falha na API."); }
+            Id = os.GetProperty("id").GetInt32(),
+            Cliente = cliente,
+            DataPagamento = dt,
+            Forma = forma,
+            ValorPago = pago,
+            ValorTotal = total,
+            FaltaPagar = Math.Max(0, total - pago)
+        };
     }
 
-    private async Task ZerarGaveta()
+    private string GetBadgeClass(string forma) => forma switch
     {
-        if (totalDinheiro <= 0) return;
-        bool conf = await JS.InvokeAsync<bool>("confirm", "Deseja zerar a gaveta?");
-        if (!conf) return;
-        try
-        {
-            await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/cash-adjustment", new CashAdjustmentDTO { Amount = -totalDinheiro, Description = "Retirada Total" });
-            await CarregarDados();
-            MostrarSucesso("Gaveta zerada!");
-        }
-        catch { MostrarErro("Erro ao processar."); }
+        "DINHEIRO" => "bg-success",
+        "PIX" => "bg-info text-dark",
+        "CRÉDITO" or "CREDITO" => "bg-warning text-dark",
+        "DÉBITO" or "DEBITO" => "bg-primary",
+        _ => "bg-secondary"
+    };
+
+    private async Task LancarAjusteSemana() { await ExecutarAjuste($"{ApiUrl}/api/serviceorders/revenue-adjustment", new CashAdjustmentDTO { Amount = valorAjusteSemana, Description = descricaoAjusteSemana }); valorAjusteSemana = 0; editandoSemana = false; }
+    private async Task LancarAjusteGaveta() { if (valorAjusteGaveta == 0) return; await ExecutarAjuste($"{ApiUrl}/api/serviceorders/cash-adjustment", new CashAdjustmentDTO { Amount = valorAjusteGaveta, Description = "Ajuste Manual" }); valorAjusteGaveta = 0; editandoGaveta = false; }
+    private async Task ZerarGaveta() { if (totalDinheiro <= 0) return; if (await JS.InvokeAsync<bool>("confirm", "Zerar gaveta?")) await ExecutarAjuste($"{ApiUrl}/api/serviceorders/cash-adjustment", new CashAdjustmentDTO { Amount = -totalDinheiro, Description = "Retirada Total" }); }
+
+    private async Task ExecutarAjuste(string url, CashAdjustmentDTO dto)
+    {
+        var res = await Http.PostAsJsonAsync(url, dto);
+        if (res.IsSuccessStatusCode) { await CarregarDados(); MostrarSucesso("Operação realizada!"); }
+        else MostrarErro("Erro na API.");
     }
 
-    private void MostrarSucesso(string msg) { toastMensagem = msg; toastTipo = "sucesso"; mostrarToast = true; StateHasChanged(); Task.Delay(3000).ContinueWith(_ => { mostrarToast = false; InvokeAsync(StateHasChanged); }); }
-    private void MostrarErro(string msg) { toastMensagem = msg; toastTipo = "erro"; mostrarToast = true; StateHasChanged(); Task.Delay(5000).ContinueWith(_ => { mostrarToast = false; InvokeAsync(StateHasChanged); }); }
+    private void MostrarSucesso(string m) { toastMensagem = m; toastTipo = "sucesso"; mostrarToast = true; StateHasChanged(); Task.Delay(3000).ContinueWith(_ => { mostrarToast = false; InvokeAsync(StateHasChanged); }); }
+    private void MostrarErro(string m) { toastMensagem = m; toastTipo = "erro"; mostrarToast = true; StateHasChanged(); Task.Delay(5000).ContinueWith(_ => { mostrarToast = false; InvokeAsync(StateHasChanged); }); }
+
+    public class FinancialSummaryDTO { public decimal FaturamentoTotal { get; set; } public decimal FaturamentoSemanal { get; set; } public decimal Inadimplencia { get; set; } public decimal TotalPix { get; set; } public decimal TotalCredito { get; set; } public decimal TotalDebito { get; set; } }
+    public class TransacaoVisao { public int Id { get; set; } public string Cliente { get; set; } = ""; public DateTime DataPagamento { get; set; } public string Forma { get; set; } = ""; public decimal ValorPago { get; set; } public decimal ValorTotal { get; set; } public decimal FaltaPagar { get; set; } public List<PaymentSplitDTO> DivisaoPagamento { get; set; } = new(); }
+    public class CashAdjustmentDTO { public decimal Amount { get; set; } public string Description { get; set; } = ""; }
+    public class RevenueAdjustmentDTO { public decimal Amount { get; set; } public DateTime Date { get; set; } }
 }
