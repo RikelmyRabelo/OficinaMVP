@@ -1,111 +1,128 @@
 ﻿@inject HttpClient Http
 @using OficinaWeb.Models
+@using System.Globalization
 
 <style>
-    .print-data {
+    .print-field {
         position: absolute;
         font-family: Arial, sans-serif;
-        font-size: 11pt;
+        font-size: 10pt;
         color: black;
+        white-space: nowrap;
+        overflow: hidden;
+        line-height: 1;
+    }
+
+    @@media screen {
+        .d-print-block {
+            display: none !important;
+        }
     }
 </style>
 
 @if (Os != null)
 {
-    <div id="print-section" class="d-none d-print-block" style="position: relative; width: 210mm; height: 297mm; background-color: white;">
-        @* Imagem de fundo do formulário *@
+    <div id="print-section" class="d-print-block" style="position: relative; width: 210mm; height: 297mm; background-color: white; margin: 0 auto;">
         <img src="images/OrdemServico.png" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: -1;" />
 
-        @* Cabeçalho *@
-        <div class="print-data" style="top: 17%; left: 81.5%; font-size: 14pt; font-weight: bold;">#@Os.Id</div>
-        <div class="print-data" style="top: 21%; left: 19.5%;">@Os.Vehicle?.CustomerName</div>
-
-        @if (!string.IsNullOrEmpty(Os.Vehicle?.CustomerPhone))
-        {
-            <div class="print-data" style="top: 26.6%; left: 65%;">@Os.Vehicle?.CustomerPhone</div>
-        }
-
-        <div class="print-data" style="top: 26.6%; left: 22%;">@Os.Vehicle?.Model</div>
-
+        @* CABEÇALHO *@
+        <div class="print-field" style="top: 17.1%; left: 81.5%; font-size: 14pt; font-weight: bold;">#@Os.Id</div>
+        <div class="print-field" style="top: 21.1%; left: 19.5%;">@Os.Vehicle?.CustomerName</div>
         @if (!string.IsNullOrEmpty(Os.Vehicle?.CustomerAddress))
         {
-            <div class="print-data" style="top: 24%; left: 19.5%; font-size: 10pt;">@Os.Vehicle?.CustomerAddress</div>
+            <div class="print-field" style="top: 24.1%; left: 19.5%; font-size: 9pt;">@Os.Vehicle?.CustomerAddress</div>
         }
+        <div class="print-field" style="top: 26.7%; left: 22%;">@Os.Vehicle?.Model</div>
+        <div class="print-field" style="top: 34%; left: 30%;">@Os.EntryDate.ToString("dd/MM/yyyy")</div>
 
-        <div class="print-data" style="top: 33.9%; left: 30%;">@Os.EntryDate.ToString("dd/MM/yyyy")</div>
+        @* SEÇÃO DE PEÇAS *@
+        @{
+            var pecas = Os.Items.Where(i => !IsService(i)).ToList();
+            var slotsNoPapel = new ServiceItemDTO[7];
 
-        @if (Os.CompletionDate.HasValue)
-        {
-            <div class="print-data" style="top: 33.9%; left: 63%;">@Os.CompletionDate.Value.ToString("dd/MM/yyyy")</div>
-            <div class="print-data" style="top: 33.9%; left: 87%;">@Os.CompletionDate.Value.ToString("HH:mm")</div>
-        }
+            foreach (var p in pecas.Where(x => x.PrintLine >= 1 && x.PrintLine <= 7))
+                slotsNoPapel[p.PrintLine - 1] = p;
 
-        @* --- SEÇÃO DE PEÇAS E ITENS AVULSOS (Parte Superior) --- *@
-        <div class="print-data" style="top: 42%; left: 7.5%; width: 85%;">
-            @foreach (var item in Os.Items)
+            var semPosicao = pecas.Where(x => x.PrintLine < 1 || x.PrintLine > 7).ToList();
+            int pIndex = 0;
+            for (int i = 0; i < 7; i++)
             {
-                // Verifica se é serviço para PULAR este loop
-                bool isServico = item.ItemType == "Service" ||
-                (item.ProductId == null && item.Mechanic != null) ||
-                (item.ProductId == null && (catalogoServicos?.Any(c => string.Equals(c.Name, item.Description, StringComparison.OrdinalIgnoreCase)) ?? false));
-
-                if (!isServico)
+                if (slotsNoPapel[i] == null && pIndex < semPosicao.Count)
                 {
-                    <div style="display: flex; margin-bottom: 8px;">
-                        <span style="width: 15%;">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "AVULSO")</span>
-                        <span style="width: 60%;">
-                            @(item.Quantity > 1 ? $"{item.Quantity}x (R$ {(item.Price / item.Quantity).ToString("N2")} un) " : "")
-                            @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description)
-                            @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $" [Garantia: {item.WarrantyPeriod}]")
-                        </span>
-                        <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
+                    slotsNoPapel[i] = semPosicao[pIndex];
+                    pIndex++;
+                }
+            }
+
+            for (int i = 0; i < 7; i++)
+            {
+                var item = slotsNoPapel[i];
+                if (item != null)
+                {
+                    string topCSS = CoordenadasSlots[i].ToString("0.00", CultureInfo.InvariantCulture);
+                    string leftCodCSS = ColLeftCodigo.ToString("0.00", CultureInfo.InvariantCulture);
+                    string leftDescCSS = ColLeftDescricao.ToString("0.00", CultureInfo.InvariantCulture);
+                    string leftTotalCSS = ColLeftTotal.ToString("0.00", CultureInfo.InvariantCulture);
+
+                    @* Coluna 1: CÓDIGO *@
+                    <div class="print-field" style="top: @(topCSS)%; left: @(leftCodCSS)%; width: 55pt;">
+                        @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "AVULSO")
+                    </div>
+
+                    @* Coluna 2: PRODUTO / SERVIÇO *@
+                    <div class="print-field" style="top: @(topCSS)%; left: @(leftDescCSS)%; width: 330pt; text-overflow: ellipsis;">
+                        @(item.Quantity > 1 ? $"{item.Quantity}x " : "")
+                        @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description)
+                    </div>
+
+                    @* Coluna 3: TOTAL *@
+                    <div class="print-field" style="top: @(topCSS)%; left: @(leftTotalCSS)%; width: 100pt; text-align: right;">
+                        R$ @item.Price.ToString("N2")
                     </div>
                 }
             }
-        </div>
+        }
 
-        @* --- SEÇÃO DE MÃO DE OBRA / SERVIÇOS (Parte Inferior) --- *@
-        <div class="print-data" style="top: 69.6%; left: 7.5%; width: 85%;">
-            @foreach (var item in Os.Items)
+        @* SEÇÃO DE MÃO DE OBRA *@
+        <div class="print-field" style="top: 69.8%; left: 7.5%; width: 85%;">
+            @foreach (var item in Os.Items.Where(i => IsService(i)))
             {
-                // Lógica de identificação de serviço
-                bool isServico = item.ItemType == "Service" ||
-                (item.ProductId == null && item.Mechanic != null) ||
-                (item.ProductId == null && (catalogoServicos?.Any(c => string.Equals(c.Name, item.Description, StringComparison.OrdinalIgnoreCase)) ?? false));
-
-                if (isServico)
-                {
-                    <div style="display: flex; margin-bottom: 8px;">
-                        <span style="width: 75%;">
-                            <strong style="color: black;">[SERVIÇO]</strong> @item.Description
-                            @(string.IsNullOrEmpty(item.WarrantyPeriod) ? "" : $" ({item.WarrantyPeriod})")
-                            @(item.Mechanic != null ? $" - Mecânico: {item.Mechanic.name}" : "")
-                        </span>
-                        <span style="width: 25%; text-align: right;">R$ @item.Price.ToString("N2")</span>
-                    </div>
-                }
+                <div style="position:relative; height: 14pt; margin-bottom: 2pt;">
+                    <span style="position:absolute; left:0;"><strong>[M.O]</strong> @item.Description</span>
+                    <span style="position:absolute; right:0;">R$ @item.Price.ToString("N2")</span>
+                </div>
             }
         </div>
 
-        @* Rodapé Financeiro *@
-        <div class="print-data" style="top: 80%; left: 81%; font-size: 18pt; font-weight: bold;">R$ @Os.TotalAmount.ToString("N2")</div>
-        <div class="print-data" style="top: 85.8%; left: 30%; font-size: 14pt; font-weight: bold;">R$ @Os.AmountPaid.ToString("N2")</div>
-        <div class="print-data" style="top: 85.8%; left: 81%; font-size: 14pt; font-weight: bold;">R$ @Os.RemainingAmount.ToString("N2")</div>
+        @* TOTAIS *@
+        <div class="print-field" style="top: 80.2%; left: 81%; font-size: 16pt; font-weight: bold;">R$ @Os.TotalAmount.ToString("N2")</div>
+        <div class="print-field" style="top: 85.9%; left: 30%; font-size: 13pt; font-weight: bold;">R$ @Os.AmountPaid.ToString("N2")</div>
+        <div class="print-field" style="top: 85.9%; left: 81%; font-size: 13pt; font-weight: bold;">R$ @Os.RemainingAmount.ToString("N2")</div>
     </div>
 }
 
 @code {
     [Parameter] public ServiceOrderDTO? Os { get; set; }
-
     private List<LaborServiceDTO>? catalogoServicos;
+
+    private double[] CoordenadasSlots = new double[] {
+        42, 45, 48, 51.5, 55, 58, 62
+    };
+
+    private double ColLeftCodigo = 8;
+    private double ColLeftDescricao = 20;
+    private double ColLeftTotal = 62;
+
+    private bool IsService(ServiceItemDTO item)
+    {
+        return item.ItemType == "Service" ||
+               (item.ProductId == null && item.Mechanic != null) ||
+               (item.ProductId == null && (catalogoServicos?.Any(c => string.Equals(c.Name, item.Description, StringComparison.OrdinalIgnoreCase)) ?? false));
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            // Carrega o catálogo para saber quais nomes de itens são "Serviços"
-            catalogoServicos = await Http.GetFromJsonAsync<List<LaborServiceDTO>>("https://localhost:7082/api/laborservices");
-        }
+        try { catalogoServicos = await Http.GetFromJsonAsync<List<LaborServiceDTO>>("https://localhost:7082/api/laborservices"); }
         catch { }
     }
 }
