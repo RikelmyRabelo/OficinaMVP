@@ -91,12 +91,12 @@ else
                 <div class="p-4 rounded-3 border-start border-4 border-success h-100" style="background: #0a0a0a; border: 1px solid #28a745;">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <h6 class="text-white-50 text-uppercase small">Faturamento Mensal</h6>
-                            <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : faturamento.ToString("C2"))</h1>
+                            <h6 class="text-white-50 text-uppercase small">Faturamento Total</h6>
+                            <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : faturamentoTotal.ToString("C2"))</h1>
                         </div>
                         <i class="bi bi-box-arrow-in-up-right text-success fs-3 opacity-50"></i>
                     </div>
-                    <small class="text-success mt-2 d-block fw-bold small"><i class="bi bi-wallet2 me-1"></i>VER DETALHES</small>
+                    <small class="text-success mt-2 d-block fw-bold small"><i class="bi bi-wallet2 me-1"></i>FECHAMENTO DE CAIXA</small>
                 </div>
             </a>
         </div>
@@ -156,7 +156,7 @@ else
     private string ApiUrl = "https://localhost:7082";
     private bool isLoading = true;
     private int osAbertas, estoqueBaixo;
-    private decimal faturamento;
+    private decimal faturamentoTotal;
 
     private bool isBusy, isBackupSistema, opSucesso;
     private string feedbackMsg = "";
@@ -199,26 +199,16 @@ else
             var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders");
             var prodList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/products");
 
-            faturamento = 0;
-            DateTime agora = DateTime.Now;
+            faturamentoTotal = 0;
 
             if (osList != null && osList.Any())
             {
-                // Veículos em reparo (Independente da data)
+                // Veículos em reparo
                 osAbertas = osList.Count(x => x.TryGetProperty("status", out var s) && s.ToString() != "Completed");
                 
-                // Faturamento filtrado pelo mês e ano atual
-                faturamento = osList
+                // Faturamento Acumulado (Total de todos os tempos)
+                faturamentoTotal = osList
                     .Where(x => x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
-                    .Where(x =>
-                    {
-                        if (x.TryGetProperty("completionDate", out var d) && d.ValueKind != JsonValueKind.Null)
-                        {
-                            var dataConclusao = d.GetDateTime();
-                            return dataConclusao.Month == agora.Month && dataConclusao.Year == agora.Year;
-                        }
-                        return false;
-                    })
                     .Sum(x => x.TryGetProperty("amountPaid", out var t) ? t.GetDecimal() : 0);
             }
 
