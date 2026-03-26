@@ -10,7 +10,7 @@
     <h1 class="fw-bold display-4" style="color: #ff6600; text-transform: uppercase; letter-spacing: 2px;">
         FREITAS AUTOCENTER
     </h1>
-    <p class="text-white-50">Gestão Profissional de Oficina</p>
+    <p class="text-white-50">Período Ativo: <span class="text-white fw-bold">@MesNome(@activeMonth)/@activeYear</span></p>
 </div>
 
 @* Cards de Navegação Principal *@
@@ -52,7 +52,7 @@
 {
     <div class="text-center py-5">
         <div class="spinner-border text-warning" role="status"></div>
-        <p class="text-white-50 mt-2">Sincronizando dados...</p>
+        <p class="text-white-50 mt-2">Sincronizando período...</p>
     </div>
 }
 else
@@ -67,7 +67,7 @@ else
     <div class="row g-4 mb-5 align-items-stretch">
         <div class="col-md-4">
             <div class="p-4 rounded-3 border-start border-4 border-warning h-100" style="background: #0a0a0a;">
-                <h6 class="text-white-50 text-uppercase small">Veículos em Reparo</h6>
+                <h6 class="text-white-50 text-uppercase small">Veículos no Período</h6>
                 <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : osAbertas.ToString())</h1>
             </div>
         </div>
@@ -102,28 +102,20 @@ else
         </div>
     </div>
 
-    @* Painel de Backup *@
     <div class="p-4 rounded-3 border border-secondary" style="background: #111;">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
-            <div class="mb-3 mb-md-0">
-                <h4 class="fw-bold mb-1" style="color: #ff6600;">Backup Diário Inteligente</h4>
-                <p class="text-white-50 small mb-0">Local: <code class="text-light">C:\Backups_Oficina\@DateTime.Now.ToString("dd-MM-yyyy")\</code></p>
+            <div class="mb-3 mb-md-0 text-center text-md-start">
+                <h4 class="fw-bold mb-1" style="color: #ff6600;">Gestão do Período Ativo</h4>
+                <p class="text-white-50 small mb-0">Zere os indicadores e avance para o próximo mês.</p>
             </div>
 
             <div class="d-flex gap-2">
-                <button class="btn btn-outline-light fw-bold" @onclick="() => ProcessarAcao(true)" disabled="@isBusy">
-                    @if (isBusy && isBackupSistema)
-                    {
-                        <span class="spinner-border spinner-border-sm me-2"></span>
-                    }
-                    <i class="bi bi-hdd-fill me-2"></i>Backup Sistema
+                <button class="btn btn-danger fw-bold px-4" @onclick="FecharMesManual" disabled="@isBusy">
+                    @if (isBusy) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                    <i class="bi bi-calendar-check-fill me-2"></i>FECHAR MÊS
                 </button>
-                <button class="btn fw-bold text-white px-4" style="background: #217346;" @onclick="() => ProcessarAcao(false)" disabled="@isBusy">
-                    @if (isBusy && !isBackupSistema)
-                    {
-                        <span class="spinner-border spinner-border-sm me-2"></span>
-                    }
-                    <i class="bi bi-file-earmark-excel-fill me-2"></i>Exportar Excel
+                <button class="btn btn-outline-light fw-bold" @onclick="() => ProcessarAcao(true)" disabled="@isBusy">
+                    <i class="bi bi-hdd-fill me-2"></i>Backup Sistema
                 </button>
             </div>
         </div>
@@ -139,123 +131,68 @@ else
 }
 
 <style>
-    .nav-card {
-        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        cursor: pointer;
-    }
-
-        .nav-card:hover {
-            transform: translateY(-8px);
-            border-color: #ff6600 !important;
-            background: #1a1a1a !important;
-            box-shadow: 0 10px 20px rgba(255, 102, 0, 0.2) !important;
-        }
+    .nav-card { transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer; }
+    .nav-card:hover { transform: translateY(-8px); border-color: #ff6600 !important; background: #1a1a1a !important; box-shadow: 0 10px 20px rgba(255, 102, 0, 0.2) !important; }
 </style>
 
 @code {
     private string ApiUrl = "https://localhost:7082";
-    private bool isLoading = true;
-    private int osAbertas, estoqueBaixo;
+    private bool isLoading = true, isBusy, opSucesso, ocultarValores;
+    private int osAbertas, estoqueBaixo, activeMonth = 3, activeYear = 2026;
     private decimal faturamentoTotal;
-
-    private bool isBusy, isBackupSistema, opSucesso;
     private string feedbackMsg = "";
-    private bool ocultarValores = false;
 
     protected override async Task OnInitializedAsync() => await CarregarDados();
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            try
-            {
-                var preferenciaSalva = await JS.InvokeAsync<string>("localStorage.getItem", "ocultarValoresHome");
-                if (!string.IsNullOrEmpty(preferenciaSalva))
-                {
-                    ocultarValores = bool.Parse(preferenciaSalva);
-                    StateHasChanged();
-                }
-            }
-            catch { }
-        }
-    }
-
-    private async Task AlternarVisibilidade()
-    {
-        ocultarValores = !ocultarValores;
-        try
-        {
-            await JS.InvokeVoidAsync("localStorage.setItem", "ocultarValoresHome", ocultarValores.ToString());
-        }
-        catch { }
-    }
 
     private async Task CarregarDados()
     {
         try
         {
             isLoading = true;
+            var settings = await Http.GetFromJsonAsync<JsonElement>($"{ApiUrl}/api/settings");
+            activeMonth = settings.GetProperty("activeMonth").GetInt32();
+            activeYear = settings.GetProperty("activeYear").GetInt32();
+
             var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders");
             var prodList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/products");
 
-            faturamentoTotal = 0;
-
-            if (osList != null && osList.Any())
+            if (osList != null)
             {
-                // Veículos em reparo
-                osAbertas = osList.Count(x => x.TryGetProperty("status", out var s) && s.ToString() != "Completed");
-                
-                // Faturamento Acumulado (Total de todos os tempos)
+                osAbertas = osList.Count(x => 
+                    x.TryGetProperty("status", out var s) && s.ToString() == "Completed" &&
+                    x.TryGetProperty("completionDate", out var d) && d.ValueKind != JsonValueKind.Null &&
+                    d.GetDateTime().Month == activeMonth && d.GetDateTime().Year == activeYear);
+
                 faturamentoTotal = osList
                     .Where(x => x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
                     .Sum(x => x.TryGetProperty("amountPaid", out var t) ? t.GetDecimal() : 0);
             }
 
-            if (prodList != null && prodList.Any())
-            {
-                estoqueBaixo = prodList.Count(x =>
-                    x.TryGetProperty("stockQuantity", out var q) &&
-                    x.TryGetProperty("minimumStock", out var m) &&
-                    q.GetInt32() <= m.GetInt32());
-            }
+            if (prodList != null)
+                estoqueBaixo = prodList.Count(x => x.GetProperty("stockQuantity").GetInt32() <= x.GetProperty("minimumStock").GetInt32());
         }
-        catch (Exception) { }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
+        catch { }
+        finally { isLoading = false; StateHasChanged(); }
     }
 
-    private async Task ProcessarAcao(bool sistema)
+    private async Task FecharMesManual()
     {
-        if (isBusy) return;
+        bool confirm = await JS.InvokeAsync<bool>("confirm", $"Deseja encerrar o período de {MesNome(activeMonth)} e iniciar o próximo?");
+        if (!confirm) return;
 
         isBusy = true;
-        isBackupSistema = sistema;
-        feedbackMsg = sistema ? "Gerando backup completo do banco de dados..." : "Gerando planilhas Excel...";
-        opSucesso = false;
-
-        string rota = sistema ? "api/backup/gerar" : "api/backup/exportar-excel";
-
-        try
-        {
-            var res = await Http.PostAsync($"{ApiUrl}/{rota}", null);
-            opSucesso = res.IsSuccessStatusCode;
-            feedbackMsg = opSucesso ?
-                (sistema ? "Cópia de segurança criada com sucesso!" : "Relatórios em Excel gerados!") :
-                "Falha na comunicação com o servidor.";
-        }
-        catch (Exception ex)
-        {
-            opSucesso = false;
-            feedbackMsg = "Erro crítico: " + ex.Message;
-        }
-        finally
-        {
-            isBusy = false;
-            StateHasChanged();
-        }
+        try {
+            var res = await Http.PostAsync($"{ApiUrl}/api/settings/close-period", null);
+            if (res.IsSuccessStatusCode) {
+                opSucesso = true;
+                feedbackMsg = "Período encerrado! Indicadores resetados para o novo mês.";
+                await CarregarDados();
+            }
+        } catch { opSucesso = false; feedbackMsg = "Erro ao fechar período."; }
+        finally { isBusy = false; }
     }
+
+    private async Task ProcessarAcao(bool sistema) {}
+    private async Task AlternarVisibilidade(){}
+    private string MesNome(int m) => System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(m).ToUpper();
 }
