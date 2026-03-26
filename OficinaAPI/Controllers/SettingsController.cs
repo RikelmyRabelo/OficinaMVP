@@ -2,14 +2,13 @@
 using Microsoft.EntityFrameworkCore;
 using OficinaAPI.Data;
 
-// Verifique se o namespace abaixo está correto de acordo com a pasta onde está o seu OficinaContext
 using OficinaAPI.Models;
 
 [Route("api/[controller]")]
 [ApiController]
 public class SettingsController : ControllerBase
 {
-    private readonly OficinaContext _context; // Alterado de ApplicationDbContext para OficinaContext
+    private readonly OficinaContext _context;
 
     public SettingsController(OficinaContext context) => _context = context;
 

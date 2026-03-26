@@ -6,45 +6,11 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace OficinaAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialSystemSettings : Migration
+    public partial class CriarTabelaSystemSettings : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_ServiceItems_Employees_MechanicId",
-                table: "ServiceItems");
-
-            migrationBuilder.DropTable(
-                name: "PaymentRecords");
-
-            migrationBuilder.DropTable(
-                name: "QuickSales");
-
-            migrationBuilder.DropTable(
-                name: "Employees");
-
-            migrationBuilder.DropIndex(
-                name: "IX_ServiceItems_MechanicId",
-                table: "ServiceItems");
-
-            migrationBuilder.DropColumn(
-                name: "MechanicId",
-                table: "ServiceItems");
-
-            migrationBuilder.CreateTable(
-                name: "Notes",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Notes", x => x.Id);
-                });
 
             migrationBuilder.CreateTable(
                 name: "SystemSettings",

@@ -12,8 +12,8 @@ using OficinaAPI.Data;
 namespace OficinaAPI.Migrations
 {
     [DbContext(typeof(OficinaContext))]
-    [Migration("20260326175321_InitialSystemSettings")]
-    partial class InitialSystemSettings
+    [Migration("20260326175824_CriarTabelaSystemSettings")]
+    partial class CriarTabelaSystemSettings
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
