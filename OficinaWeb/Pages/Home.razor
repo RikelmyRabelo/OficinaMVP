@@ -92,8 +92,8 @@ else
                 <div class="p-4 rounded-3 border-start border-4 border-success h-100" style="background: #0a0a0a; border: 1px solid #28a745;">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <h6 class="text-white-50 text-uppercase small">Faturamento do Ciclo</h6>
-                            <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : faturamentoCiclo.ToString("C2"))</h1>
+                            <h6 class="text-white-50 text-uppercase small">Faturamento Total</h6>
+                            <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : faturamentoTotalGeral.ToString("C2"))</h1>
                         </div>
                         <i class="bi bi-cash-stack text-success fs-3 opacity-50"></i>
                     </div>
@@ -118,12 +118,12 @@ else
                         <i class="bi bi-calendar-check-fill me-2"></i>ENCERRAR MÊS
                     </button>
 
-                    <button class="btn btn-outline-light fw-bold" @onclick='() => ProcessarAcao("api/backup/gerar", "Backup concluído!")' disabled="@isBusy">
-                        <i class="bi bi-hdd-fill me-2"></i>Backup Sistema
+                    <button class="btn btn-outline-light fw-bold" @onclick="GerarBackup" disabled="@isBusy">
+                        <i class="bi bi-hdd-fill me-2"></i>Backup
                     </button>
 
-                    <button class="btn fw-bold text-white px-4" style="background: #217346;" @onclick='() => ProcessarAcao("api/backup/exportar-excel", "Excel exportado!")' disabled="@isBusy">
-                        <i class="bi bi-file-earmark-excel-fill me-2"></i>Exportar Excel
+                    <button class="btn fw-bold text-white px-4" style="background: #217346;" @onclick="ExportarExcel" disabled="@isBusy">
+                        <i class="bi bi-file-earmark-excel-fill me-2"></i>Excel
                     </button>
                 </div>
             </div>
@@ -148,7 +148,7 @@ else
     private string ApiUrl = "https://localhost:7082";
     private bool isLoading = true, isBusy, opSucesso, ocultarValores;
     private int veiculosNoCiclo, estoqueBaixo, activeMonth, activeYear;
-    private decimal faturamentoCiclo;
+    private decimal faturamentoTotalGeral;
     private string feedbackMsg = "";
 
     protected override async Task OnInitializedAsync() => await CarregarDados();
@@ -182,10 +182,15 @@ else
             var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders") ?? new();
             var prodList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/products") ?? new();
 
-            var filtradas = osList.Where(x => 
+            // Faturamento Total acumulado de toda a história da loja
+            faturamentoTotalGeral = osList
+                .Where(x => GetString(x, "status") == "Completed")
+                .Sum(x => GetDecimal(x, "amountPaid"));
+
+            // Veículos processados apenas no ciclo de trabalho ativo
+            veiculosNoCiclo = osList.Count(x => 
             {
                 if (GetString(x, "status") != "Completed") return false;
-
                 int am = GetInt(x, "accountingMonth");
                 int ay = GetInt(x, "accountingYear");
 
@@ -196,10 +201,8 @@ else
                     return dt.Month == activeMonth && dt.Year == activeYear;
 
                 return false;
-            }).ToList();
+            });
 
-            veiculosNoCiclo = filtradas.Count;
-            faturamentoCiclo = filtradas.Sum(x => GetDecimal(x, "amountPaid"));
             estoqueBaixo = prodList.Count(x => GetInt(x, "stockQuantity") <= GetInt(x, "minimumStock"));
         }
         catch { }
@@ -223,7 +226,10 @@ else
         finally { isBusy = false; }
     }
 
-    private async Task ProcessarAcao(string rota, string msgSucesso)
+    private async Task GerarBackup() => await ExecutarAcao("api/backup/gerar", "Backup concluído!");
+    private async Task ExportarExcel() => await ExecutarAcao("api/backup/exportar-excel", "Excel exportado!");
+
+    private async Task ExecutarAcao(string rota, string msgSucesso)
     {
         isBusy = true;
         try {
