@@ -84,9 +84,11 @@ namespace OficinaAPI.Controllers
                 Status = "Pending",
                 TotalAmount = 0,
                 AmountPaid = 0,
+
                 AccountingMonth = settings?.ActiveMonth ?? DateTime.Now.Month,
                 AccountingYear = settings?.ActiveYear ?? DateTime.Now.Year
             };
+
             _context.ServiceOrders.Add(os);
             await _context.SaveChangesAsync();
 
