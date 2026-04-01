@@ -4,10 +4,11 @@
 @using System.Net.Http.Json
 @using System.Text.Json
 
-<PageTitle> FREITAS AUTOCENTER - Início</PageTitle>
+<PageTitle>FREITAS AUTOCENTER - Início</PageTitle>
 
 <div class="text-center mb-5">
     <h1 class="fw-bold display-4" style="color: #ff6600; text-transform: uppercase; letter-spacing: 2px;">
+        <i class="bi bi-gear-wide-connected"></i>
     </h1>
     <p class="text-white-50">Período Ativo: <span class="text-white fw-bold">@MesNome(activeMonth)/@activeYear</span></p>
 </div>
@@ -66,8 +67,8 @@ else
     <div class="row g-4 mb-5 align-items-stretch">
         <div class="col-md-4">
             <div class="p-4 rounded-3 border-start border-4 border-warning h-100" style="background: #0a0a0a;">
-                <h6 class="text-white-50 text-uppercase small">Veículos no Período</h6>
-                <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : osAbertas.ToString())</h1>
+                <h6 class="text-white-50 text-uppercase small">Veículos no Ciclo</h6>
+                <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : veiculosNoCiclo.ToString())</h1>
             </div>
         </div>
 
@@ -86,22 +87,21 @@ else
         </div>
 
         <div class="col-md-4">
-            <a href="faturamento" class="text-decoration-none d-block nav-card h-100 border-0">
+            <a href="relatorios" class="text-decoration-none d-block nav-card h-100 border-0">
                 <div class="p-4 rounded-3 border-start border-4 border-success h-100" style="background: #0a0a0a; border: 1px solid #28a745;">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <h6 class="text-white-50 text-uppercase small">Faturamento Total</h6>
-                            <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : faturamentoTotal.ToString("C2"))</h1>
+                            <h6 class="text-white-50 text-uppercase small">Faturamento do Ciclo</h6>
+                            <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : faturamentoCiclo.ToString("C2"))</h1>
                         </div>
                         <i class="bi bi-box-arrow-in-up-right text-success fs-3 opacity-50"></i>
                     </div>
-                    <small class="text-success mt-2 d-block fw-bold small"><i class="bi bi-wallet2 me-1"></i>FECHAMENTO DE CAIXA</small>
+                    <small class="text-success mt-2 d-block fw-bold small"><i class="bi bi-wallet2 me-1"></i>FECHAMENTO DO CICLO</small>
                 </div>
             </a>
         </div>
     </div>
 
-    @* Painel de Gestão e Ferramentas *@
     <div class="p-4 rounded-3 border border-secondary" style="background: #111;">
         <div class="row align-items-center">
             <div class="col-lg-5 mb-3 mb-lg-0 text-center text-lg-start">
@@ -112,17 +112,15 @@ else
             <div class="col-lg-7 text-center text-lg-end">
                 <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-lg-end">
                     <button class="btn btn-danger fw-bold px-4 shadow-sm" @onclick="FecharMesManual" disabled="@isBusy">
-                        @if (isBusy && !isBackupSistema) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        @if (isBusy) { <span class="spinner-border spinner-border-sm me-2"></span> }
                         <i class="bi bi-calendar-check-fill me-2"></i>FECHAR MÊS
                     </button>
 
-                    <button class="btn btn-outline-light fw-bold" @onclick="() => ProcessarAcao(true)" disabled="@isBusy">
-                        @if (isBusy && isBackupSistema && isBackupManual) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                    <button class="btn btn-outline-light fw-bold" @onclick='() => ProcessarAcao("api/backup/gerar", "Backup concluído!")' disabled="@isBusy">
                         <i class="bi bi-hdd-fill me-2"></i>Backup Sistema
                     </button>
 
-                    <button class="btn fw-bold text-white px-4" style="background: #217346;" @onclick="() => ProcessarAcao(false)" disabled="@isBusy">
-                        @if (isBusy && !isBackupSistema) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                    <button class="btn fw-bold text-white px-4" style="background: #217346;" @onclick='() => ProcessarAcao("api/backup/exportar-excel", "Excel exportado!")' disabled="@isBusy">
                         <i class="bi bi-file-earmark-excel-fill me-2"></i>Exportar Excel
                     </button>
                 </div>
@@ -146,9 +144,9 @@ else
 
 @code {
     private string ApiUrl = "https://localhost:7082";
-    private bool isLoading = true, isBusy, isBackupSistema, isBackupManual, opSucesso, ocultarValores;
-    private int osAbertas, estoqueBaixo, activeMonth, activeYear;
-    private decimal faturamentoTotal;
+    private bool isLoading = true, isBusy, opSucesso, ocultarValores;
+    private int veiculosNoCiclo, estoqueBaixo, activeMonth, activeYear;
+    private decimal faturamentoCiclo;
     private string feedbackMsg = "";
 
     protected override async Task OnInitializedAsync() => await CarregarDados();
@@ -176,28 +174,31 @@ else
         {
             isLoading = true;
             var settings = await Http.GetFromJsonAsync<JsonElement>($"{ApiUrl}/api/settings");
-            activeMonth = settings.GetProperty("activeMonth").GetInt32();
-            activeYear = settings.GetProperty("activeYear").GetInt32();
+            activeMonth = GetInt(settings, "activeMonth");
+            activeYear = GetInt(settings, "activeYear");
 
-            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders");
-            var prodList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/products");
+            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders") ?? new();
+            var prodList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/products") ?? new();
 
-            if (osList != null)
+            var filtradas = osList.Where(x => 
             {
-                // Indicador local: Carros concluídos no período ativo escolhido
-                osAbertas = osList.Count(x => 
-                    x.GetProperty("status").ToString() == "Completed" &&
-                    x.TryGetProperty("completionDate", out var d) && d.ValueKind != JsonValueKind.Null &&
-                    d.GetDateTime().Month == activeMonth && d.GetDateTime().Year == activeYear);
+                if (GetString(x, "status") != "Completed") return false;
 
-                // Faturamento Total acumulado
-                faturamentoTotal = osList
-                    .Where(x => x.GetProperty("status").ToString() == "Completed")
-                    .Sum(x => x.TryGetProperty("amountPaid", out var t) ? t.GetDecimal() : 0);
-            }
+                int am = GetInt(x, "accountingMonth");
+                int ay = GetInt(x, "accountingYear");
 
-            if (prodList != null)
-                estoqueBaixo = prodList.Count(x => x.GetProperty("stockQuantity").GetInt32() <= x.GetProperty("minimumStock").GetInt32());
+                if (am > 0) return am == activeMonth && ay == activeYear;
+
+                var dStr = GetString(x, "completionDate");
+                if (DateTime.TryParse(dStr, out DateTime dt))
+                    return dt.Month == activeMonth && dt.Year == activeYear;
+
+                return false;
+            }).ToList();
+
+            veiculosNoCiclo = filtradas.Count;
+            faturamentoCiclo = filtradas.Sum(x => GetDecimal(x, "amountPaid"));
+            estoqueBaixo = prodList.Count(x => GetInt(x, "stockQuantity") <= GetInt(x, "minimumStock"));
         }
         catch { }
         finally { isLoading = false; StateHasChanged(); }
@@ -209,7 +210,6 @@ else
         if (!confirm) return;
 
         isBusy = true;
-        isBackupSistema = false;
         try {
             var res = await Http.PostAsync($"{ApiUrl}/api/settings/close-period", null);
             if (res.IsSuccessStatusCode) {
@@ -221,32 +221,39 @@ else
         finally { isBusy = false; }
     }
 
-    private async Task ProcessarAcao(bool sistema)
+    private async Task ProcessarAcao(string rota, string msg)
     {
-        if (isBusy) return;
-
         isBusy = true;
-        isBackupSistema = sistema;
-        isBackupManual = true;
-        feedbackMsg = sistema ? "Gerando backup do banco de dados..." : "Gerando planilhas Excel...";
-        opSucesso = false;
-
-        string rota = sistema ? "api/backup/gerar" : "api/backup/exportar-excel";
-
         try {
             var res = await Http.PostAsync($"{ApiUrl}/{rota}", null);
             opSucesso = res.IsSuccessStatusCode;
-            feedbackMsg = opSucesso ? 
-                (sistema ? "Backup concluído!" : "Excel exportado!") : 
-                "Falha na comunicação com o servidor.";
+            feedbackMsg = opSucesso ? msg : "Falha na operação.";
         } catch { opSucesso = false; feedbackMsg = "Erro de conexão."; }
-        finally { isBusy = false; isBackupManual = false; StateHasChanged(); }
+        finally { isBusy = false; StateHasChanged(); }
     }
 
     private async Task AlternarVisibilidade()
     {
         ocultarValores = !ocultarValores;
         await JS.InvokeVoidAsync("localStorage.setItem", "ocultarValoresHome", ocultarValores.ToString());
+    }
+
+    private string GetString(JsonElement el, string name) {
+        if (el.TryGetProperty(name, out var p)) return p.ToString();
+        string pascal = char.ToUpper(name[0]) + name.Substring(1);
+        return el.TryGetProperty(pascal, out p) ? p.ToString() : "";
+    }
+
+    private int GetInt(JsonElement el, string name) {
+        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetInt32();
+        string pascal = char.ToUpper(name[0]) + name.Substring(1);
+        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetInt32() : 0;
+    }
+
+    private decimal GetDecimal(JsonElement el, string name) {
+        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetDecimal();
+        string pascal = char.ToUpper(name[0]) + name.Substring(1);
+        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetDecimal() : 0;
     }
 
     private string MesNome(int m) => System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(m > 0 && m <= 12 ? m : 1).ToUpper();
