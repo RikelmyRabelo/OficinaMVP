@@ -12,18 +12,6 @@ namespace OficinaAPI.Controllers
         private readonly OficinaContext _context;
         public ServiceOrdersController(OficinaContext context) { _context = context; }
 
-        private async Task<DateTime> GetActiveReferenceDate()
-        {
-            var settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
-            var agora = DateTime.Now;
-
-            if (settings != null && (settings.ActiveMonth != agora.Month || settings.ActiveYear != agora.Year))
-            {
-                return new DateTime(settings.ActiveYear, settings.ActiveMonth, 1, agora.Hour, agora.Minute, agora.Second);
-            }
-            return agora;
-        }
-
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetServiceOrders()
         {
@@ -118,56 +106,15 @@ namespace OficinaAPI.Controllers
             return Ok(newItem);
         }
 
-        [HttpPost("{id}/labor")]
-        public async Task<ActionResult<ServiceItem>> AddLabor(int id, AddLaborDTO laborDto)
-        {
-            var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
-            if (os == null) return NotFound();
-
-            var newItem = new ServiceItem
-            {
-                ServiceOrderId = id,
-                Description = laborDto.Description,
-                Price = laborDto.Price,
-                WarrantyPeriod = laborDto.WarrantyPeriod,
-                Quantity = 1,
-                ItemType = "Service"
-            };
-
-            os.TotalAmount += newItem.Price;
-            _context.ServiceItems.Add(newItem);
-            await _context.SaveChangesAsync();
-            return Ok(newItem);
-        }
-
-        [HttpPost("{id}/custom-items")]
-        public async Task<ActionResult<ServiceItem>> AddCustomItem(int id, AddCustomItemDTO customDto)
-        {
-            var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
-            if (os == null) return NotFound();
-
-            var newItem = new ServiceItem
-            {
-                ServiceOrderId = id,
-                Description = customDto.Description,
-                Price = customDto.Price,
-                WarrantyPeriod = customDto.WarrantyPeriod,
-                Quantity = customDto.Quantity,
-                ItemType = "Custom"
-            };
-
-            os.TotalAmount += newItem.Price;
-            _context.ServiceItems.Add(newItem);
-            await _context.SaveChangesAsync();
-            return Ok(newItem);
-        }
-
         [HttpPut("{id}/complete")]
         public async Task<IActionResult> CompleteOrder(int id, [FromBody] CompletionDTO completion)
         {
             var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
             if (os.Status == "Completed") return BadRequest("O.S. já finalizada.");
+
+            // Busca o período ativo definido nas configurações
+            var settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
 
             foreach (var item in os.Items)
             {
@@ -179,171 +126,17 @@ namespace OficinaAPI.Controllers
             }
 
             os.Status = "Completed";
-            os.CompletionDate = await GetActiveReferenceDate();
 
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
+            // 1. DATA REAL: Salva o dia exato do calendário para o Histórico/Tabelas
+            os.CompletionDate = DateTime.Now;
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> SoftDeleteServiceOrder(int id)
-        {
-            var os = await _context.ServiceOrders.FindAsync(id);
-            if (os == null) return NotFound();
-            os.IsDeleted = true;
-            os.DeletionDate = DateTime.Now;
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpDelete("{id}/permanent")]
-        public async Task<IActionResult> PermanentDeleteServiceOrder(int id)
-        {
-            var os = await _context.ServiceOrders.FindAsync(id);
-            if (os == null) return NotFound();
-            _context.ServiceOrders.Remove(os);
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpPut("{id}/restore")]
-        public async Task<IActionResult> RestoreServiceOrder(int id)
-        {
-            var os = await _context.ServiceOrders.FindAsync(id);
-            if (os == null) return NotFound();
-            os.IsDeleted = false;
-            os.DeletionDate = null;
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpPut("{id}/vehicle")]
-        public async Task<IActionResult> UpdateVehicleData(int id, [FromBody] UpdateVehicleDTO request)
-        {
-            var os = await _context.ServiceOrders.Include(o => o.Vehicle).FirstOrDefaultAsync(o => o.Id == id);
-            if (os == null || os.Vehicle == null) return NotFound();
-
-            os.Vehicle.CustomerName = request.CustomerName;
-            os.Vehicle.Model = request.VehicleModel;
-            os.Vehicle.CustomerAddress = request.CustomerAddress;
-            os.Vehicle.CustomerPhone = request.CustomerPhone;
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpPut("{id}/total")]
-        public async Task<IActionResult> UpdateTotalAmount(int id, [FromBody] UpdateTotalDTO request)
-        {
-            var os = await _context.ServiceOrders.FindAsync(id);
-            if (os == null) return NotFound();
-            os.TotalAmount = request.TotalAmount;
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpPut("{id}/payment")]
-        public async Task<IActionResult> UpdateAmountPaid(int id, [FromBody] UpdatePaymentDTO request)
-        {
-            var os = await _context.ServiceOrders.Include(o => o.Payments).FirstOrDefaultAsync(o => o.Id == id);
-            if (os == null) return NotFound();
-
-            os.AmountPaid = request.AmountPaid;
-            os.PaymentMethod = request.PaymentMethod;
-            os.PromisedPaymentDate = request.PromisedPaymentDate;
-
-            _context.ServiceOrderPayments.RemoveRange(os.Payments);
-
-            if (request.Payments != null && request.Payments.Any())
+            // 2. DATA CONTÁBIL: Vincula ao mês ativo no sistema para o Dashboard
+            if (settings != null)
             {
-                var refDate = await GetActiveReferenceDate();
-                foreach (var split in request.Payments)
-                {
-                    os.Payments.Add(new ServiceOrderPayment
-                    {
-                        ServiceOrderId = id,
-                        PaymentMethod = split.PaymentMethod,
-                        Amount = split.Amount,
-                        PaymentDate = split.PaymentDate != DateTime.MinValue ? split.PaymentDate : refDate
-                    });
-                }
+                os.AccountingMonth = settings.ActiveMonth;
+                os.AccountingYear = settings.ActiveYear;
             }
 
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpPut("{id}/items/{itemId}")]
-        public async Task<IActionResult> UpdateServiceItem(int id, int itemId, [FromBody] UpdateServiceItemDTO request)
-        {
-            var item = await _context.ServiceItems.FirstOrDefaultAsync(i => i.Id == itemId && i.ServiceOrderId == id);
-            if (item == null) return NotFound();
-
-            var os = await _context.ServiceOrders.FindAsync(id);
-            if (os != null)
-            {
-                os.TotalAmount -= item.Price;
-                os.TotalAmount += request.Price;
-
-                if (os.Status == "Completed" && item.ProductId != null)
-                {
-                    var p = await _context.Products.FindAsync(item.ProductId);
-                    if (p != null) p.StockQuantity -= (request.Quantity - item.Quantity);
-                }
-            }
-
-            item.Description = request.Description;
-            item.Price = request.Price;
-            item.WarrantyPeriod = request.WarrantyPeriod;
-            item.Quantity = request.Quantity;
-            if (!string.IsNullOrEmpty(request.ItemType)) item.ItemType = request.ItemType;
-
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpDelete("{id}/items/{itemId}")]
-        public async Task<IActionResult> DeleteServiceItem(int id, int itemId)
-        {
-            var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
-            if (os == null) return NotFound();
-
-            var item = os.Items.FirstOrDefault(i => i.Id == itemId);
-            if (item == null) return NotFound();
-
-            if (os.Status == "Completed" && item.ProductId != null)
-            {
-                var p = await _context.Products.FindAsync(item.ProductId);
-                if (p != null) p.StockQuantity += item.Quantity;
-            }
-
-            os.TotalAmount -= item.Price;
-            _context.ServiceItems.Remove(item);
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpGet("{id}/attachments")]
-        public async Task<ActionResult<IEnumerable<ServiceOrderAttachment>>> GetAttachments(int id)
-        {
-            return await _context.Set<ServiceOrderAttachment>().AsNoTracking().Where(a => a.ServiceOrderId == id).ToListAsync();
-        }
-
-        [HttpPost("{id}/attachments")]
-        public async Task<IActionResult> AddAttachment(int id, [FromBody] UploadAttachmentDTO request)
-        {
-            var os = await _context.ServiceOrders.FindAsync(id);
-            if (os == null) return NotFound();
-            _context.Set<ServiceOrderAttachment>().Add(new ServiceOrderAttachment { ServiceOrderId = id, FileName = request.FileName, FileType = request.FileType, Base64Content = request.Base64Content });
-            await _context.SaveChangesAsync();
-            return Ok();
-        }
-
-        [HttpDelete("{id}/attachments/{attachmentId}")]
-        public async Task<IActionResult> DeleteAttachment(int id, int attachmentId)
-        {
-            var a = await _context.Set<ServiceOrderAttachment>().FirstOrDefaultAsync(a => a.Id == attachmentId && a.ServiceOrderId == id);
-            if (a == null) return NotFound();
-            _context.Set<ServiceOrderAttachment>().Remove(a);
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -352,27 +145,46 @@ namespace OficinaAPI.Controllers
         public async Task<ActionResult<FinancialSummaryDTO>> GetFinancialSummary()
         {
             var settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
-            DateTime hoje = DateTime.Now.Date;
-            if (settings != null && (settings.ActiveMonth != hoje.Month || settings.ActiveYear != hoje.Year))
-                hoje = new DateTime(settings.ActiveYear, settings.ActiveMonth, 1);
+            if (settings == null) return BadRequest("Configurações de período não encontradas.");
 
-            DateTime inicioSemana = hoje.AddDays(-(int)hoje.DayOfWeek);
+            // Filtra o faturamento pelo "Mês Contábil" gravado na finalização
+            var query = _context.ServiceOrders.AsNoTracking()
+                .Where(o => o.Status == "Completed" &&
+                            !o.IsDeleted &&
+                            o.AccountingMonth == settings.ActiveMonth &&
+                            o.AccountingYear == settings.ActiveYear);
 
-            var osData = await _context.ServiceOrders.AsNoTracking().Where(o => o.Status == "Completed" && !o.IsDeleted)
-                .Select(o => new { o.Id, o.TotalAmount, o.AmountPaid, o.PaymentMethod, Data = o.CompletionDate ?? DateTime.MinValue }).ToListAsync();
+            var osData = await query.Select(o => new {
+                o.Id,
+                o.TotalAmount,
+                o.AmountPaid,
+                o.PaymentMethod,
+                Data = o.CompletionDate ?? DateTime.MinValue
+            }).ToListAsync();
 
-            var multiPayments = await _context.ServiceOrderPayments.AsNoTracking().Include(p => p.ServiceOrder)
-                .Where(p => p.ServiceOrder != null && p.ServiceOrder.Status == "Completed" && !p.ServiceOrder.IsDeleted)
-                .Select(p => new { p.ServiceOrderId, Metodo = (p.PaymentMethod ?? "").ToUpper(), p.Amount }).ToListAsync();
+            var multiPayments = await _context.ServiceOrderPayments.AsNoTracking()
+                .Include(p => p.ServiceOrder)
+                .Where(p => p.ServiceOrder.Status == "Completed" &&
+                            !p.ServiceOrder.IsDeleted &&
+                            p.ServiceOrder.AccountingMonth == settings.ActiveMonth &&
+                            p.ServiceOrder.AccountingYear == settings.ActiveYear)
+                .Select(p => new { p.ServiceOrderId, Metodo = (p.PaymentMethod ?? "").ToUpper(), p.Amount })
+                .ToListAsync();
 
             var summary = new FinancialSummaryDTO();
+
+            // Define início da semana com base no período contábil para o gráfico
+            DateTime refDate = new DateTime(settings.ActiveYear, settings.ActiveMonth, Math.Min(DateTime.Now.Day, DateTime.DaysInMonth(settings.ActiveYear, settings.ActiveMonth)));
+            DateTime inicioDaSemana = refDate.AddDays(-(int)refDate.DayOfWeek);
 
             foreach (var os in osData)
             {
                 summary.FaturamentoTotal += os.AmountPaid;
                 summary.Inadimplencia += Math.Max(0, os.TotalAmount - os.AmountPaid);
-                if (os.Data >= inicioSemana) summary.FaturamentoSemanal += os.AmountPaid;
 
+                if (os.Data >= inicioDaSemana) summary.FaturamentoSemanal += os.AmountPaid;
+
+                // Soma por método (Tratando pagamentos múltiplos ou únicos)
                 var pgtos = multiPayments.Where(p => p.ServiceOrderId == os.Id).ToList();
                 if (pgtos.Any())
                 {
@@ -394,46 +206,41 @@ namespace OficinaAPI.Controllers
         [HttpGet("cash-balance")]
         public async Task<ActionResult<decimal>> GetCashBalance()
         {
-            var multi = await _context.ServiceOrderPayments.Include(p => p.ServiceOrder).Where(p => p.PaymentMethod == "Dinheiro" && p.ServiceOrder != null && !p.ServiceOrder.IsDeleted).SumAsync(p => p.Amount);
-            var legacy = await _context.ServiceOrders.Where(o => o.PaymentMethod == "Dinheiro" && !o.IsDeleted && !o.Payments.Any()).SumAsync(o => o.AmountPaid);
+            var multi = await _context.ServiceOrderPayments.Include(p => p.ServiceOrder)
+                .Where(p => p.PaymentMethod == "Dinheiro" && p.ServiceOrder != null && !p.ServiceOrder.IsDeleted)
+                .SumAsync(p => p.Amount);
+
+            var legacy = await _context.ServiceOrders
+                .Where(o => o.PaymentMethod == "Dinheiro" && !o.IsDeleted && !o.Payments.Any())
+                .SumAsync(o => o.AmountPaid);
+
             var adjust = await _context.Set<CashTransaction>().SumAsync(t => t.Amount);
+
             return Ok(multi + legacy + adjust);
         }
 
-        [HttpPost("cash-adjustment")]
-        public async Task<IActionResult> PostAdjustment([FromBody] CashAdjustmentDTO req)
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> SoftDeleteServiceOrder(int id)
         {
-            _context.Set<CashTransaction>().Add(new CashTransaction { Amount = req.Amount, Description = req.Description, Date = await GetActiveReferenceDate() });
+            var os = await _context.ServiceOrders.FindAsync(id);
+            if (os == null) return NotFound();
+            os.IsDeleted = true;
+            os.DeletionDate = DateTime.Now;
             await _context.SaveChangesAsync();
-            return Ok();
-        }
-
-        [HttpGet("revenue-adjustments")]
-        public async Task<ActionResult<IEnumerable<RevenueAdjustment>>> GetRevenueAdjustments()
-        {
-            return await _context.Set<RevenueAdjustment>().AsNoTracking().ToListAsync();
-        }
-
-        [HttpPost("revenue-adjustment")]
-        public async Task<IActionResult> PostRevenueAdjustment([FromBody] CashAdjustmentDTO req)
-        {
-            _context.Set<RevenueAdjustment>().Add(new RevenueAdjustment { Amount = req.Amount, Description = req.Description, Date = await GetActiveReferenceDate() });
-            await _context.SaveChangesAsync();
-            return Ok();
+            return NoContent();
         }
 
         public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-        public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
         public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }
-        public class AddLaborDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
-        public class AddCustomItemDTO { public string Description { get; set; } = ""; public int Quantity { get; set; } = 1; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
         public class CompletionDTO { public DateTime CompletionDate { get; set; } }
-        public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
-        public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; public string? ItemType { get; set; } }
-        public class PaymentSplitDTO { public string PaymentMethod { get; set; } = ""; public decimal Amount { get; set; } public DateTime PaymentDate { get; set; } = DateTime.Now; }
-        public class UpdatePaymentDTO { public decimal AmountPaid { get; set; } public string? PaymentMethod { get; set; } public DateTime? PromisedPaymentDate { get; set; } public List<PaymentSplitDTO> Payments { get; set; } = new(); }
-        public class UploadAttachmentDTO { public string FileName { get; set; } = ""; public string FileType { get; set; } = ""; public string Base64Content { get; set; } = ""; }
-        public class CashAdjustmentDTO { public decimal Amount { get; set; } public string Description { get; set; } = ""; }
-        public class FinancialSummaryDTO { public decimal FaturamentoTotal { get; set; } public decimal FaturamentoSemanal { get; set; } public decimal Inadimplencia { get; set; } public decimal TotalPix { get; set; } public decimal TotalCredito { get; set; } public decimal TotalDebito { get; set; } }
+        public class FinancialSummaryDTO
+        {
+            public decimal FaturamentoTotal { get; set; }
+            public decimal FaturamentoSemanal { get; set; }
+            public decimal Inadimplencia { get; set; }
+            public decimal TotalPix { get; set; }
+            public decimal TotalCredito { get; set; }
+            public decimal TotalDebito { get; set; }
+        }
     }
 }

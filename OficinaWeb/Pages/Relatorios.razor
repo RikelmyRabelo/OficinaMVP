@@ -8,8 +8,8 @@
 <div class="container-fluid py-4 px-lg-5">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
         <div>
-            <h1 class="fw-bold mb-1" style="color: #ff6600; letter-spacing: -1px;">DASHBOARD EXECUTIVO <span class="text-white-50 fw-light">2026</span></h1>
-            <p class="text-white-50 mb-0">Análise de performance e fluxo de caixa mensal</p>
+            <h1 class="fw-bold mb-1" style="color: #ff6600; letter-spacing: -1px;">DASHBOARD EXECUTIVO <span class="text-white-50 fw-light">@selectedYear</span></h1>
+            <p class="text-white-50 mb-0">Análise de performance por competência mensal</p>
         </div>
         <div class="d-flex gap-3 align-items-center">
             <div class="input-group shadow-sm">
@@ -57,7 +57,7 @@
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #ffc107 !important;">
                     <div class="card-body p-4">
                         <h6 class="text-white-50 text-uppercase x-small mb-3">Média Diária</h6>
-                        <h2 class="text-white fw-bold mb-1">@((faturamentoMensal / DateTime.DaysInMonth(2026, selectedMonth)).ToString("C2"))</h2>
+                        <h2 class="text-white fw-bold mb-1">@((faturamentoMensal / DateTime.DaysInMonth(selectedYear, selectedMonth)).ToString("C2"))</h2>
                         <small class="text-warning"><i class="bi bi-calculator me-1"></i>Projeção p/ dia</small>
                     </div>
                 </div>
@@ -78,7 +78,7 @@
                 <div class="card border-0 p-4 shadow-lg h-100" style="background: #0d0d0d; border: 1px solid #222 !important;">
                     <div class="d-flex justify-content-between align-items-center mb-5">
                         <h5 class="text-white mb-0 text-uppercase small fw-bold">Frequência de Faturamento por Dia</h5>
-                        <i class="bi bi-info-circle text-white-50" title="Valores baseados na data de conclusão"></i>
+                        <i class="bi bi-info-circle text-white-50" title="Distribuição baseada no dia real de conclusão"></i>
                     </div>
                     <div class="d-flex align-items-end gap-1 pb-2" style="height: 220px; border-bottom: 1px solid #333;">
                         @foreach (var dia in faturamentoDiario)
@@ -93,7 +93,7 @@
                     </div>
                     <div class="d-flex justify-content-between mt-3 px-1 text-white-50 x-small fw-bold">
                         <span>DIA 01</span>
-                        <span>MEIO DO MÊS</span>
+                        <span>DISTRIBUIÇÃO POR DATA REAL</span>
                         <span>FECHAMENTO</span>
                     </div>
                 </div>
@@ -111,8 +111,8 @@
                             <div class="progress" style="height: 8px; background: #222;"><div class="progress-bar bg-success" style="width: @((faturamentoMensal > 0 ? (totalDinheiro / faturamentoMensal) * 100 : 0).ToString("0"))%"></div></div>
                         </div>
                         <div>
-                            <div class="d-flex justify-content-between text-white-50 mb-1 small"><span>Outros / Débito</span><span>@((faturamentoMensal > 0 ? ((faturamentoMensal - totalPix - totalCredito - totalDinheiro) / faturamentoMensal) : 0).ToString("P0"))</span></div>
-                            <div class="progress" style="height: 8px; background: #222;"><div class="progress-bar bg-info" style="width: @((faturamentoMensal > 0 ? ((faturamentoMensal - totalPix - totalCredito - totalDinheiro) / faturamentoMensal) * 100 : 0).ToString("0"))%"></div></div>
+                            <div class="d-flex justify-content-between text-white-50 mb-1 small"><span>PIX / Outros</span><span>@((faturamentoMensal > 0 ? (totalPix / faturamentoMensal) : 0).ToString("P0"))</span></div>
+                            <div class="progress" style="height: 8px; background: #222;"><div class="progress-bar bg-info" style="width: @((faturamentoMensal > 0 ? (totalPix / faturamentoMensal) * 100 : 0).ToString("0"))%"></div></div>
                         </div>
                     </div>
                 </div>
@@ -122,14 +122,14 @@
         <div class="card border-0 p-4 shadow-lg mb-5" style="background: #0d0d0d; border: 1px solid #222 !important;">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h5 class="text-white mb-0 text-uppercase small fw-bold">Histórico Geral de Encerramentos</h5>
-                <span class="badge bg-dark border border-secondary text-white-50 px-3 py-2">@ordensNoMes.Count Registros</span>
+                <span class="badge bg-dark border border-secondary text-white-50 px-3 py-2">@ordensNoMes.Count Registros na Competência</span>
             </div>
             <div class="table-responsive">
                 <table class="table table-dark table-hover align-middle mb-0">
                     <thead class="text-white-50 text-uppercase x-small border-secondary">
                         <tr>
                             <th class="py-3">Status</th>
-                            <th class="py-3">Data</th>
+                            <th class="py-3">Data Real</th>
                             <th class="py-3">Proprietário / Cliente</th>
                             <th class="py-3">Veículo</th>
                             <th class="py-3 text-end">Investimento Total</th>
@@ -152,7 +152,7 @@
                 {
                     <div class="text-center py-5">
                         <i class="bi bi-folder2-open display-1 text-white-50 opacity-25"></i>
-                        <p class="text-white-50 mt-3">Nenhum dado financeiro para o período selecionado.</p>
+                        <p class="text-white-50 mt-3">Nenhum dado financeiro encontrado para o mês de @System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(selectedMonth).</p>
                     </div>
                 }
             </div>
@@ -176,8 +176,7 @@
 
 @code {
     private bool isLoading = true;
-    private int selectedMonth;
-    private int selectedYear;
+    private int selectedMonth, selectedYear;
     private decimal faturamentoMensal, totalPix, totalCredito, totalDinheiro;
     private int carrosResolvidos;
     private List<DiaValor> faturamentoDiario = new();
@@ -221,14 +220,23 @@
             faturamentoMensal = 0; totalPix = 0; totalCredito = 0; totalDinheiro = 0;
             ordensNoMes.Clear();
 
+            // FILTRO INTELIGENTE: Prioriza o novo campo contábil
             var filtradas = osList.Where(x => 
             {
                 if (x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
                 {
+                    // Tenta filtrar por accountingMonth/Year (Competência Contábil)
+                    if (x.TryGetProperty("accountingMonth", out var am) && am.ValueKind != JsonValueKind.Null &&
+                        x.TryGetProperty("accountingYear", out var ay) && ay.ValueKind != JsonValueKind.Null)
+                    {
+                        return am.GetInt32() == selectedMonth && ay.GetInt32() == selectedYear;
+                    }
+                    
+                    // Fallback para O.S. antigas que não têm o campo novo
                     if (x.TryGetProperty("completionDate", out var d) && d.ValueKind != JsonValueKind.Null)
                     {
-                        var data = d.GetDateTime();
-                        return data.Month == selectedMonth && data.Year == selectedYear;
+                        var dt = d.GetDateTime();
+                        return dt.Month == selectedMonth && dt.Year == selectedYear;
                     }
                 }
                 return false;

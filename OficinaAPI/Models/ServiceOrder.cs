@@ -23,8 +23,10 @@ namespace OficinaAPI.Models
         public List<ServiceOrderAttachment> Attachments { get; set; } = new();
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletionDate { get; set; }
-
         public List<ServiceOrderPayment> Payments { get; set; } = new();
+
+        public int? AccountingMonth { get; set; }
+        public int? AccountingYear { get; set; }
     }
 
     public class ServiceItem
