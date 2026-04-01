@@ -56,9 +56,9 @@
             <div class="col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #ffc107 !important;">
                     <div class="card-body p-4">
-                        <h6 class="text-white-50 text-uppercase x-small mb-3">Média Diária Real</h6>
-                        <h2 class="text-white fw-bold mb-1">@((faturamentoMensal / Math.Max(1, faturamentoDiario.Count)).ToString("C2"))</h2>
-                        <small class="text-warning"><i class="bi bi-calculator me-1"></i>Baseado em dias com movimento</small>
+                        <h6 class="text-white-50 text-uppercase x-small mb-3">Total Saídas (O.S.)</h6>
+                        <h2 class="text-white fw-bold mb-1">@totalSaidasEstoque.ToString("C2")</h2>
+                        <small class="text-warning"><i class="bi bi-box-seam me-1"></i>Produtos com código</small>
                     </div>
                 </div>
             </div>
@@ -178,7 +178,7 @@
 @code {
     private bool isLoading = true;
     private int selectedMonth, selectedYear;
-    private decimal faturamentoMensal, totalPix, totalCredito, totalDinheiro;
+    private decimal faturamentoMensal, totalPix, totalCredito, totalDinheiro, totalSaidasEstoque;
     private int carrosResolvidos;
     private List<PontoGrafico> faturamentoDiario = new();
     private List<OSSimple> ordensNoMes = new();
@@ -220,7 +220,7 @@
             isLoading = true;
             var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders") ?? new();
             
-            faturamentoMensal = 0; totalPix = 0; totalCredito = 0; totalDinheiro = 0;
+            faturamentoMensal = 0; totalPix = 0; totalCredito = 0; totalDinheiro = 0; totalSaidasEstoque = 0;
             ordensNoMes.Clear();
 
             var filtradas = osList.Where(x => 
@@ -256,6 +256,18 @@
                 if (metodo == "PIX") totalPix += valor;
                 else if (metodo.Contains("CREDITO") || metodo.Contains("CRÉDITO")) totalCredito += valor;
                 else if (metodo == "DINHEIRO") totalDinheiro += valor;
+
+                // Cálculo das saídas de estoque (itens com ProductId)
+                if (os.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in items.EnumerateArray())
+                    {
+                        if (item.TryGetProperty("productId", out var pid) && pid.ValueKind != JsonValueKind.Null)
+                        {
+                            totalSaidasEstoque += GetDecimal(item, "price");
+                        }
+                    }
+                }
 
                 string cliente = "Consumidor";
                 string veiculo = "Geral";
