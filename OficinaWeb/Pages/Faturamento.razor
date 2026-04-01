@@ -9,7 +9,6 @@
 <PageTitle>Financeiro e Caixa - FREITAS AUTOCENTER</PageTitle>
 
 <div class="container-fluid py-4 px-4 no-print">
-    @* ALERTA DE MODO MANUAL *@
     @if (isPeriodMismatch)
     {
         <div class="alert alert-warning border-warning d-flex align-items-center mb-4 shadow-sm" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;">
@@ -17,7 +16,6 @@
             <div>
                 <strong class="d-block text-uppercase">Atenção: Modo de Operação Manual</strong>
                 Você está visualizando o período de <strong>@MesNome(activeMonth)/@activeYear</strong>.
-                Novos fechamentos serão registrados nesta competência.
             </div>
         </div>
     }
@@ -40,72 +38,6 @@
         </div>
     </div>
 
-    @* SISTEMA DE TOASTS *@
-    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
-        @if (mostrarToast)
-        {
-            <div class="toast show align-items-center text-white @(toastTipo == "erro" ? "bg-danger" : "bg-success") border-0 shadow-lg" role="alert">
-                <div class="d-flex">
-                    <div class="toast-body fw-bold">
-                        <i class="bi @(toastTipo == "erro" ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
-                        @toastMensagem
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => mostrarToast = false"></button>
-                </div>
-            </div>
-        }
-    </div>
-
-    @* MODAL DETALHES (Mantido conforme original) *@
-    @if (mostrarModalDetalhes && transacaoSelecionada != null)
-    {
-        <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content bg-dark text-white border-secondary">
-                    <div class="modal-header border-secondary">
-                        <h5 class="modal-title fw-bold text-info"><i class="bi bi-receipt me-2"></i>Detalhes do Pagamento</h5>
-                        <button type="button" class="btn-close btn-close-white" @onclick="FecharDetalhes"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-dark">
-                            <div>
-                                <h6 class="text-white mb-0">@transacaoSelecionada.Cliente</h6>
-                                <small class="text-warning fw-bold">Ordem de Serviço #@transacaoSelecionada.Id</small>
-                            </div>
-                            <div class="text-end">
-                                <small class="text-muted d-block"><i class="bi bi-calendar-event me-1"></i>Concluído em</small>
-                                <span class="text-white-50">@transacaoSelecionada.DataPagamento.ToString("dd/MM/yyyy HH:mm")</span>
-                            </div>
-                        </div>
-                        <div class="row g-2 mb-3 text-center">
-                            <div class="col-4">
-                                <div class="p-2 bg-black rounded border border-secondary">
-                                    <small class="text-muted d-block" style="font-size: 0.6rem;">VALOR O.S.</small>
-                                    <strong class="text-white">R$ @transacaoSelecionada.ValorTotal.ToString("N2")</strong>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="p-2 bg-black rounded border border-success">
-                                    <small class="text-success d-block fw-bold" style="font-size: 0.6rem;">PAGO</small>
-                                    <strong class="text-success">R$ @transacaoSelecionada.ValorPago.ToString("N2")</strong>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="p-2 bg-black rounded border border-secondary">
-                                    <small class="text-muted d-block" style="font-size: 0.6rem;">FALTA</small>
-                                    <strong class="text-white-50">R$ @transacaoSelecionada.FaltaPagar.ToString("N2")</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer border-secondary">
-                        <button type="button" class="btn btn-outline-light w-100" @onclick="FecharDetalhes">Fechar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-
     @if (isLoading)
     {
         <div class="text-center py-5">
@@ -115,7 +47,6 @@
     }
     else
     {
-        @* CARDS FINANCEIROS *@
         <div class="row g-4 mb-5">
             <div class="col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-top: 4px solid #28a745 !important;">
@@ -123,9 +54,7 @@
                         <i class="bi bi-cash-coin mb-2 d-block text-success fs-1"></i>
                         <h6 class="text-white-50 text-uppercase small fw-bold">Dinheiro na Gaveta</h6>
                         <h2 class="text-white fw-bold mb-3">R$ @totalDinheiro.ToString("N2")</h2>
-                        <div class="d-flex flex-column gap-2 mt-2">
-                            <button class="btn btn-sm btn-outline-danger w-100" @onclick="ZerarGaveta">Retirada Total</button>
-                        </div>
+                        <button class="btn btn-sm btn-outline-danger w-100" @onclick="ZerarGaveta">Retirada Total</button>
                     </div>
                 </div>
             </div>
@@ -162,7 +91,6 @@
         </div>
 
         <div class="row g-4">
-            @* RESUMO LATERAL *@
             <div class="col-md-4">
                 <div class="card border-secondary shadow-sm" style="background: #0a0a0a;">
                     <div class="card-header border-secondary bg-transparent py-3">
@@ -174,18 +102,17 @@
                             <span class="text-success fw-bold fs-4">R$ @faturamentoTotal.ToString("N2")</span>
                         </div>
                         <div class="mb-1">
-                            <span class="text-danger fw-bold d-block small"><i class="bi bi-exclamation-triangle-fill me-1"></i>INADIMPLÊNCIA DO MÊS:</span>
+                            <span class="text-danger fw-bold d-block small"><i class="bi bi-exclamation-triangle-fill me-1"></i>INADIMPLÊNCIA:</span>
                             <span class="text-danger fw-bold fs-5">R$ @totalInadimplencia.ToString("N2")</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            @* TABELA DE TRANSAÇÕES FILTRADA *@
             <div class="col-md-8">
                 <div class="card border-secondary shadow-sm h-100" style="background: #0a0a0a;">
-                    <div class="card-header border-secondary bg-transparent py-3 d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 fw-bold text-white"><i class="bi bi-receipt-cutoff me-2"></i>Histórico de @MesNome(activeMonth)/@activeYear</h5>
+                    <div class="card-header border-secondary bg-transparent py-3">
+                        <h5 class="mb-0 fw-bold text-white"><i class="bi bi-receipt-cutoff me-2"></i>Histórico do Ciclo</h5>
                     </div>
                     <div class="card-body p-0">
                         <table class="table table-dark table-hover mb-0">
@@ -214,7 +141,7 @@
                                 }
                                 else
                                 {
-                                    <tr><td colspan="5" class="text-center py-5 text-white-50">Nenhuma movimentação registrada para este período.</td></tr>
+                                    <tr><td colspan="5" class="text-center py-5 text-white-50">Nenhuma movimentação para @MesNome(activeMonth).</td></tr>
                                 }
                             </tbody>
                         </table>
@@ -224,6 +151,42 @@
         </div>
     }
 </div>
+
+@* MODAL DETALHES *@
+@if (mostrarModalDetalhes && transacaoSelecionada != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold text-info"><i class="bi bi-receipt me-2"></i>Detalhes</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="FecharDetalhes"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <h4 class="text-white mb-0">@transacaoSelecionada.Cliente</h4>
+                    <p class="text-warning mb-4">Ordem de Serviço #@transacaoSelecionada.Id</p>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="p-3 bg-black rounded">
+                                <small class="text-muted d-block">TOTAL O.S.</small>
+                                <strong>R$ @transacaoSelecionada.ValorTotal.ToString("N2")</strong>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-3 bg-black rounded">
+                                <small class="text-success d-block">VALOR PAGO</small>
+                                <strong class="text-success">R$ @transacaoSelecionada.ValorPago.ToString("N2")</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-outline-light w-100" @onclick="FecharDetalhes">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private string ApiUrl = "https://localhost:7082";
@@ -242,13 +205,13 @@
         {
             isLoading = true;
             
-            // 1. Busca configurações para saber qual mês mostrar
+            // 1. Configurações com Helpers
             var settings = await Http.GetFromJsonAsync<JsonElement>($"{ApiUrl}/api/settings");
-            activeMonth = settings.GetProperty("activeMonth").GetInt32();
-            activeYear = settings.GetProperty("activeYear").GetInt32();
+            activeMonth = GetInt(settings, "activeMonth");
+            activeYear = GetInt(settings, "activeYear");
             isPeriodMismatch = (activeMonth != DateTime.Now.Month || activeYear != DateTime.Now.Year);
 
-            // 2. Busca resumo financeiro (O backend já filtra por AccountingMonth)
+            // 2. Resumo financeiro
             var summary = await Http.GetFromJsonAsync<FinancialSummaryDTO>($"{ApiUrl}/api/serviceorders/financial-summary");
             if (summary != null)
             {
@@ -261,35 +224,73 @@
 
             totalDinheiro = await Http.GetFromJsonAsync<decimal>($"{ApiUrl}/api/serviceorders/cash-balance");
 
-            // 3. Busca lista de O.S. e filtra localmente pelo Mês Contábil (AccountingMonth)
+            // 3. Histórico com Helpers e Filtro de Competência
             var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders") ?? new();
             transacoesRecentes = osList
-                .Where(x => x.TryGetProperty("status", out var s) && s.ToString() == "Completed" &&
-                            x.TryGetProperty("accountingMonth", out var am) && am.GetInt32() == activeMonth &&
-                            x.TryGetProperty("accountingYear", out var ay) && ay.GetInt32() == activeYear)
+                .Where(x =>
+                {
+                    string status = GetString(x, "status");
+                    int am = GetInt(x, "accountingMonth");
+                    int ay = GetInt(x, "accountingYear");
+
+                    if (status != "Completed") return false;
+
+                    if (am > 0) return am == activeMonth && ay == activeYear;
+
+                    var dateStr = GetString(x, "completionDate");
+                    if (DateTime.TryParse(dateStr, out DateTime dt))
+                        return dt.Month == activeMonth && dt.Year == activeYear;
+
+                    return false;
+                })
                 .Select(os => MapearTransacao(os))
                 .OrderByDescending(t => t.DataPagamento)
                 .ToList();
         }
-        catch { MostrarErro("Erro ao sincronizar dados do período."); }
+        catch {  }
         finally { isLoading = false; StateHasChanged(); }
     }
 
     private TransacaoVisao MapearTransacao(JsonElement os)
     {
-        decimal pago = os.GetProperty("amountPaid").GetDecimal();
-        decimal total = os.GetProperty("totalAmount").GetDecimal();
-        
+        decimal pago = GetDecimal(os, "amountPaid");
+        decimal total = GetDecimal(os, "totalAmount");
+        string cliente = "Consumidor";
+
+        if (os.TryGetProperty("vehicle", out var vh) && vh.ValueKind != JsonValueKind.Null)
+            cliente = GetString(vh, "customerName");
+
         return new TransacaoVisao
         {
-            Id = os.GetProperty("id").GetInt32(),
-            Cliente = os.GetProperty("vehicle").GetProperty("customerName").ToString(),
-            DataPagamento = os.GetProperty("completionDate").GetDateTime(),
-            Forma = os.TryGetProperty("paymentMethod", out var pm) ? pm.ToString().ToUpper() : "N/I",
+            Id = GetInt(os, "id"),
+            Cliente = cliente,
+            DataPagamento = DateTime.TryParse(GetString(os, "completionDate"), out var dt) ? dt : DateTime.Now,
+            Forma = GetString(os, "paymentMethod").ToUpper(),
             ValorPago = pago,
             ValorTotal = total,
             FaltaPagar = Math.Max(0, total - pago)
         };
+    }
+
+    private string GetString(JsonElement el, string name)
+    {
+        if (el.TryGetProperty(name, out var p)) return p.ToString();
+        string pascal = char.ToUpper(name[0]) + name.Substring(1);
+        return el.TryGetProperty(pascal, out p) ? p.ToString() : "";
+    }
+
+    private int GetInt(JsonElement el, string name)
+    {
+        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetInt32();
+        string pascal = char.ToUpper(name[0]) + name.Substring(1);
+        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetInt32() : 0;
+    }
+
+    private decimal GetDecimal(JsonElement el, string name)
+    {
+        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetDecimal();
+        string pascal = char.ToUpper(name[0]) + name.Substring(1);
+        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetDecimal() : 0;
     }
 
     private string GetBadgeClass(string forma) => forma switch
@@ -308,17 +309,11 @@
     private async Task ZerarGaveta()
     {
         if (await JS.InvokeAsync<bool>("confirm", "Confirmar retirada total do dinheiro em espécie?"))
-            await ExecutarAjuste($"{ApiUrl}/api/serviceorders/cash-adjustment", new CashAdjustmentDTO { Amount = -totalDinheiro, Description = "Retirada Total (Zerar Gaveta)" });
+        {
+            var res = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/cash-adjustment", new CashAdjustmentDTO { Amount = -totalDinheiro, Description = "Retirada Total (Zerar Gaveta)" });
+            if (res.IsSuccessStatusCode) await CarregarDados();
+        }
     }
-
-    private async Task ExecutarAjuste(string url, CashAdjustmentDTO dto)
-    {
-        var res = await Http.PostAsJsonAsync(url, dto);
-        if (res.IsSuccessStatusCode) { await CarregarDados(); MostrarSucesso("Caixa atualizado!"); }
-    }
-
-    private void MostrarSucesso(string m) { toastMensagem = m; toastTipo = "sucesso"; mostrarToast = true; StateHasChanged(); }
-    private void MostrarErro(string m) { toastMensagem = m; toastTipo = "erro"; mostrarToast = true; StateHasChanged(); }
 
     public class FinancialSummaryDTO { public decimal FaturamentoTotal { get; set; } public decimal Inadimplencia { get; set; } public decimal TotalPix { get; set; } public decimal TotalCredito { get; set; } public decimal TotalDebito { get; set; } }
     public class TransacaoVisao { public int Id { get; set; } public string Cliente { get; set; } = ""; public DateTime DataPagamento { get; set; } public string Forma { get; set; } = ""; public decimal ValorPago { get; set; } public decimal ValorTotal { get; set; } public decimal FaltaPagar { get; set; } }
