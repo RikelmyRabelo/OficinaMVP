@@ -9,7 +9,7 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
         <div>
             <h1 class="fw-bold mb-1" style="color: #ff6600; letter-spacing: -1px;">DASHBOARD EXECUTIVO <span class="text-white-50 fw-light">@selectedYear</span></h1>
-            <p class="text-white-50 mb-0">Análise de performance por competência mensal</p>
+            <p class="text-white-50 mb-0">Performance por Ciclo de Trabalho (Competência)</p>
         </div>
         <div class="d-flex gap-3 align-items-center">
             <div class="input-group shadow-sm">
@@ -29,7 +29,7 @@
     {
         <div class="d-flex flex-column align-items-center py-5">
             <div class="spinner-grow text-warning" role="status"></div>
-            <span class="text-white-50 mt-3 text-uppercase small ls-2">Processando base de dados...</span>
+            <span class="text-white-50 mt-3 text-uppercase small ls-2">Sincronizando cronologia financeira...</span>
         </div>
     }
     else
@@ -38,9 +38,9 @@
             <div class="col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #198754 !important;">
                     <div class="card-body p-4">
-                        <h6 class="text-white-50 text-uppercase x-small mb-3">Receita Bruta</h6>
+                        <h6 class="text-white-50 text-uppercase x-small mb-3">Receita do Ciclo</h6>
                         <h2 class="text-white fw-bold mb-1">@faturamentoMensal.ToString("C2")</h2>
-                        <small class="text-success"><i class="bi bi-graph-up me-1"></i>Total do período</small>
+                        <small class="text-success"><i class="bi bi-graph-up me-1"></i>Total apurado</small>
                     </div>
                 </div>
             </div>
@@ -56,9 +56,9 @@
             <div class="col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #ffc107 !important;">
                     <div class="card-body p-4">
-                        <h6 class="text-white-50 text-uppercase x-small mb-3">Média Diária</h6>
-                        <h2 class="text-white fw-bold mb-1">@((faturamentoMensal / DateTime.DaysInMonth(selectedYear, selectedMonth)).ToString("C2"))</h2>
-                        <small class="text-warning"><i class="bi bi-calculator me-1"></i>Projeção p/ dia</small>
+                        <h6 class="text-white-50 text-uppercase x-small mb-3">Média Diária Real</h6>
+                        <h2 class="text-white fw-bold mb-1">@((faturamentoMensal / Math.Max(1, faturamentoDiario.Count)).ToString("C2"))</h2>
+                        <small class="text-warning"><i class="bi bi-calculator me-1"></i>Baseado em dias com movimento</small>
                     </div>
                 </div>
             </div>
@@ -77,24 +77,32 @@
             <div class="col-lg-8">
                 <div class="card border-0 p-4 shadow-lg h-100" style="background: #0d0d0d; border: 1px solid #222 !important;">
                     <div class="d-flex justify-content-between align-items-center mb-5">
-                        <h5 class="text-white mb-0 text-uppercase small fw-bold">Frequência de Faturamento por Dia</h5>
-                        <i class="bi bi-info-circle text-white-50" title="Distribuição baseada no dia real de conclusão"></i>
+                        <h5 class="text-white mb-0 text-uppercase small fw-bold">Faturamento por Sequência Cronológica</h5>
+                        <i class="bi bi-info-circle text-white-50" title="Ordenado pela data real de conclusão dentro deste ciclo"></i>
                     </div>
-                    <div class="d-flex align-items-end gap-1 pb-2" style="height: 220px; border-bottom: 1px solid #333;">
-                        @foreach (var dia in faturamentoDiario)
+                    <div class="d-flex align-items-end gap-1 pb-2" style="height: 220px; border-bottom: 1px solid #333; overflow-x: auto;">
+                        @if (faturamentoDiario.Any())
                         {
-                            <div class="flex-grow-1 text-center group-bar" style="min-width: 15px;">
-                                <div class="chart-bar" 
-                                     style="height: @(CalcularAltura(dia.Valor))px;" 
-                                     title="Dia @dia.Dia: @dia.Valor.ToString("C2")">
+                            @foreach (var ponto in faturamentoDiario)
+                            {
+                                <div class="flex-grow-1 text-center group-bar" style="min-width: 35px;">
+                                    <div class="chart-bar" 
+                                         style="height: @(CalcularAltura(ponto.Valor))px;" 
+                                         title="Data @ponto.DataRotulo: @ponto.Valor.ToString("C2")">
+                                    </div>
+                                    <small class="text-white-50 d-block mt-2" style="font-size: 0.6rem; white-space: nowrap;">@ponto.DataRotulo</small>
                                 </div>
-                            </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="w-100 text-center text-white-50 mb-5 py-5">Nenhum lançamento registrado para este período.</div>
                         }
                     </div>
                     <div class="d-flex justify-content-between mt-3 px-1 text-white-50 x-small fw-bold">
-                        <span>DIA 01</span>
-                        <span>DISTRIBUIÇÃO POR DATA REAL</span>
-                        <span>FECHAMENTO</span>
+                        <span>INÍCIO (@(faturamentoDiario.FirstOrDefault()?.DataRotulo ?? "--/--"))</span>
+                        <span class="text-warning">ORDEM DE LANÇAMENTO</span>
+                        <span>FIM (@(faturamentoDiario.LastOrDefault()?.DataRotulo ?? "--/--"))</span>
                     </div>
                 </div>
             </div>
@@ -121,8 +129,8 @@
 
         <div class="card border-0 p-4 shadow-lg mb-5" style="background: #0d0d0d; border: 1px solid #222 !important;">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5 class="text-white mb-0 text-uppercase small fw-bold">Histórico Geral de Encerramentos</h5>
-                <span class="badge bg-dark border border-secondary text-white-50 px-3 py-2">@ordensNoMes.Count Registros na Competência</span>
+                <h5 class="text-white mb-0 text-uppercase small fw-bold">Histórico Geral do Ciclo</h5>
+                <span class="badge bg-dark border border-secondary text-white-50 px-3 py-2">@ordensNoMes.Count Registros</span>
             </div>
             <div class="table-responsive">
                 <table class="table table-dark table-hover align-middle mb-0">
@@ -140,7 +148,7 @@
                         {
                             <tr class="border-secondary">
                                 <td><span class="badge rounded-pill bg-success-subtle text-success border border-success" style="font-size: 0.65rem;">CONCLUÍDO</span></td>
-                                <td class="small">@os.Data.ToString("dd/MM/yyyy")</td>
+                                <td class="small">@os.Data.ToString("dd/MM/yyyy HH:mm")</td>
                                 <td class="fw-bold">@os.Cliente</td>
                                 <td class="text-white-50">@os.Veiculo</td>
                                 <td class="text-end fw-bold">@os.Total.ToString("C2")</td>
@@ -148,13 +156,6 @@
                         }
                     </tbody>
                 </table>
-                @if (!ordensNoMes.Any())
-                {
-                    <div class="text-center py-5">
-                        <i class="bi bi-folder2-open display-1 text-white-50 opacity-25"></i>
-                        <p class="text-white-50 mt-3">Nenhum dado financeiro encontrado para o mês de @System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(selectedMonth).</p>
-                    </div>
-                }
             </div>
         </div>
     }
@@ -179,11 +180,13 @@
     private int selectedMonth, selectedYear;
     private decimal faturamentoMensal, totalPix, totalCredito, totalDinheiro;
     private int carrosResolvidos;
-    private List<DiaValor> faturamentoDiario = new();
+    private List<PontoGrafico> faturamentoDiario = new();
     private List<OSSimple> ordensNoMes = new();
     private string ApiUrl = "https://localhost:7082";
 
-    protected override async Task OnInitializedAsync() 
+    protected override async Task OnInitializedAsync() => await InitialLoad();
+
+    private async Task InitialLoad()
     {
         await CarregarPeriodoAtivo();
         await LoadData();
@@ -191,14 +194,11 @@
 
     private async Task CarregarPeriodoAtivo()
     {
-        try 
-        {
+        try {
             var settings = await Http.GetFromJsonAsync<JsonElement>($"{ApiUrl}/api/settings");
-            selectedMonth = settings.GetProperty("activeMonth").GetInt32();
-            selectedYear = settings.GetProperty("activeYear").GetInt32();
-        }
-        catch 
-        {
+            selectedMonth = GetInt(settings, "activeMonth");
+            selectedYear = GetInt(settings, "activeYear");
+        } catch {
             selectedMonth = DateTime.Now.Month;
             selectedYear = DateTime.Now.Year;
         }
@@ -206,8 +206,11 @@
 
     private async Task OnMonthChanged(ChangeEventArgs e)
     {
-        selectedMonth = int.Parse(e.Value?.ToString() ?? "1");
-        await LoadData();
+        if (int.TryParse(e.Value?.ToString(), out int m))
+        {
+            selectedMonth = m;
+            await LoadData();
+        }
     }
 
     private async Task LoadData()
@@ -220,25 +223,25 @@
             faturamentoMensal = 0; totalPix = 0; totalCredito = 0; totalDinheiro = 0;
             ordensNoMes.Clear();
 
-            // FILTRO INTELIGENTE: Prioriza o novo campo contábil
             var filtradas = osList.Where(x => 
             {
-                if (x.TryGetProperty("status", out var s) && s.ToString() == "Completed")
+                string status = GetString(x, "status");
+                if (status != "Completed") return false;
+
+                int am = GetInt(x, "accountingMonth");
+                int ay = GetInt(x, "accountingYear");
+
+                if (am > 0 && ay > 0)
                 {
-                    // Tenta filtrar por accountingMonth/Year (Competência Contábil)
-                    if (x.TryGetProperty("accountingMonth", out var am) && am.ValueKind != JsonValueKind.Null &&
-                        x.TryGetProperty("accountingYear", out var ay) && ay.ValueKind != JsonValueKind.Null)
-                    {
-                        return am.GetInt32() == selectedMonth && ay.GetInt32() == selectedYear;
-                    }
-                    
-                    // Fallback para O.S. antigas que não têm o campo novo
-                    if (x.TryGetProperty("completionDate", out var d) && d.ValueKind != JsonValueKind.Null)
-                    {
-                        var dt = d.GetDateTime();
-                        return dt.Month == selectedMonth && dt.Year == selectedYear;
-                    }
+                    return am == selectedMonth && ay == selectedYear;
                 }
+                
+                var dStr = GetString(x, "completionDate");
+                if (!string.IsNullOrEmpty(dStr) && DateTime.TryParse(dStr, out DateTime dt))
+                {
+                    return dt.Month == selectedMonth && dt.Year == selectedYear;
+                }
+
                 return false;
             }).ToList();
 
@@ -246,8 +249,8 @@
 
             foreach (var os in filtradas)
             {
-                decimal valor = os.TryGetProperty("amountPaid", out var v) ? v.GetDecimal() : 0;
-                string metodo = os.TryGetProperty("paymentMethod", out var p) ? p.ToString().ToUpper() : "";
+                decimal valor = GetDecimal(os, "amountPaid");
+                string metodo = GetString(os, "paymentMethod").ToUpper();
 
                 faturamentoMensal += valor;
                 if (metodo == "PIX") totalPix += valor;
@@ -256,29 +259,55 @@
 
                 string cliente = "Consumidor";
                 string veiculo = "Geral";
-                if (os.TryGetProperty("vehicle", out var vh))
+                if (os.TryGetProperty("vehicle", out var vh) && vh.ValueKind != JsonValueKind.Null)
                 {
-                    cliente = vh.TryGetProperty("customerName", out var cn) ? cn.ToString() : "Sem Nome";
-                    veiculo = vh.TryGetProperty("model", out var mod) ? mod.ToString() : "Sem Modelo";
+                    cliente = GetString(vh, "customerName");
+                    veiculo = GetString(vh, "model");
                 }
 
                 ordensNoMes.Add(new OSSimple {
-                    Data = os.GetProperty("completionDate").GetDateTime(),
+                    Data = DateTime.Parse(GetString(os, "completionDate")),
                     Cliente = cliente,
                     Veiculo = veiculo,
                     Total = valor
                 });
             }
 
-            faturamentoDiario = Enumerable.Range(1, DateTime.DaysInMonth(selectedYear, selectedMonth))
-                .Select(dia => new DiaValor { 
-                    Dia = dia, 
-                    Valor = filtradas.Where(f => f.GetProperty("completionDate").GetDateTime().Day == dia)
-                                     .Sum(f => f.TryGetProperty("amountPaid", out var ap) ? ap.GetDecimal() : 0) 
-                }).ToList();
+            ordensNoMes = ordensNoMes.OrderBy(o => o.Data).ToList();
+
+            faturamentoDiario = ordensNoMes
+                .GroupBy(o => o.Data.Date)
+                .Select(g => new PontoGrafico {
+                    DataOriginal = g.Key,
+                    DataRotulo = g.Key.ToString("dd/MM"),
+                    Valor = g.Sum(o => o.Total)
+                })
+                .OrderBy(p => p.DataOriginal)
+                .ToList();
         }
-        catch { } 
+        catch (Exception ex) { Console.WriteLine("Erro ao carregar: " + ex.Message); } 
         finally { isLoading = false; StateHasChanged(); }
+    }
+
+    private string GetString(JsonElement el, string name) {
+        if (el.TryGetProperty(name, out var p)) return p.ToString();
+        string pascal = char.ToUpper(name[0]) + name.Substring(1);
+        if (el.TryGetProperty(pascal, out p)) return p.ToString();
+        return "";
+    }
+
+    private int GetInt(JsonElement el, string name) {
+        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetInt32();
+        string pascal = char.ToUpper(name[0]) + name.Substring(1);
+        if (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) return p.GetInt32();
+        return 0;
+    }
+
+    private decimal GetDecimal(JsonElement el, string name) {
+        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetDecimal();
+        string pascal = char.ToUpper(name[0]) + name.Substring(1);
+        if (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) return p.GetDecimal();
+        return 0;
     }
 
     private int CalcularAltura(decimal valor) 
@@ -287,6 +316,6 @@
         return max == 0 ? 0 : (int)((valor / max) * 180);
     }
 
-    public class DiaValor { public int Dia { get; set; } public decimal Valor { get; set; } }
+    public class PontoGrafico { public DateTime DataOriginal { get; set; } public string DataRotulo { get; set; } = ""; public decimal Valor { get; set; } }
     public class OSSimple { public DateTime Data { get; set; } public string Cliente { get; set; } = ""; public string Veiculo { get; set; } = ""; public decimal Total { get; set; } }
 }
