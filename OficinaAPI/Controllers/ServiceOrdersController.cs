@@ -64,6 +64,8 @@ namespace OficinaAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ServiceOrder>> PostServiceOrder(CreateOSDTO request)
         {
+            var settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
+
             var newVehicle = new Vehicle
             {
                 CustomerName = request.ClientName,
@@ -81,7 +83,9 @@ namespace OficinaAPI.Controllers
                 EntryDate = DateTime.Now,
                 Status = "Pending",
                 TotalAmount = 0,
-                AmountPaid = 0
+                AmountPaid = 0,
+                AccountingMonth = settings?.ActiveMonth ?? DateTime.Now.Month,
+                AccountingYear = settings?.ActiveYear ?? DateTime.Now.Year
             };
             _context.ServiceOrders.Add(os);
             await _context.SaveChangesAsync();
