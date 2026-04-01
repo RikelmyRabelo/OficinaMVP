@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OficinaAPI.Data;
-
 using OficinaAPI.Models;
 
 [Route("api/[controller]")]
@@ -19,7 +18,12 @@ public class SettingsController : ControllerBase
 
         if (settings == null)
         {
-            settings = new SystemSettings { ActiveMonth = DateTime.Now.Month, ActiveYear = DateTime.Now.Year };
+            settings = new SystemSettings
+            {
+                ActiveMonth = DateTime.Now.Month,
+                ActiveYear = DateTime.Now.Year,
+                LastClosingDate = DateTime.Now
+            };
             _context.SystemSettings.Add(settings);
             await _context.SaveChangesAsync();
         }
@@ -42,6 +46,8 @@ public class SettingsController : ControllerBase
         {
             settings.ActiveMonth++;
         }
+
+        settings.LastClosingDate = DateTime.Now;
 
         await _context.SaveChangesAsync();
         return Ok();

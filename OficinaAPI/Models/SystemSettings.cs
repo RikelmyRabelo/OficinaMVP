@@ -3,4 +3,5 @@
     public int Id { get; set; }
     public int ActiveMonth { get; set; }
     public int ActiveYear { get; set; }
+    public DateTime LastClosingDate { get; set; }
 }
