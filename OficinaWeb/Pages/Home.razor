@@ -7,10 +7,10 @@
 <PageTitle>FREITAS AUTOCENTER - Início</PageTitle>
 
 <div class="text-center mb-5">
-    <h1 class="fw-bold display-4" style="color: #ff6600; text-transform: uppercase; letter-spacing: 2px;">
-        <i class="bi bi-gear-wide-connected"></i>
-    </h1>
-    <p class="text-white-50">Período Ativo: <span class="text-white fw-bold">@MesNome(activeMonth)/@activeYear</span></p>
+    <div class="mb-3">
+        <img src="Images/logo.png" alt="FREITAS AUTOCENTER" style="max-width: 300px; height: auto;" />
+    </div>
+    <p class="text-white-50">Ciclo de Trabalho Ativo: <span class="text-white fw-bold">@MesNome(activeMonth)/@activeYear</span></p>
 </div>
 
 @* Cards de Navegação Principal *@
@@ -38,9 +38,9 @@
     <div class="col-md-4">
         <a href="relatorios" class="card text-decoration-none h-100 border-0 shadow-lg nav-card" style="background: #111; border: 1px solid #333;">
             <div class="card-body text-center py-4">
-                <i class="bi bi-graph-up-arrow fs-1 mb-3 d-block text-white"></i>
-                <h4 class="fw-bold" style="color: #ff6600;">Relatórios</h4>
-                <small class="text-white-50 text-uppercase">Estatísticas e Histórico</small>
+                <i class="bi bi-pie-chart-fill fs-1 mb-3 d-block text-white"></i>
+                <h4 class="fw-bold" style="color: #ff6600;">Dashboard</h4>
+                <small class="text-white-50 text-uppercase">Estatísticas e Finanças</small>
             </div>
         </a>
     </div>
@@ -52,7 +52,7 @@
 {
     <div class="text-center py-5">
         <div class="spinner-border text-warning" role="status"></div>
-        <p class="text-white-50 mt-2">Sincronizando período...</p>
+        <p class="text-white-50 mt-2">Sincronizando período contábil...</p>
     </div>
 }
 else
@@ -69,6 +69,7 @@ else
             <div class="p-4 rounded-3 border-start border-4 border-warning h-100" style="background: #0a0a0a;">
                 <h6 class="text-white-50 text-uppercase small">Veículos no Ciclo</h6>
                 <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : veiculosNoCiclo.ToString())</h1>
+                <small class="text-white-50">O.S. finalizadas no período</small>
             </div>
         </div>
 
@@ -94,26 +95,27 @@ else
                             <h6 class="text-white-50 text-uppercase small">Faturamento do Ciclo</h6>
                             <h1 class="text-white display-5 fw-bold mb-0">@(ocultarValores ? "****" : faturamentoCiclo.ToString("C2"))</h1>
                         </div>
-                        <i class="bi bi-box-arrow-in-up-right text-success fs-3 opacity-50"></i>
+                        <i class="bi bi-cash-stack text-success fs-3 opacity-50"></i>
                     </div>
-                    <small class="text-success mt-2 d-block fw-bold small"><i class="bi bi-wallet2 me-1"></i>FECHAMENTO DO CICLO</small>
+                    <small class="text-success mt-2 d-block fw-bold small text-uppercase"><i class="bi bi-arrow-right-circle me-1"></i>Ver Detalhes Financeiros</small>
                 </div>
             </a>
         </div>
     </div>
 
+    @* Painel de Gestão *@
     <div class="p-4 rounded-3 border border-secondary" style="background: #111;">
         <div class="row align-items-center">
             <div class="col-lg-5 mb-3 mb-lg-0 text-center text-lg-start">
                 <h4 class="fw-bold mb-1" style="color: #ff6600;">Gestão do Período Ativo</h4>
-                <p class="text-white-50 small mb-0">Zere os indicadores locais e avance o mês.</p>
+                <p class="text-white-50 small mb-0">Encerre o ciclo atual para resetar os indicadores e avançar.</p>
             </div>
 
             <div class="col-lg-7 text-center text-lg-end">
                 <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-lg-end">
                     <button class="btn btn-danger fw-bold px-4 shadow-sm" @onclick="FecharMesManual" disabled="@isBusy">
                         @if (isBusy) { <span class="spinner-border spinner-border-sm me-2"></span> }
-                        <i class="bi bi-calendar-check-fill me-2"></i>FECHAR MÊS
+                        <i class="bi bi-calendar-check-fill me-2"></i>ENCERRAR MÊS
                     </button>
 
                     <button class="btn btn-outline-light fw-bold" @onclick='() => ProcessarAcao("api/backup/gerar", "Backup concluído!")' disabled="@isBusy">
@@ -206,7 +208,7 @@ else
 
     private async Task FecharMesManual()
     {
-        bool confirm = await JS.InvokeAsync<bool>("confirm", $"Deseja encerrar o período de {MesNome(activeMonth)} e iniciar o próximo?");
+        bool confirm = await JS.InvokeAsync<bool>("confirm", $"Encerrar o ciclo de {MesNome(activeMonth)} e abrir o próximo?");
         if (!confirm) return;
 
         isBusy = true;
@@ -214,20 +216,20 @@ else
             var res = await Http.PostAsync($"{ApiUrl}/api/settings/close-period", null);
             if (res.IsSuccessStatusCode) {
                 opSucesso = true;
-                feedbackMsg = "Período encerrado! Os indicadores locais foram resetados.";
+                feedbackMsg = "Ciclo atualizado com sucesso!";
                 await CarregarDados();
             }
         } catch { opSucesso = false; feedbackMsg = "Erro ao fechar período."; }
         finally { isBusy = false; }
     }
 
-    private async Task ProcessarAcao(string rota, string msg)
+    private async Task ProcessarAcao(string rota, string msgSucesso)
     {
         isBusy = true;
         try {
             var res = await Http.PostAsync($"{ApiUrl}/{rota}", null);
             opSucesso = res.IsSuccessStatusCode;
-            feedbackMsg = opSucesso ? msg : "Falha na operação.";
+            feedbackMsg = opSucesso ? msgSucesso : "Falha na operação.";
         } catch { opSucesso = false; feedbackMsg = "Erro de conexão."; }
         finally { isBusy = false; StateHasChanged(); }
     }
