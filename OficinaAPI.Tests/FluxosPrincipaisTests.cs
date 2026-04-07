@@ -24,7 +24,6 @@ namespace OficinaAPI.Tests
             return databaseContext;
         }
 
-        // --- NOVOS TESTES: GESTÃO DE PERÍODO (MÊS ATIVO) ---
 
         [Fact]
         public async Task Settings_DeveCriarConfiguracoesIniciais_AoConsultarPelaPrimeiraVez()
@@ -73,8 +72,6 @@ namespace OficinaAPI.Tests
             Assert.Equal(1, settings.ActiveMonth);
             Assert.Equal(2027, settings.ActiveYear);
         }
-
-        // --- TESTES DE FLUXO DE O.S. E ESTOQUE ---
 
         [Fact]
         public async Task OS_AdicionarItem_NaoDeveBaixarEstoqueImediatamente()
@@ -165,9 +162,8 @@ namespace OficinaAPI.Tests
             var res = await controller.GetFinancialSummary();
             var summary = (res.Result as OkObjectResult).Value as ServiceOrdersController.FinancialSummaryDTO;
 
-            // Faturamento Total deve ser a soma de tudo (500 + 600 = 1100)
             Assert.Equal(1100, summary.FaturamentoTotal);
-            // Inadimplência deve refletir a diferença da os2 (1000 - 600 = 400)
+
             Assert.Equal(400, summary.Inadimplencia);
         }
 
@@ -192,6 +188,7 @@ namespace OficinaAPI.Tests
 
             Assert.DoesNotContain(listaAtiva, o => o.Id == os.Id);
             Assert.Contains(listaLixeira, o => o.Id == os.Id);
+
         }
     }
 }

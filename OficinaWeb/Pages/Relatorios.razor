@@ -6,6 +6,7 @@
 <PageTitle>Estatísticas Avançadas - FREITAS AUTOCENTER</PageTitle>
 
 <div class="container-fluid py-4 px-lg-5">
+    @* Header *@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
         <div>
             <h1 class="fw-bold mb-1" style="color: #ff6600; letter-spacing: -1px;">DASHBOARD EXECUTIVO <span class="text-white-50 fw-light">@selectedYear</span></h1>
@@ -34,6 +35,7 @@
     }
     else
     {
+        @* Cards de Resumo *@
         <div class="row g-4 mb-5">
             <div class="col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #198754 !important;">
@@ -53,15 +55,23 @@
                     </div>
                 </div>
             </div>
+            
+            @* Card Total Saídas *@
             <div class="col-md-3">
-                <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #ffc107 !important;">
+                <div class="card h-100 border-0 shadow-sm card-clickable" @onclick="() => showProductModal = true" style="background: #111; border-bottom: 3px solid #ffc107 !important; cursor: pointer;">
                     <div class="card-body p-4">
-                        <h6 class="text-white-50 text-uppercase x-small mb-3">Total Saídas (O.S.)</h6>
-                        <h2 class="text-white fw-bold mb-1">@totalSaidasEstoque.ToString("C2")</h2>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="text-white-50 text-uppercase x-small mb-3">Total Saídas (O.S.)</h6>
+                                <h2 class="text-white fw-bold mb-1">@totalSaidasEstoque.ToString("C2")</h2>
+                            </div>
+                            <i class="bi bi-search text-warning opacity-50"></i>
+                        </div>
                         <small class="text-warning"><i class="bi bi-box-seam me-1"></i>Produtos com código</small>
                     </div>
                 </div>
             </div>
+
             <div class="col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #6c757d !important;">
                     <div class="card-body p-4">
@@ -73,6 +83,7 @@
             </div>
         </div>
 
+        @* Gráfico e Divisão de Meios *@
         <div class="row g-4 mb-5">
             <div class="col-lg-8">
                 <div class="card border-0 p-4 shadow-lg h-100" style="background: #0d0d0d; border: 1px solid #222 !important;">
@@ -127,6 +138,7 @@
             </div>
         </div>
 
+        @* Tabela Principal *@
         <div class="card border-0 p-4 shadow-lg mb-5" style="background: #0d0d0d; border: 1px solid #222 !important;">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h5 class="text-white mb-0 text-uppercase small fw-bold">Histórico Geral do Ciclo</h5>
@@ -161,6 +173,65 @@
     }
 </div>
 
+@* MODAL DE DETALHAMENTO DE PRODUTOS *@
+@if (showProductModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary shadow-lg">
+                <div class="modal-header border-secondary p-4">
+                    <h5 class="modal-title fw-bold text-warning d-flex align-items-center">
+                        <i class="bi bi-box-seam me-2"></i> DETALHAMENTO DE SAÍDAS DE ESTOQUE
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => showProductModal = false"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive" style="max-height: 500px;">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead class="sticky-top bg-dark text-white-50 x-small text-uppercase border-secondary">
+                                <tr>
+                                    <th class="p-3">Data</th>
+                                    <th class="p-3">Produto</th>
+                                    <th class="p-3">Cliente</th>
+                                    <th class="p-3 text-center">Qtd</th>
+                                    <th class="p-3 text-end">Valor Saída</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (produtosSaidaList.Any())
+                                {
+                                    @foreach (var item in produtosSaidaList.OrderByDescending(i => i.Data))
+                                    {
+                                        <tr class="border-secondary">
+                                            <td class="p-3 small text-white-50">@item.Data.ToString("dd/MM/yy")</td>
+                                            <td class="p-3 fw-bold">@item.Descricao</td>
+                                            <td class="p-3 small">@item.Cliente</td>
+                                            <td class="p-3 text-center"><span class="badge bg-secondary">@item.Quantidade</span></td>
+                                            <td class="p-3 text-end fw-bold text-warning">@item.ValorTotal.ToString("C2")</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center py-5 text-white-50">Nenhum produto com código registrado neste ciclo.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary p-3 bg-black">
+                    <div class="w-100 d-flex justify-content-between align-items-center">
+                        <span class="text-white-50 small">Total acumulado em peças:</span>
+                        <h4 class="text-warning fw-bold mb-0">@totalSaidasEstoque.ToString("C2")</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <style>
     .x-small { font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; }
     .chart-bar { 
@@ -173,15 +244,18 @@
     .chart-bar:hover { opacity: 1; transform: scaleX(1.1); cursor: crosshair; filter: brightness(1.2); }
     .table-hover tbody tr:hover { background-color: #151515 !important; }
     .ls-2 { letter-spacing: 2px; }
+    .card-clickable:hover { transform: translateY(-3px); transition: 0.2s; filter: brightness(1.2); }
 </style>
 
 @code {
     private bool isLoading = true;
+    private bool showProductModal = false;
     private int selectedMonth, selectedYear;
     private decimal faturamentoMensal, totalPix, totalCredito, totalDinheiro, totalSaidasEstoque;
     private int carrosResolvidos;
     private List<PontoGrafico> faturamentoDiario = new();
     private List<OSSimple> ordensNoMes = new();
+    private List<ProductExit> produtosSaidaList = new();
     private string ApiUrl = "https://localhost:7082";
 
     protected override async Task OnInitializedAsync() => await InitialLoad();
@@ -222,6 +296,7 @@
             
             faturamentoMensal = 0; totalPix = 0; totalCredito = 0; totalDinheiro = 0; totalSaidasEstoque = 0;
             ordensNoMes.Clear();
+            produtosSaidaList.Clear();
 
             var filtradas = osList.Where(x => 
             {
@@ -231,16 +306,11 @@
                 int am = GetInt(x, "accountingMonth");
                 int ay = GetInt(x, "accountingYear");
 
-                if (am > 0 && ay > 0)
-                {
-                    return am == selectedMonth && ay == selectedYear;
-                }
+                if (am > 0 && ay > 0) return am == selectedMonth && ay == selectedYear;
                 
                 var dStr = GetString(x, "completionDate");
                 if (!string.IsNullOrEmpty(dStr) && DateTime.TryParse(dStr, out DateTime dt))
-                {
                     return dt.Month == selectedMonth && dt.Year == selectedYear;
-                }
 
                 return false;
             }).ToList();
@@ -251,23 +321,12 @@
             {
                 decimal valor = GetDecimal(os, "amountPaid");
                 string metodo = GetString(os, "paymentMethod").ToUpper();
+                DateTime dataConclusao = DateTime.Parse(GetString(os, "completionDate"));
 
                 faturamentoMensal += valor;
                 if (metodo == "PIX") totalPix += valor;
                 else if (metodo.Contains("CREDITO") || metodo.Contains("CRÉDITO")) totalCredito += valor;
                 else if (metodo == "DINHEIRO") totalDinheiro += valor;
-
-                // Cálculo das saídas de estoque (itens com ProductId)
-                if (os.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var item in items.EnumerateArray())
-                    {
-                        if (item.TryGetProperty("productId", out var pid) && pid.ValueKind != JsonValueKind.Null)
-                        {
-                            totalSaidasEstoque += GetDecimal(item, "price");
-                        }
-                    }
-                }
 
                 string cliente = "Consumidor";
                 string veiculo = "Geral";
@@ -277,8 +336,29 @@
                     veiculo = GetString(vh, "model");
                 }
 
+                // Processamento de Itens de Estoque (Saídas)
+                if (os.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in items.EnumerateArray())
+                    {
+                        if (item.TryGetProperty("productId", out var pid) && pid.ValueKind != JsonValueKind.Null)
+                        {
+                            decimal precoItem = GetDecimal(item, "price");
+                            totalSaidasEstoque += precoItem;
+
+                            produtosSaidaList.Add(new ProductExit {
+                                Data = dataConclusao,
+                                Descricao = GetString(item, "description"),
+                                Cliente = cliente,
+                                Quantidade = GetInt(item, "quantity"),
+                                ValorTotal = precoItem
+                            });
+                        }
+                    }
+                }
+
                 ordensNoMes.Add(new OSSimple {
-                    Data = DateTime.Parse(GetString(os, "completionDate")),
+                    Data = dataConclusao,
                     Cliente = cliente,
                     Veiculo = veiculo,
                     Total = valor
@@ -286,7 +366,6 @@
             }
 
             ordensNoMes = ordensNoMes.OrderBy(o => o.Data).ToList();
-
             faturamentoDiario = ordensNoMes
                 .GroupBy(o => o.Data.Date)
                 .Select(g => new PontoGrafico {
@@ -294,40 +373,41 @@
                     DataRotulo = g.Key.ToString("dd/MM"),
                     Valor = g.Sum(o => o.Total)
                 })
-                .OrderBy(p => p.DataOriginal)
-                .ToList();
+                .OrderBy(p => p.DataOriginal).ToList();
         }
-        catch (Exception ex) { Console.WriteLine("Erro ao carregar: " + ex.Message); } 
+        catch (Exception ex) { Console.WriteLine("Erro: " + ex.Message); } 
         finally { isLoading = false; StateHasChanged(); }
     }
 
+    // Helpers
     private string GetString(JsonElement el, string name) {
         if (el.TryGetProperty(name, out var p)) return p.ToString();
         string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        if (el.TryGetProperty(pascal, out p)) return p.ToString();
-        return "";
+        return el.TryGetProperty(pascal, out p) ? p.ToString() : "";
     }
-
     private int GetInt(JsonElement el, string name) {
         if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetInt32();
         string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        if (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) return p.GetInt32();
-        return 0;
+        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetInt32() : 0;
     }
-
     private decimal GetDecimal(JsonElement el, string name) {
         if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetDecimal();
         string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        if (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) return p.GetDecimal();
-        return 0;
+        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetDecimal() : 0;
     }
-
-    private int CalcularAltura(decimal valor) 
-    {
+    private int CalcularAltura(decimal valor) {
         var max = faturamentoDiario.Any() ? faturamentoDiario.Max(d => d.Valor) : 0;
         return max == 0 ? 0 : (int)((valor / max) * 180);
     }
 
+    // Classes DTO
+    public class ProductExit {
+        public DateTime Data { get; set; }
+        public string Descricao { get; set; } = "";
+        public string Cliente { get; set; } = "";
+        public int Quantidade { get; set; }
+        public decimal ValorTotal { get; set; }
+    }
     public class PontoGrafico { public DateTime DataOriginal { get; set; } public string DataRotulo { get; set; } = ""; public decimal Valor { get; set; } }
     public class OSSimple { public DateTime Data { get; set; } public string Cliente { get; set; } = ""; public string Veiculo { get; set; } = ""; public decimal Total { get; set; } }
 }

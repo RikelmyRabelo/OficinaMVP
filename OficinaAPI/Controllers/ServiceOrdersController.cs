@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using OficinaAPI.Data;
 using OficinaAPI.Models;
+using System.Text.Json;
 
 namespace OficinaAPI.Controllers
 {
@@ -284,7 +285,26 @@ namespace OficinaAPI.Controllers
                 }
             }
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Verifica se a OS ainda existe no banco
+                if (!_context.ServiceOrders.Any(e => e.Id == id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    // Recarrega a entidade para atualizar os tokens de concorrência e tenta novamente
+                    var entry = _context.Entry(os);
+                    await entry.GetDatabaseValuesAsync();
+                    await _context.SaveChangesAsync();
+                }
+            }
+
             return NoContent();
         }
 
