@@ -227,18 +227,46 @@
                                 <div class="d-flex flex-column align-items-end mt-2" style="min-width: 250px;">
                                     @if (editandoTotal)
                                     {
-                                        <div class="d-flex align-items-center justify-content-end gap-2 mb-1 w-100">
-                                            <small class="text-secondary fw-bold">TOTAL:</small>
-                                            <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end" @bind="novoTotal" />
-                                            <button class="btn btn-sm btn-success py-0 px-2" @onclick="SalvarTotal"><i class="bi bi-check-lg"></i></button>
-                                            <button class="btn btn-sm btn-outline-secondary py-0 px-2" @onclick="() => editandoTotal = false"><i class="bi bi-x-lg"></i></button>
+                                        <div class="d-flex flex-column align-items-end gap-2 mb-1 bg-black p-2 rounded border border-secondary w-100">
+                                            <div class="d-flex align-items-center justify-content-between w-100">
+                                                <small class="text-secondary fw-bold">SUBTOTAL:</small>
+                                                <span class="text-white">R$ @sel.Items.Sum(i => i.Price).ToString("N2")</span>
+                                            </div>
+                                            <div class="d-flex align-items-center justify-content-between w-100">
+                                                <small class="text-danger fw-bold">DESCONTO:</small>
+                                                <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end w-50" @bind="novoDesconto" @bind:after="AtualizarNovoTotal" />
+                                            </div>
+                                            <div class="d-flex align-items-center justify-content-between w-100 border-top border-secondary pt-1 mt-1">
+                                                <small class="text-success fw-bold">NOVO TOTAL:</small>
+                                                <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end w-50" @bind="novoTotal" @bind:after="AtualizarNovoDesconto" />
+                                            </div>
+                                            <div class="d-flex justify-content-end gap-2 w-100 mt-2">
+                                                <button class="btn btn-sm btn-success flex-grow-1 fw-bold" @onclick="SalvarTotal"><i class="bi bi-check-lg me-1"></i>Salvar Total</button>
+                                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => editandoTotal = false">Cancelar</button>
+                                            </div>
                                         </div>
                                     }
                                     else
                                     {
-                                        <h5 class="text-success fw-bold mb-1" style="cursor: pointer;" @onclick="IniciarEdicaoTotal" title="Editar Total (Desconto)">
-                                            <small class="text-secondary fw-bold me-1 fs-6">TOTAL:</small> R$ @sel.TotalAmount.ToString("N2") <i class="bi bi-pencil fs-6 text-secondary ms-1"></i>
-                                        </h5>
+                                        var subTotalExibicao = sel.Items.Sum(i => i.Price);
+                                        var descontoExibicao = subTotalExibicao - sel.TotalAmount;
+                                        <div class="text-end" style="cursor: pointer;" @onclick="IniciarEdicaoTotal" title="Editar Total / Aplicar Desconto">
+                                            @if (descontoExibicao > 0)
+                                            {
+                                                <h5 class="text-white-50 mb-1">
+                                                    <small class="text-secondary fw-bold me-1 fs-6">TOTAL:</small> R$ @subTotalExibicao.ToString("N2")
+                                                </h5>
+                                                <h5 class="text-success fw-bold mb-1">
+                                                    <small class="text-secondary fw-bold me-1 fs-6">VALOR COM DESCONTO:</small> R$ @sel.TotalAmount.ToString("N2") <i class="bi bi-pencil fs-6 text-secondary ms-1"></i>
+                                                </h5>
+                                            }
+                                            else
+                                            {
+                                                <h5 class="text-success fw-bold mb-1">
+                                                    <small class="text-secondary fw-bold me-1 fs-6">TOTAL:</small> R$ @sel.TotalAmount.ToString("N2") <i class="bi bi-pencil fs-6 text-secondary ms-1"></i>
+                                                </h5>
+                                            }
+                                        </div>
                                     }
 
                                     @if (editandoPagamento)
@@ -279,10 +307,10 @@
                                     else
                                     {
                                         <div class="text-end" style="cursor: pointer;" @onclick="IniciarEdicaoPagamento" title="Clique para registrar pagamento">
-                                            <h6 class="text-info fw-bold mb-0">
-                                                <small class="text-secondary fw-bold me-1">PAGO:</small> R$ @sel.AmountPaid.ToString("N2")
-                                                <i class="bi bi-pencil text-secondary ms-1" style="font-size: 0.8rem;"></i>
-                                            </h6>
+                                            <h5 class="text-info fw-bold mb-0">
+                                                <small class="text-secondary fw-bold me-1 fs-6">PAGO:</small> R$ @sel.AmountPaid.ToString("N2")
+                                                <i class="bi bi-pencil fs-6 text-secondary ms-1"></i>
+                                            </h5>
                                             @if (sel.Payments != null && sel.Payments.Any())
                                             {
                                                 <div class="d-flex flex-wrap justify-content-end gap-1 mt-1">
@@ -624,8 +652,11 @@
     bool mostrarModalExclusao = false;
     bool editandoCabecalho = false;
     UpdateVehicleDTO editRequest = new();
+    
     bool editandoTotal = false;
     decimal novoTotal = 0;
+    decimal novoDesconto = 0;
+    
     bool editandoPagamento = false;
     List<PaymentSplitDTO> listaPagamentosEmEdicao = new();
     DateTime? novaDataPromessa = null;
@@ -795,8 +826,32 @@
         catch { }
     }
 
-    void IniciarEdicaoTotal() { if (sel == null) return;
-        novoTotal = sel.TotalAmount; editandoTotal = true; }
+    void IniciarEdicaoTotal() { 
+        if (sel == null) return;
+        novoTotal = sel.TotalAmount; 
+        novoDesconto = sel.Items.Sum(i => i.Price) - sel.TotalAmount;
+        if (novoDesconto < 0) novoDesconto = 0;
+        editandoTotal = true; 
+    }
+
+    void AtualizarNovoTotal()
+    {
+        if (sel != null)
+        {
+            novoTotal = sel.Items.Sum(i => i.Price) - novoDesconto;
+            if (novoTotal < 0) novoTotal = 0;
+        }
+    }
+
+    void AtualizarNovoDesconto()
+    {
+        if (sel != null)
+        {
+            novoDesconto = sel.Items.Sum(i => i.Price) - novoTotal;
+            if (novoDesconto < 0) novoDesconto = 0;
+        }
+    }
+
     async Task SalvarTotal()
     {
         if (sel == null) return;
