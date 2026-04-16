@@ -39,7 +39,7 @@ namespace OficinaAPI.Controllers
                     .ToListAsync();
                 wsEstoque.Cell(1, 1).InsertTable(produtos);
 
-                // 2. VENDAS (Ordens de Serviço)
+                // 2. VENDAS (Ordens de Serviço e outras informações do sistema)
                 var wsVendas = workbook.Worksheets.Add("Vendas_OS");
                 var ordensBanco = await _context.ServiceOrders.Include(s => s.Vehicle).Include(s => s.Items)
                     .Where(s => s.Status == "Completed" && !s.IsDeleted).ToListAsync();
@@ -54,7 +54,7 @@ namespace OficinaAPI.Controllers
                 }).ToList();
                 wsVendas.Cell(1, 1).InsertTable(vendasParaExcel);
 
-                // 3. NOTAS (Antigos Avulsos e Notas Gerais)
+                // 3. NOTAS (Antigos Avulsos e Notas Gerais que vão pro Excel)
                 var wsNotas = workbook.Worksheets.Add("Notas_e_Avulsos");
                 var notas = await _context.Notes.AsNoTracking()
                     .Select(n => new { Data = n.CreatedAt, Conteúdo = n.Content })
