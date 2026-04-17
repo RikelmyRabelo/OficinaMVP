@@ -34,6 +34,12 @@
         }
         <div class="print-field" style="top: 26.7%; left: 22%;">@Os.Vehicle?.Model</div>
         <div class="print-field" style="top: 34%; left: 30%;">@Os.EntryDate.ToString("dd/MM/yyyy")</div>
+        
+        @if (Os.CompletionDate.HasValue)
+        {
+            <div class="print-field" style="top: 34%; left: 65%;">@Os.CompletionDate.Value.ToString("dd/MM/yyyy")</div>
+            <div class="print-field" style="top: 34%; left: 87%;">@Os.CompletionDate.Value.ToString("HH:mm")</div>
+        }
 
         @* SEÇÃO DE PEÇAS *@
         @{
@@ -90,6 +96,19 @@
                     <span style="position:absolute; left:0;"><strong>[M.O]</strong> @item.Description</span>
                     <span style="position:absolute; right:0;">R$ @item.Price.ToString("N2")</span>
                 </div>
+            }
+
+            @* DESCONTO *@
+            @{
+                decimal subTotal = Os.Items.Sum(i => i.Price);
+                decimal desconto = subTotal - Os.TotalAmount;
+                if (desconto > 0)
+                {
+                    <div style="position:relative; height: 14pt; margin-top: 4pt; color: #cc0000;">
+                        <span style="position:absolute; left:0;"><strong>[DESCONTO APLICADO]</strong></span>
+                        <span style="position:absolute; right:0;">- R$ @desconto.ToString("N2")</span>
+                    </div>
+                }
             }
         </div>
 
