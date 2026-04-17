@@ -97,14 +97,16 @@
                     <span style="position:absolute; right:0;">R$ @item.Price.ToString("N2")</span>
                 </div>
             }
+        </div>
 
-            @* DESCONTO *@
+        @* SEÇÃO DE OBSERVAÇÕES (DESCONTO) *@
+        <div class="print-field" style="top: 76.5%; left: 7.5%; width: 85%;">
             @{
                 decimal subTotal = Os.Items.Sum(i => i.Price);
                 decimal desconto = subTotal - Os.TotalAmount;
                 if (desconto > 0)
                 {
-                    <div style="position:relative; height: 14pt; margin-top: 4pt; color: #cc0000;">
+                    <div style="position:relative; height: 14pt; color: #000;">
                         <span style="position:absolute; left:0;"><strong>[DESCONTO APLICADO]</strong></span>
                         <span style="position:absolute; right:0;">- R$ @desconto.ToString("N2")</span>
                     </div>
