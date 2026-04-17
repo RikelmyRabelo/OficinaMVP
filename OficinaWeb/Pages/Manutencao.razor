@@ -5,6 +5,7 @@
 @using System.Net.Http.Json
 @using OficinaWeb.Models
 @using System.Text.Json
+@using System.Globalization
 
 <PageTitle>Oficina - FREITAS AUTOCENTER</PageTitle>
 
@@ -300,8 +301,26 @@
 
                                             <div class="d-flex w-100 gap-2 mt-2">
                                                 <button class="btn btn-sm btn-info flex-grow-1 fw-bold" @onclick="SalvarPagamento"><i class="bi bi-check-lg text-dark me-1"></i>Salvar</button>
+                                                <button class="btn btn-sm btn-success fw-bold" title="Gerar QR Code PIX" @onclick="() => GerarCobrancaPix(sel.RemainingAmount)"><i class="bi bi-qr-code"></i> PIX</button>
                                                 <button class="btn btn-sm btn-outline-secondary" @onclick="CancelarEdicaoPagamento">Cancelar</button>
                                             </div>
+                                            
+                                            @if (mostrarPix)
+                                            {
+                                                <div class="mt-2 p-3 bg-white rounded text-center w-100 shadow">
+                                                    <h6 class="text-dark fw-bold mb-2">QR Code PIX (R$ @valorPixGerado.ToString("N2"))</h6>
+                                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=@Uri.EscapeDataString(pixCopiaCola)" alt="QR Code PIX" class="mb-2 border border-secondary p-1" />
+                                                    <input type="text" class="form-control form-control-sm text-center mb-2" style="font-size: 0.7rem;" value="@pixCopiaCola" readonly />
+                                                    <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                                        <button class="btn btn-sm btn-outline-dark" @onclick="CopiarPix"><i class="bi bi-clipboard me-1"></i>Copiar</button>
+                                                        <button class="btn btn-sm btn-success" @onclick="EnviarPixMeuCelular" title="Enviar para meu WhatsApp"><i class="bi bi-phone"></i> Meu Celular</button>
+                                                        @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerPhone))
+                                                        {
+                                                            <button class="btn btn-sm btn-outline-success" @onclick="EnviarPixCliente" title="Enviar para o WhatsApp do cliente"><i class="bi bi-whatsapp"></i> Cliente</button>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
                                         </div>
                                     }
                                     else
@@ -614,6 +633,16 @@
 }
 
 @code {
+    
+    private string chavePix = "62155886365"; // chave pix
+    private string nomeRecebedor = "Talysson Rodrigo"; // conta
+    private string cidadeRecebedor = "Morros - Ma"; // cidade
+    private string meuNumeroWhatsApp = "5598970212928"; // número
+
+    bool mostrarPix = false;
+    string pixCopiaCola = "";
+    decimal valorPixGerado = 0;
+
     private ServiceOrderDTO? osParaRelatorio;
 
     private async Task GerarRelatorioSaida(ServiceOrderDTO os)
@@ -712,6 +741,7 @@
     async Task Selecionar(ServiceOrderDTO os)
     {
         sel = os;
+        mostrarPix = false; // Resetar PIX ao trocar de OS
         dataEntregaManual = DateTime.Now; editandoCabecalho = false; editandoTotal = false; editandoPagamento = false;
         try { sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{os.Id}/attachments") ?? new(); }
         catch { sel.Attachments = new(); }
@@ -863,6 +893,7 @@
     {
         if (sel == null) return;
         listaPagamentosEmEdicao.Clear();
+        mostrarPix = false;
         if (sel.Payments != null && sel.Payments.Any()) { foreach (var p in sel.Payments) listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = p.PaymentMethod, Amount = p.Amount, PaymentDate = p.PaymentDate }); }
         else if (sel.AmountPaid > 0) listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = sel.PaymentMethod ?? "", Amount = sel.AmountPaid });
         else listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = "", Amount = 0 });
@@ -871,7 +902,7 @@
 
     void AdicionarMetodoPagamentoLista() { listaPagamentosEmEdicao.Add(new PaymentSplitDTO { PaymentMethod = "", Amount = 0 }); }
     void RemoverMetodoPagamentoLista(PaymentSplitDTO item) { listaPagamentosEmEdicao.Remove(item); }
-    void CancelarEdicaoPagamento() { editandoPagamento = false; }
+    void CancelarEdicaoPagamento() { editandoPagamento = false; mostrarPix = false; }
 
     async Task SalvarPagamento()
     {
@@ -885,6 +916,76 @@
             editandoPagamento = false; await AtualizarTela(); MostrarSucesso("Pagamento salvo!");
         }
         catch { }
+    }
+
+    void GerarCobrancaPix(decimal valor)
+    {
+        if (valor <= 0) { MostrarErro("O valor a receber deve ser maior que zero."); return; }
+        valorPixGerado = valor;
+        pixCopiaCola = GerarPayloadPix(chavePix, nomeRecebedor, cidadeRecebedor, valor);
+        mostrarPix = true;
+    }
+
+    string GerarPayloadPix(string chave, string nome, string cidade, decimal valor)
+    {
+        string GetValue(string id, string val) => $"{id}{val.Length.ToString("D2")}{val}";
+
+        nome = nome.Length > 25 ? nome.Substring(0, 25) : nome;
+        cidade = cidade.Length > 15 ? cidade.Substring(0, 15) : cidade;
+
+        string payload = GetValue("00", "01") +
+                         GetValue("26", GetValue("00", "br.gov.bcb.pix") + GetValue("01", chave)) +
+                         GetValue("52", "0000") +
+                         GetValue("53", "986") +
+                         GetValue("54", valor.ToString("F2", CultureInfo.InvariantCulture)) +
+                         GetValue("58", "BR") +
+                         GetValue("59", nome) +
+                         GetValue("60", cidade) +
+                         GetValue("62", GetValue("05", "***"));
+
+        return payload + "6304" + CalcularCRC16(payload + "6304");
+    }
+
+    string CalcularCRC16(string payload)
+    {
+        ushort polinomio = 0x1021;
+        ushort res = 0xFFFF;
+        byte[] data = System.Text.Encoding.UTF8.GetBytes(payload);
+        foreach (byte b in data)
+        {
+            res ^= (ushort)(b << 8);
+            for (int i = 0; i < 8; i++)
+            {
+                if ((res & 0x8000) != 0) res = (ushort)((res << 1) ^ polinomio);
+                else res <<= 1;
+            }
+        }
+        return res.ToString("X4");
+    }
+
+    async Task CopiarPix()
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", pixCopiaCola);
+        MostrarSucesso("Código PIX copiado!");
+    }
+
+    async Task EnviarPixMeuCelular()
+    {
+        string urlImagem = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(pixCopiaCola)}";
+        string texto = $"*PIX - FREITAS AUTOCENTER*\nO.S. #{sel?.Id}\nVeículo: {sel?.Vehicle?.Model}\nValor: *R$ {valorPixGerado:N2}*\n\n*QR Code:* {urlImagem}\n\n*Pix Copia e Cola:*\n{pixCopiaCola}";
+        string url = $"https://wa.me/{meuNumeroWhatsApp}?text={Uri.EscapeDataString(texto)}";
+        await JS.InvokeVoidAsync("open", url, "_blank");
+    }
+
+    async Task EnviarPixCliente()
+    {
+        if (sel?.Vehicle == null || string.IsNullOrEmpty(sel.Vehicle.CustomerPhone)) return;
+        string fone = sel.Vehicle.CustomerPhone.Replace("(", "").Replace(")", "").Replace("-", "").Replace(" ", "");
+        if (!fone.StartsWith("55")) fone = "55" + fone;
+        string urlImagem = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(pixCopiaCola)}";
+        string texto = $"Olá {sel.Vehicle.CustomerName}, segue o PIX para pagamento da sua O.S. #{sel.Id} na Freitas Autocenter.\n\n*Valor:* R$ {valorPixGerado:N2}\n\n*QR Code:* {urlImagem}\n\n*Pix Copia e Cola:*\n{pixCopiaCola}";
+        string url = $"https://wa.me/{fone}?text={Uri.EscapeDataString(texto)}";
+        await JS.InvokeVoidAsync("open", url, "_blank");
     }
 
     void AbrirEdicaoItem(ServiceItemDTO item) 
