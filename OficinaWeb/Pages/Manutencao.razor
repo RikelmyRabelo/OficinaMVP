@@ -887,15 +887,49 @@
         catch { }
     }
 
-    void AbrirEdicaoItem(ServiceItemDTO item) { itemParaEditar = item;
-        itemEditRequest = new UpdateServiceItemDTO { Description = item.Description, Price = item.Price, WarrantyPeriod = item.WarrantyPeriod, Quantity = item.Quantity > 0 ? item.Quantity : 1, ItemType = item.ItemType, MechanicId = item.MechanicId }; mostrarModalEdicaoItem = true; }
+    void AbrirEdicaoItem(ServiceItemDTO item) 
+    { 
+        itemParaEditar = item;
+        
+        decimal unitPrice = item.Price;
+        if (item.ItemType != "Service" && item.Quantity > 1)
+        {
+            unitPrice = item.Price / item.Quantity;
+        }
+
+        itemEditRequest = new UpdateServiceItemDTO { 
+            Description = item.Description, 
+            Price = unitPrice, 
+            WarrantyPeriod = item.WarrantyPeriod, 
+            Quantity = item.Quantity > 0 ? item.Quantity : 1, 
+            ItemType = item.ItemType, 
+            MechanicId = item.MechanicId 
+        }; 
+        mostrarModalEdicaoItem = true; 
+    }
+    
     void FecharEdicaoItem() { mostrarModalEdicaoItem = false; itemParaEditar = null; }
 
     async Task SalvarEdicaoItem()
     {
         if (sel == null || itemParaEditar == null) return;
+
+        var requestParaSalvar = new UpdateServiceItemDTO {
+            Description = itemEditRequest.Description,
+            Price = itemEditRequest.Price,
+            WarrantyPeriod = itemEditRequest.WarrantyPeriod,
+            Quantity = itemEditRequest.Quantity,
+            ItemType = itemEditRequest.ItemType,
+            MechanicId = itemEditRequest.MechanicId
+        };
+
+        if (requestParaSalvar.ItemType != "Service")
+        {
+            requestParaSalvar.Price = requestParaSalvar.Price * (requestParaSalvar.Quantity > 0 ? requestParaSalvar.Quantity : 1);
+        }
+
         try {
-            var response = await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", itemEditRequest);
+            var response = await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", requestParaSalvar);
             if (response.IsSuccessStatusCode) { FecharEdicaoItem(); await AtualizarTela(); MostrarSucesso("Item atualizado!"); }
         }
         catch { }
