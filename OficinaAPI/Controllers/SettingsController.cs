@@ -14,7 +14,7 @@ public class SettingsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<SystemSettings>> GetSettings()
     {
-        var settings = await _context.SystemSettings.FirstOrDefaultAsync();
+        var settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
 
         if (settings == null)
         {

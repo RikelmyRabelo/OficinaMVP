@@ -19,13 +19,14 @@ namespace OficinaAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
         {
-            return await _context.Products.Where(p => !p.IsDeleted).ToListAsync();
+            return await _context.Products.AsNoTracking().Where(p => !p.IsDeleted).ToListAsync();
         }
 
         [HttpGet("low-stock")]
         public async Task<ActionResult<IEnumerable<Product>>> GetLowStock()
         {
             return await _context.Products
+                .AsNoTracking()
                 .Where(p => !p.IsDeleted && p.StockQuantity <= 3)
                 .OrderBy(p => p.StockQuantity)
                 .ToListAsync();
@@ -35,6 +36,7 @@ namespace OficinaAPI.Controllers
         public async Task<ActionResult<Product>> GetProductByCode(string code)
         {
             var product = await _context.Products
+                .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Code == code && !p.IsDeleted);
 
             if (product == null)
@@ -48,12 +50,10 @@ namespace OficinaAPI.Controllers
         [HttpGet("historical-value")]
         public async Task<ActionResult<object>> GetHistoricalStockValue()
         {
-            // Calcula apenas itens que NÃO são externos
             var currentStockValue = await _context.Products
                 .Where(p => !p.IsDeleted && !p.IsExternal)
                 .SumAsync(p => p.StockQuantity * p.SalePrice);
 
-            // Calcula saídas apenas de itens que NÃO são externos
             var exitedItemsValue = await _context.ServiceItems
                 .Include(si => si.Product)
                 .Where(si => si.ProductId != null && !si.Product.IsExternal)
@@ -71,9 +71,10 @@ namespace OficinaAPI.Controllers
         public async Task<ActionResult> GetAuditExitedItems()
         {
             var audit = await _context.ServiceItems
+                .AsNoTracking()
                 .Include(si => si.ServiceOrder)
                 .Include(si => si.Product)
-                .Where(si => si.ProductId != null && !si.Product.IsExternal) // Filtra itens externos da auditoria financeira
+                .Where(si => si.ProductId != null && !si.Product.IsExternal)
                 .Select(si => new
                 {
                     OsId = si.ServiceOrderId,
@@ -102,7 +103,7 @@ namespace OficinaAPI.Controllers
                     existing.SalePrice = product.SalePrice;
                     existing.StockQuantity = product.StockQuantity;
                     existing.MinimumStock = product.MinimumStock;
-                    existing.IsExternal = product.IsExternal; // Atualiza o status de externo na reativação
+                    existing.IsExternal = product.IsExternal;
                     await _context.SaveChangesAsync();
                     return Ok(existing);
                 }
