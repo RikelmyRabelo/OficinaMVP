@@ -72,12 +72,12 @@
 
                     @* Coluna 1: CÓDIGO *@
                     <div class="print-field" style="top: @(topCSS)%; left: @(leftCodCSS)%; width: 55pt;">
-                        @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "AVULSO")
+                        @(item.ProductCodeDisplay == "-" ? "AVULSO" : item.ProductCodeDisplay)
                     </div>
 
                     @* Coluna 2: PRODUTO / SERVIÇO *@
                     <div class="print-field" style="top: @(topCSS)%; left: @(leftDescCSS)%; width: 330pt; text-overflow: ellipsis;">
-                        @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description)@(item.Quantity > 1 ? $" (Qtd: {item.Quantity} - V.Un: R$ {(item.Price / (item.Quantity > 0 ? item.Quantity : 1)):N2})" : "")
+                        @item.ProductDescriptionDisplay@(item.Quantity > 1 ? $" (Qtd: {item.Quantity} - V.Un: R$ {(item.Price / (item.Quantity > 0 ? item.Quantity : 1)):N2})" : "")
                     </div>
 
                     @* Coluna 3: TOTAL *@

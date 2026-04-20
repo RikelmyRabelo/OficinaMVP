@@ -544,11 +544,11 @@
                                             <td class="text-warning small fw-bold">
                                                 @if (isServico) { <span>M.O.</span> }
                                                 else if (isAvulso) { <span>AVULSO</span> }
-                                                else { @(item.Description.Contains(" - ") ? item.Description.Split(" - ")[0] : "-") }
+                                                else { @item.ProductCodeDisplay }
                                             </td>
 
                                             <td>
-                                                <span class="text-white fw-bold">@(item.Description.Contains(" - ") ? item.Description.Split(" - ")[1] : item.Description)</span>
+                                                <span class="text-white fw-bold">@item.ProductDescriptionDisplay</span>
                                                 @if (isServico) { <span class="badge-service ms-1">SERVIÇO</span> }
                                                 else if (isAvulso) { <span class="badge bg-secondary text-light ms-1" style="font-size: 0.6rem;">AVULSO</span> }
 

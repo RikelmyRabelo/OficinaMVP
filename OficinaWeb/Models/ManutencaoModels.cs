@@ -62,6 +62,27 @@ namespace OficinaWeb.Models
         public string ItemType { get; set; } = "Product";
 
         public int PrintLine { get; set; }
+
+        // Propriedades Otimizadas para não processar Split no HTML
+        public string ProductCodeDisplay
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(Description)) return "-";
+                int idx = Description.IndexOf(" - ");
+                return idx > 0 ? Description.Substring(0, idx) : "-";
+            }
+        }
+
+        public string ProductDescriptionDisplay
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(Description)) return "";
+                int idx = Description.IndexOf(" - ");
+                return idx > 0 ? Description.Substring(idx + 3) : Description;
+            }
+        }
     }
 
     public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } public int stockQuantity { get; set; } }
