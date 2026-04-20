@@ -6,6 +6,8 @@
 @using OficinaWeb.Models
 @using System.Text.Json
 @using System.Globalization
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@implements IDisposable
 
 <PageTitle>Oficina - FREITAS AUTOCENTER</PageTitle>
 
@@ -138,9 +140,8 @@
             <div class="list-group shadow-sm" style="max-height: 60vh; overflow-y: auto;">
                 @if (listaExibicao != null)
                 {
-                    foreach (var os in listaExibicao)
-                    {
-                        var isActive = sel?.Id == os.Id;
+                    <Virtualize Items="listaExibicao" Context="os">
+                        @{ var isActive = sel?.Id == os.Id; }
                         <div class="list-group-item list-group-item-action border-secondary text-white mb-2 rounded-0" style="@(isActive ? "background-color: #222; border-left: 4px solid #ff6600;" : "background-color: #111;")" @onclick="() => Selecionar(os)">
                             <div class="d-flex w-100 justify-content-between align-items-center">
                                 <div>
@@ -161,7 +162,7 @@
                                 </div>
                             </div>
                         </div>
-                    }
+                    </Virtualize>
                 }
                 else if (carregandoLista)
                 {
@@ -422,7 +423,7 @@
                                 @if (tipoItem == "peca")
                                 {
                                     <div class="col-md-4">
-                                        <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary mb-1" placeholder="🔍 Buscar por código ou nome..." @bind="filtroProduto" @bind:event="oninput" />
+                                        <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary mb-1" placeholder="🔍 Buscar por código ou nome..." value="@filtroProduto" @oninput="OnFiltroProdutoChanged" />
                                         <select class="form-select bg-dark text-white border-secondary" @bind="novoItem.ProductId">
                                             <option value="0">Selecionar Peça...</option>
                                             @if (produtos != null)
@@ -648,6 +649,8 @@
     string pixCopiaCola = "";
     decimal valorPixGerado = 0;
 
+    private System.Timers.Timer? _debounceTimer;
+
     private ServiceOrderDTO? osParaRelatorio;
 
     private async Task GerarRelatorioSaida(ServiceOrderDTO os)
@@ -705,6 +708,26 @@
     bool imprimindoRelatorioGeral = false;
 
     protected override async Task OnInitializedAsync() { await CarregarDadosIniciais(); }
+
+    private void OnFiltroProdutoChanged(ChangeEventArgs e)
+    {
+        filtroProduto = e.Value?.ToString() ?? "";
+        
+        if (_debounceTimer != null)
+        {
+            _debounceTimer.Stop();
+            _debounceTimer.Dispose();
+        }
+        
+        _debounceTimer = new System.Timers.Timer(300);
+        _debounceTimer.Elapsed += async (sender, args) =>
+        {
+            _debounceTimer.Dispose();
+            _debounceTimer = null;
+            await InvokeAsync(StateHasChanged);
+        };
+        _debounceTimer.Start();
+    }
 
     async Task CarregarDadosIniciais()
     {
@@ -920,4 +943,9 @@
     async Task CarregarComprovantes(InputFileChangeEventArgs e) { if (sel == null) return; var arquivos = e.GetMultipleFiles(10); isUploading = true; StateHasChanged(); foreach (var file in arquivos) { try { using var stream = file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024); using var ms = new MemoryStream(); await stream.CopyToAsync(ms); var base64String = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}"; await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments", new { FileName = file.Name, FileType = file.ContentType, Base64Content = base64String }); } catch { } } isUploading = false; try { sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new(); } catch { } MostrarSucesso("Processado!"); }
 
     async Task RemoverComprovante(int attachmentId) { if (sel == null) return; try { await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments/{attachmentId}"); sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new(); StateHasChanged(); MostrarSucesso("Removido."); } catch { } }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
 }
