@@ -39,6 +39,48 @@ namespace OficinaAPI.Controllers
                 .OrderByDescending(o => o.Id).ToListAsync();
         }
 
+        [HttpGet("active")]
+        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetActiveServiceOrders()
+        {
+            return await _context.ServiceOrders
+                .AsNoTracking()
+                .Include(o => o.Vehicle)
+                .Include(o => o.Items)
+                .Include(o => o.Payments)
+                .Where(o => !o.IsDeleted && o.Status != "Completed")
+                .OrderByDescending(o => o.Id).ToListAsync();
+        }
+
+        [HttpGet("completed")]
+        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetCompletedServiceOrders([FromQuery] int take = 50)
+        {
+            return await _context.ServiceOrders
+                .AsNoTracking()
+                .Include(o => o.Vehicle)
+                .Include(o => o.Items)
+                .Include(o => o.Payments)
+                .Where(o => !o.IsDeleted && o.Status == "Completed")
+                .OrderByDescending(o => o.Id)
+                .Take(take)
+                .ToListAsync();
+        }
+
+        [HttpGet("alerts")]
+        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetCollectionAlerts()
+        {
+            var today = DateTime.Today;
+            return await _context.ServiceOrders
+                .AsNoTracking()
+                .Include(o => o.Vehicle)
+                .Where(o => !o.IsDeleted &&
+                            o.Status == "Completed" &&
+                            (o.TotalAmount - o.AmountPaid) > 0 &&
+                            o.PromisedPaymentDate != null &&
+                            o.PromisedPaymentDate.Value.Date <= today)
+                .OrderBy(o => o.PromisedPaymentDate)
+                .ToListAsync();
+        }
+
         [HttpGet("trash")]
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetTrash()
         {
@@ -94,7 +136,7 @@ namespace OficinaAPI.Controllers
             await _context.SaveChangesAsync();
 
             os.Vehicle = newVehicle;
-            return CreatedAtAction("GetServiceOrders", new { id = os.Id }, os);
+            return Ok(os);
         }
 
         [HttpPost("{id}/items")]
@@ -291,14 +333,12 @@ namespace OficinaAPI.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                // Verifica se a OS ainda existe no banco
                 if (!_context.ServiceOrders.Any(e => e.Id == id))
                 {
                     return NotFound();
                 }
                 else
                 {
-                    // Recarrega a entidade para atualizar os tokens de concorrência e tenta novamente
                     var entry = _context.Entry(os);
                     await entry.GetDatabaseValuesAsync();
                     await _context.SaveChangesAsync();
