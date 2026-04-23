@@ -5,6 +5,7 @@
 @inject IConfiguration Config
 @using System.Net.Http.Json
 @using OficinaWeb.Models
+@using OficinaWeb.Helpers
 @using System.Text.Json
 @using System.Globalization
 @using Microsoft.AspNetCore.Components.Web.Virtualization
@@ -756,11 +757,13 @@
     async Task CarregarDadosIniciais()
     {
         try {
-            await CarregarProdutos();
-            await CarregarMecanicos();
-            await CarregarCatalogoServicos();
-            await CarregarOSAtivas();
-            await CarregarAlertas();
+            await Task.WhenAll(
+                CarregarProdutos(),
+                CarregarMecanicos(),
+                CarregarCatalogoServicos(),
+                CarregarOSAtivas(),
+                CarregarAlertas()
+            );
         }
         catch (Exception ex) { 
             Console.WriteLine(ex.Message);
@@ -853,8 +856,10 @@
     {
         if (novoItem.ProductId == 0) { MostrarErro("Selecione um produto."); return; }
         try {
-            if (novoItem.Price > 0) novoItem.Price = novoItem.Price * (novoItem.Quantity > 0 ? novoItem.Quantity : 1);
-            var response = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", novoItem);
+            var precoFinal = novoItem.Price > 0 ? novoItem.Price * (novoItem.Quantity > 0 ? novoItem.Quantity : 1) : novoItem.Price;
+            var payload = new AddItemInput { ProductId = novoItem.ProductId, Quantity = novoItem.Quantity, Price = precoFinal, WarrantyPeriod = novoItem.WarrantyPeriod };
+            
+            var response = await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items", payload);
             if (!response.IsSuccessStatusCode) { MostrarErro("Erro ao adicionar item."); return; }
             await AtualizarTela(); novoItem = new(); filtroProduto = ""; MostrarSucesso("Peça adicionada.");
         }
@@ -865,8 +870,10 @@
     {
         if (string.IsNullOrEmpty(novoItemAvulso.Description)) { MostrarErro("Descrição obrigatória."); return; }
         try {
-            if (novoItemAvulso.Price > 0) novoItemAvulso.Price = novoItemAvulso.Price * (novoItemAvulso.Quantity > 0 ? novoItemAvulso.Quantity : 1);
-            await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/custom-items", novoItemAvulso);
+            var precoFinal = novoItemAvulso.Price > 0 ? novoItemAvulso.Price * (novoItemAvulso.Quantity > 0 ? novoItemAvulso.Quantity : 1) : novoItemAvulso.Price;
+            var payload = new AddCustomItemInput { Description = novoItemAvulso.Description, Quantity = novoItemAvulso.Quantity, Price = precoFinal, WarrantyPeriod = novoItemAvulso.WarrantyPeriod };
+            
+            await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/custom-items", payload);
             await AtualizarTela(); novoItemAvulso = new(); MostrarSucesso("Produto avulso registrado.");
         } 
         catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao adicionar item avulso."); }
@@ -946,21 +953,9 @@
     void GerarCobrancaPix(decimal valor)
     {
         if (valor <= 0) { MostrarErro("O valor a receber deve ser maior que zero."); return; }
-        valorPixGerado = valor; pixCopiaCola = GerarPayloadPix(chavePix, nomeRecebedor, cidadeRecebedor, valor); mostrarPix = true;
-    }
-
-    string GerarPayloadPix(string chave, string nome, string cidade, decimal valor)
-    {
-        string GetValue(string id, string val) => $"{id}{val.Length.ToString("D2")}{val}";
-        nome = nome.Length > 25 ? nome.Substring(0, 25) : nome; cidade = cidade.Length > 15 ? cidade.Substring(0, 15) : cidade;
-        string payload = GetValue("00", "01") + GetValue("26", GetValue("00", "br.gov.bcb.pix") + GetValue("01", chave)) + GetValue("52", "0000") + GetValue("53", "986") + GetValue("54", valor.ToString("F2", CultureInfo.InvariantCulture)) + GetValue("58", "BR") + GetValue("59", nome) + GetValue("60", cidade) + GetValue("62", GetValue("05", "***"));
-        return payload + "6304" + CalcularCRC16(payload + "6304");
-    }
-
-    string CalcularCRC16(string payload)
-    {
-        ushort polinomio = 0x1021; ushort res = 0xFFFF; byte[] data = System.Text.Encoding.UTF8.GetBytes(payload);
-        foreach (byte b in data) { res ^= (ushort)(b << 8); for (int i = 0; i < 8; i++) { if ((res & 0x8000) != 0) res = (ushort)((res << 1) ^ polinomio); else res <<= 1; } } return res.ToString("X4");
+        valorPixGerado = valor; 
+        pixCopiaCola = PixHelper.GerarPayloadPix(chavePix, nomeRecebedor, cidadeRecebedor, valor); 
+        mostrarPix = true;
     }
 
     async Task CopiarPix() { await JS.InvokeVoidAsync("navigator.clipboard.writeText", pixCopiaCola); MostrarSucesso("Código PIX copiado!"); }
@@ -985,7 +980,8 @@
             { 
                 using var content = new MultipartFormDataContent();
                 
-                var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024));
+                using var stream = file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024);
+                var fileContent = new StreamContent(stream);
                 fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
                 content.Add(fileContent, "file", file.Name);
 
