@@ -2,11 +2,13 @@
 @inject HttpClient Http
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject IConfiguration Config
 @using System.Net.Http.Json
 @using OficinaWeb.Models
 @using System.Text.Json
 @using System.Globalization
 @using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.Extensions.Configuration
 @implements IDisposable
 
 <PageTitle>Oficina - FREITAS AUTOCENTER</PageTitle>
@@ -652,18 +654,28 @@
     private System.Timers.Timer? _debounceTimer;
 
     private ServiceOrderDTO? osParaRelatorio;
+    private bool _iniciarImpressao = false;
+    private string ApiUrl = "";
 
     private async Task GerarRelatorioSaida(ServiceOrderDTO os)
     {
         osParaRelatorio = os;
+        _iniciarImpressao = true;
         StateHasChanged();
-        await Task.Delay(150);
-        await JS.InvokeVoidAsync("window.print");
-        osParaRelatorio = null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_iniciarImpressao)
+        {
+            _iniciarImpressao = false;
+            await JS.InvokeVoidAsync("window.print");
+            osParaRelatorio = null;
+            StateHasChanged();
+        }
     }
 
     private void GerarRelatorioGeralSaidas() { Nav.NavigateTo("relatorio-saidas"); }
-    private string ApiUrl = "https://localhost:7082";
 
     List<ProductListDTO>? produtos;
     List<EmployeeListDTO>? mecanicos;
@@ -707,7 +719,11 @@
     UpdateServiceItemDTO itemEditRequest = new();
     bool imprimindoRelatorioGeral = false;
 
-    protected override async Task OnInitializedAsync() { await CarregarDadosIniciais(); }
+    protected override async Task OnInitializedAsync() 
+    { 
+        ApiUrl = Config["ApiBaseUrl"] ?? "https://localhost:7082";
+        await CarregarDadosIniciais(); 
+    }
 
     private void OnFiltroProdutoChanged(ChangeEventArgs e)
     {
@@ -738,12 +754,15 @@
             await CarregarOSAtivas();
             await CarregarAlertas();
         }
-        catch { MostrarErro("Falha crítica ao conectar com o servidor."); }
+        catch (Exception ex) { 
+            Console.WriteLine(ex.Message);
+            MostrarErro("Falha crítica ao conectar com o servidor."); 
+        }
     }
 
-    async Task CarregarOSAtivas() { try { osAtivas = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/active"); } catch { } }
-    async Task CarregarOSFinalizadas() { try { osFinalizadas = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/completed?take=50"); } catch { } }
-    async Task CarregarAlertas() { try { alertasInadimplencia = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/alerts"); } catch { } }
+    async Task CarregarOSAtivas() { try { osAtivas = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/active"); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao carregar O.S ativas."); } }
+    async Task CarregarOSFinalizadas() { try { osFinalizadas = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/completed?take=50"); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao carregar O.S finalizadas."); } }
+    async Task CarregarAlertas() { try { alertasInadimplencia = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/alerts"); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao carregar alertas."); } }
 
     async Task AlternarAba(bool paraFinalizadas)
     {
@@ -768,9 +787,9 @@
         }
     }
 
-    async Task CarregarCatalogoServicos() { try { catalogoServicos = await Http.GetFromJsonAsync<List<LaborServiceDTO>>($"{ApiUrl}/api/laborservices"); } catch { } }
-    async Task CarregarProdutos() { try { produtos = await Http.GetFromJsonAsync<List<ProductListDTO>>($"{ApiUrl}/api/products"); } catch { } }
-    async Task CarregarMecanicos() { try { mecanicos = await Http.GetFromJsonAsync<List<EmployeeListDTO>>($"{ApiUrl}/api/employees"); } catch { } }
+    async Task CarregarCatalogoServicos() { try { catalogoServicos = await Http.GetFromJsonAsync<List<LaborServiceDTO>>($"{ApiUrl}/api/laborservices"); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao carregar catálogo."); } }
+    async Task CarregarProdutos() { try { produtos = await Http.GetFromJsonAsync<List<ProductListDTO>>($"{ApiUrl}/api/products"); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao carregar produtos."); } }
+    async Task CarregarMecanicos() { try { mecanicos = await Http.GetFromJsonAsync<List<EmployeeListDTO>>($"{ApiUrl}/api/employees"); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao carregar mecânicos."); } }
 
     private void OnServiceSelected(ChangeEventArgs e)
     {
@@ -788,7 +807,7 @@
         mostrarPix = false;
         dataEntregaManual = DateTime.Now; editandoCabecalho = false; editandoTotal = false; editandoPagamento = false;
         try { sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{os.Id}/attachments") ?? new(); }
-        catch { sel.Attachments = new(); }
+        catch (Exception ex) { Console.WriteLine(ex.Message); sel.Attachments = new(); }
         StateHasChanged();
     }
     
@@ -809,7 +828,7 @@
             await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}");
             sel = null; mostrarModalExclusao = false; await AtualizarTela(); MostrarSucesso("O.S. movida para a lixeira.");
         }
-        catch { mostrarModalExclusao = false; MostrarErro("Erro ao excluir a O.S."); }
+        catch (Exception ex) { Console.WriteLine(ex.Message); mostrarModalExclusao = false; MostrarErro("Erro ao excluir a O.S."); }
     }
 
     async Task AbrirOS()
@@ -819,7 +838,7 @@
             await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders", novaOsRequest);
             novaOsRequest = new(); await AtualizarTela(); MostrarSucesso("Ordem de Serviço aberta!");
         }
-        catch { MostrarErro("Falha ao abrir nova O.S."); }
+        catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Falha ao abrir nova O.S."); }
     }
 
     async Task AdicionarItem()
@@ -831,7 +850,7 @@
             if (!response.IsSuccessStatusCode) { MostrarErro("Erro ao adicionar item."); return; }
             await AtualizarTela(); novoItem = new(); filtroProduto = ""; MostrarSucesso("Peça adicionada.");
         }
-        catch { MostrarErro("Erro de conexão."); }
+        catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro de conexão ao adicionar peça."); }
     }
 
     async Task AdicionarItemAvulso()
@@ -841,7 +860,8 @@
             if (novoItemAvulso.Price > 0) novoItemAvulso.Price = novoItemAvulso.Price * (novoItemAvulso.Quantity > 0 ? novoItemAvulso.Quantity : 1);
             await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/custom-items", novoItemAvulso);
             await AtualizarTela(); novoItemAvulso = new(); MostrarSucesso("Produto avulso registrado.");
-        } catch { }
+        } 
+        catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao adicionar item avulso."); }
     }
 
     async Task AdicionarServico()
@@ -850,7 +870,8 @@
         try {
             await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/labor", novoServico);
             await AtualizarTela(); novoServico = new(); MostrarSucesso("Mão de obra registrada.");
-        } catch { }
+        } 
+        catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao adicionar serviço."); }
     }
 
     async Task ApagarItemEmEdicao()
@@ -861,7 +882,8 @@
         try {
             await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}");
             await AtualizarTela(); MostrarSucesso("Item removido!"); FecharEdicaoItem();
-        } catch { }
+        } 
+        catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao apagar item."); }
     }
 
     async Task FinalizarOS()
@@ -870,19 +892,20 @@
             await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/complete", new { CompletionDate = dataEntregaManual });
             await AlternarAba(true); 
             await AtualizarTela(); MostrarSucesso("O.S. finalizada!");
-        } catch { }
+        } 
+        catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao finalizar O.S."); }
     }
 
     async Task VoltarInteligente() { Nav.NavigateTo("/"); }
     void IniciarEdicao() { if (sel?.Vehicle == null) return; editRequest = new UpdateVehicleDTO { CustomerName = sel.Vehicle.CustomerName, VehicleModel = sel.Vehicle.Model, CustomerAddress = sel.Vehicle.CustomerAddress, CustomerPhone = sel.Vehicle.CustomerPhone }; editandoCabecalho = true; }
     void CancelarEdicao() { editandoCabecalho = false; }
 
-    async Task SalvarEdicao() { if (sel == null) return; try { await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/vehicle", editRequest); editandoCabecalho = false; await AtualizarTela(); MostrarSucesso("Dados atualizados!"); } catch { } }
+    async Task SalvarEdicao() { if (sel == null) return; try { await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/vehicle", editRequest); editandoCabecalho = false; await AtualizarTela(); MostrarSucesso("Dados atualizados!"); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao atualizar dados."); } }
 
     void IniciarEdicaoTotal() { if (sel == null) return; novoTotal = sel.TotalAmount; novoDesconto = sel.Items.Sum(i => i.Price) - sel.TotalAmount; if (novoDesconto < 0) novoDesconto = 0; editandoTotal = true; }
     void AtualizarNovoTotal() { if (sel != null) { novoTotal = sel.Items.Sum(i => i.Price) - novoDesconto; if (novoTotal < 0) novoTotal = 0; } }
     void AtualizarNovoDesconto() { if (sel != null) { novoDesconto = sel.Items.Sum(i => i.Price) - novoTotal; if (novoDesconto < 0) novoDesconto = 0; } }
-    async Task SalvarTotal() { if (sel == null) return; try { await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/total", new UpdateTotalDTO { TotalAmount = novoTotal }); editandoTotal = false; await AtualizarTela(); MostrarSucesso("Total atualizado!"); } catch { } }
+    async Task SalvarTotal() { if (sel == null) return; try { await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/total", new UpdateTotalDTO { TotalAmount = novoTotal }); editandoTotal = false; await AtualizarTela(); MostrarSucesso("Total atualizado!"); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao atualizar total."); } }
 
     void IniciarEdicaoPagamento()
     {
@@ -908,7 +931,8 @@
             var request = new UpdatePaymentDTO { AmountPaid = somaPagos, PaymentMethod = metodoPrincipal, PromisedPaymentDate = novaDataPromessa, Payments = pagamentosReais };
             await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/payment", request);
             editandoPagamento = false; await AtualizarTela(); MostrarSucesso("Pagamento salvo!");
-        } catch { }
+        } 
+        catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao salvar pagamento."); }
     }
 
     void GerarCobrancaPix(decimal valor)
@@ -938,11 +962,11 @@
     void AbrirEdicaoItem(ServiceItemDTO item) { itemParaEditar = item; decimal unitPrice = item.Price; if (item.ItemType != "Service" && item.Quantity > 1) { unitPrice = item.Price / item.Quantity; } itemEditRequest = new UpdateServiceItemDTO { Description = item.Description, Price = unitPrice, WarrantyPeriod = item.WarrantyPeriod, Quantity = item.Quantity > 0 ? item.Quantity : 1, ItemType = item.ItemType, MechanicId = item.MechanicId }; mostrarModalEdicaoItem = true; }
     void FecharEdicaoItem() { mostrarModalEdicaoItem = false; itemParaEditar = null; }
 
-    async Task SalvarEdicaoItem() { if (sel == null || itemParaEditar == null) return; var requestParaSalvar = new UpdateServiceItemDTO { Description = itemEditRequest.Description, Price = itemEditRequest.Price, WarrantyPeriod = itemEditRequest.WarrantyPeriod, Quantity = itemEditRequest.Quantity, ItemType = itemEditRequest.ItemType, MechanicId = itemEditRequest.MechanicId }; if (requestParaSalvar.ItemType != "Service") { requestParaSalvar.Price = requestParaSalvar.Price * (requestParaSalvar.Quantity > 0 ? requestParaSalvar.Quantity : 1); } try { var response = await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", requestParaSalvar); if (response.IsSuccessStatusCode) { FecharEdicaoItem(); await AtualizarTela(); MostrarSucesso("Item atualizado!"); } } catch { } }
+    async Task SalvarEdicaoItem() { if (sel == null || itemParaEditar == null) return; var requestParaSalvar = new UpdateServiceItemDTO { Description = itemEditRequest.Description, Price = itemEditRequest.Price, WarrantyPeriod = itemEditRequest.WarrantyPeriod, Quantity = itemEditRequest.Quantity, ItemType = itemEditRequest.ItemType, MechanicId = itemEditRequest.MechanicId }; if (requestParaSalvar.ItemType != "Service") { requestParaSalvar.Price = requestParaSalvar.Price * (requestParaSalvar.Quantity > 0 ? requestParaSalvar.Quantity : 1); } try { var response = await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", requestParaSalvar); if (response.IsSuccessStatusCode) { FecharEdicaoItem(); await AtualizarTela(); MostrarSucesso("Item atualizado!"); } } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao salvar edição do item."); } }
 
-    async Task CarregarComprovantes(InputFileChangeEventArgs e) { if (sel == null) return; var arquivos = e.GetMultipleFiles(10); isUploading = true; StateHasChanged(); foreach (var file in arquivos) { try { using var stream = file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024); using var ms = new MemoryStream(); await stream.CopyToAsync(ms); var base64String = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}"; await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments", new { FileName = file.Name, FileType = file.ContentType, Base64Content = base64String }); } catch { } } isUploading = false; try { sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new(); } catch { } MostrarSucesso("Processado!"); }
+    async Task CarregarComprovantes(InputFileChangeEventArgs e) { if (sel == null) return; var arquivos = e.GetMultipleFiles(10); isUploading = true; StateHasChanged(); foreach (var file in arquivos) { try { using var stream = file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024); using var ms = new MemoryStream(); await stream.CopyToAsync(ms); var base64String = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}"; await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments", new { FileName = file.Name, FileType = file.ContentType, Base64Content = base64String }); } catch (Exception ex) { Console.WriteLine($"Erro no anexo: {ex.Message}"); MostrarErro("Erro ao salvar anexo."); } } isUploading = false; try { sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new(); } catch (Exception ex) { Console.WriteLine(ex.Message); } MostrarSucesso("Processado!"); }
 
-    async Task RemoverComprovante(int attachmentId) { if (sel == null) return; try { await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments/{attachmentId}"); sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new(); StateHasChanged(); MostrarSucesso("Removido."); } catch { } }
+    async Task RemoverComprovante(int attachmentId) { if (sel == null) return; try { await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments/{attachmentId}"); sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new(); StateHasChanged(); MostrarSucesso("Removido."); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao remover comprovante."); } }
 
     public void Dispose()
     {
