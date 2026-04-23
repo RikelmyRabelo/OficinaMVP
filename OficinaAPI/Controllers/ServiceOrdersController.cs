@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using OficinaAPI.Data;
 using OficinaAPI.Models;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using System.IO;
 
 namespace OficinaAPI.Controllers
 {
@@ -11,7 +14,13 @@ namespace OficinaAPI.Controllers
     public class ServiceOrdersController : ControllerBase
     {
         private readonly OficinaContext _context;
-        public ServiceOrdersController(OficinaContext context) { _context = context; }
+        private readonly IWebHostEnvironment _env;
+
+        public ServiceOrdersController(OficinaContext context, IWebHostEnvironment env)
+        {
+            _context = context;
+            _env = env;
+        }
 
         private async Task<DateTime> GetActiveReferenceDate()
         {
@@ -405,11 +414,33 @@ namespace OficinaAPI.Controllers
         }
 
         [HttpPost("{id}/attachments")]
-        public async Task<IActionResult> AddAttachment(int id, [FromBody] UploadAttachmentDTO request)
+        public async Task<IActionResult> AddAttachment(int id, IFormFile file)
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
-            _context.Set<ServiceOrderAttachment>().Add(new ServiceOrderAttachment { ServiceOrderId = id, FileName = request.FileName, FileType = request.FileType, Base64Content = request.Base64Content });
+            if (file == null || file.Length == 0) return BadRequest("Nenhum arquivo enviado.");
+
+            var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "attachments");
+            if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+            var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var fileUrl = $"/uploads/attachments/{uniqueFileName}";
+
+            _context.Set<ServiceOrderAttachment>().Add(new ServiceOrderAttachment
+            {
+                ServiceOrderId = id,
+                FileName = file.FileName,
+                FileType = file.ContentType,
+                Base64Content = fileUrl
+            });
+
             await _context.SaveChangesAsync();
             return Ok();
         }
@@ -417,8 +448,20 @@ namespace OficinaAPI.Controllers
         [HttpDelete("{id}/attachments/{attachmentId}")]
         public async Task<IActionResult> DeleteAttachment(int id, int attachmentId)
         {
-            var a = await _context.Set<ServiceOrderAttachment>().FirstOrDefaultAsync(a => a.Id == attachmentId && a.ServiceOrderId == id);
+            var a = await _context.Set<ServiceOrderAttachment>().FirstOrDefaultAsync(x => x.Id == attachmentId && x.ServiceOrderId == id);
             if (a == null) return NotFound();
+
+            if (!string.IsNullOrEmpty(a.Base64Content) && a.Base64Content.StartsWith("/uploads"))
+            {
+                var relativePath = a.Base64Content.TrimStart('/');
+                var fullPath = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), relativePath);
+
+                if (System.IO.File.Exists(fullPath))
+                {
+                    System.IO.File.Delete(fullPath);
+                }
+            }
+
             _context.Set<ServiceOrderAttachment>().Remove(a);
             await _context.SaveChangesAsync();
             return NoContent();

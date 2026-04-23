@@ -384,12 +384,12 @@
                                     <div class="mt-3 w-100 text-end no-print">
                                         <label class="btn btn-sm btn-outline-secondary fw-bold mb-2" style="cursor: pointer;">
                                             <i class="bi bi-paperclip me-1"></i> Anexar Arquivos
-                                            <InputFile OnChange="CarregarComprovantes" multiple accept="image/*,application/pdf,.doc,.docx" style="display: none;" />
+                                            <InputFile OnChange="CarregarComprovantes" multiple style="display: none;" />
                                         </label>
 
                                         @if (isUploading)
                                         {
-                                            <div class="text-warning small mb-2"><i class="spinner-border spinner-border-sm me-1"></i> Salvando anexo(s)...</div>
+                                            <div class="text-warning small mb-2"><i class="spinner-border spinner-border-sm me-1"></i> Enviando anexo(s)...</div>
                                         }
 
                                         @if (sel.Attachments != null && sel.Attachments.Any())
@@ -398,7 +398,10 @@
                                                 @foreach (var anexo in sel.Attachments)
                                                 {
                                                     <div class="d-flex align-items-center bg-black border border-secondary rounded px-2 py-1">
-                                                        <a href="@anexo.Base64Content" download="@anexo.FileName" class="text-info text-decoration-none small me-3" target="_blank" title="Clique para abrir ou baixar">
+                                                        <a href="@(anexo.Base64Content.StartsWith("/uploads") ? $"{ApiUrl}{anexo.Base64Content}" : anexo.Base64Content)" 
+                                                           target="_blank" 
+                                                           class="text-info text-decoration-none small me-3" 
+                                                           title="Clique para abrir">
                                                             <i class="bi @(anexo.FileType.Contains("pdf") ? "bi-file-pdf-fill text-danger" : (anexo.FileType.Contains("image") ? "bi-file-image-fill text-success" : "bi-file-earmark-fill")) me-1"></i>
                                                             @(anexo.FileName.Length > 20 ? anexo.FileName.Substring(0, 17) + "..." : anexo.FileName)
                                                         </a>
@@ -964,7 +967,50 @@
 
     async Task SalvarEdicaoItem() { if (sel == null || itemParaEditar == null) return; var requestParaSalvar = new UpdateServiceItemDTO { Description = itemEditRequest.Description, Price = itemEditRequest.Price, WarrantyPeriod = itemEditRequest.WarrantyPeriod, Quantity = itemEditRequest.Quantity, ItemType = itemEditRequest.ItemType, MechanicId = itemEditRequest.MechanicId }; if (requestParaSalvar.ItemType != "Service") { requestParaSalvar.Price = requestParaSalvar.Price * (requestParaSalvar.Quantity > 0 ? requestParaSalvar.Quantity : 1); } try { var response = await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", requestParaSalvar); if (response.IsSuccessStatusCode) { FecharEdicaoItem(); await AtualizarTela(); MostrarSucesso("Item atualizado!"); } } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao salvar edição do item."); } }
 
-    async Task CarregarComprovantes(InputFileChangeEventArgs e) { if (sel == null) return; var arquivos = e.GetMultipleFiles(10); isUploading = true; StateHasChanged(); foreach (var file in arquivos) { try { using var stream = file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024); using var ms = new MemoryStream(); await stream.CopyToAsync(ms); var base64String = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}"; await Http.PostAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments", new { FileName = file.Name, FileType = file.ContentType, Base64Content = base64String }); } catch (Exception ex) { Console.WriteLine($"Erro no anexo: {ex.Message}"); MostrarErro("Erro ao salvar anexo."); } } isUploading = false; try { sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new(); } catch (Exception ex) { Console.WriteLine(ex.Message); } MostrarSucesso("Processado!"); }
+    async Task CarregarComprovantes(InputFileChangeEventArgs e) 
+    { 
+        if (sel == null) return; 
+        var arquivos = e.GetMultipleFiles(10); 
+        isUploading = true; 
+        StateHasChanged(); 
+
+        foreach (var file in arquivos) 
+        { 
+            try 
+            { 
+                using var content = new MultipartFormDataContent();
+               
+                var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024));
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+                content.Add(fileContent, "file", file.Name);
+
+                var response = await Http.PostAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments", content);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    MostrarErro($"Erro ao salvar anexo {file.Name}");
+                }
+            } 
+            catch (Exception ex) 
+            { 
+                Console.WriteLine($"Erro no anexo: {ex.Message}"); 
+                MostrarErro("Erro ao enviar o arquivo para o servidor."); 
+            } 
+        } 
+        
+        isUploading = false; 
+        
+        try 
+        { 
+            sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new(); 
+        } 
+        catch (Exception ex) 
+        { 
+            Console.WriteLine(ex.Message); 
+        } 
+        
+        MostrarSucesso("Upload concluído!"); 
+    }
 
     async Task RemoverComprovante(int attachmentId) { if (sel == null) return; try { await Http.DeleteAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments/{attachmentId}"); sel.Attachments = await Http.GetFromJsonAsync<List<AttachmentDTO>>($"{ApiUrl}/api/serviceorders/{sel.Id}/attachments") ?? new(); StateHasChanged(); MostrarSucesso("Removido."); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao remover comprovante."); } }
 
