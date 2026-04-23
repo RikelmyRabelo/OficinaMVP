@@ -645,10 +645,10 @@
 }
 
 @code {
-    private string chavePix = "62155886365";
-    private string nomeRecebedor = "Talysson Rodrigo";
-    private string cidadeRecebedor = "Morros - Ma";
-    private string meuNumeroWhatsApp = "5598970212928";
+    private string chavePix = "";
+    private string nomeRecebedor = "";
+    private string cidadeRecebedor = "";
+    private string meuNumeroWhatsApp = "";
 
     bool mostrarPix = false;
     string pixCopiaCola = "";
@@ -725,6 +725,11 @@
     protected override async Task OnInitializedAsync() 
     { 
         ApiUrl = Config["ApiBaseUrl"] ?? "https://localhost:7082";
+        chavePix = Config["PixConfig:Chave"] ?? "";
+        nomeRecebedor = Config["PixConfig:NomeRecebedor"] ?? "";
+        cidadeRecebedor = Config["PixConfig:CidadeRecebedor"] ?? "";
+        meuNumeroWhatsApp = Config["WhatsAppConfig:Numero"] ?? "";
+        
         await CarregarDadosIniciais(); 
     }
 
@@ -979,7 +984,7 @@
             try 
             { 
                 using var content = new MultipartFormDataContent();
-               
+                
                 var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024));
                 fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
                 content.Add(fileContent, "file", file.Name);
