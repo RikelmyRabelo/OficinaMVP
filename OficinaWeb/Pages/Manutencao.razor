@@ -14,48 +14,7 @@
 
 @if (imprimindoRelatorioGeral)
 {
-    <div id="print-relatorio-geral" class="print-overlay" style="color: black !important;">
-        <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px;">
-            <h1 style="margin: 0; font-size: 24pt; color: black !important;"> FREITAS AUTOCENTER</h1>
-            <h3 style="margin: 5px 0; color: black !important;">RELATÓRIO CONSOLIDADO DE SAÍDA DE MATERIAIS</h3>
-            <p style="font-size: 10pt; color: black !important;">Gerado em: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
-        </div>
-
-        <table style="width: 100%; border-collapse: collapse; background: white !important; color: black !important;">
-            <thead>
-                <tr style="background-color: #f2f2f2 !important; border: 1px solid black;">
-                    <th style="border: 1px solid black; padding: 8px; text-align: center; width: 60px;">O.S.</th>
-                    <th style="border: 1px solid black; padding: 8px; text-align: left;">DESCRIÇÃO DO ITEM</th>
-                    <th style="border: 1px solid black; padding: 8px; text-align: center; width: 80px;">QTD</th>
-                    <th style="border: 1px solid black; padding: 8px; text-align: right; width: 120px;">VALOR TOTAL</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (osAtivas != null && osFinalizadas != null)
-                {
-                    var todasGeral = osAtivas.Concat(osFinalizadas).ToList();
-                    decimal totalGeralPecas = 0;
-                    @foreach (var os in todasGeral)
-                    {
-                        @foreach (var item in os.Items.Where(i => i.ItemType != "Service" && i.ProductId != null))
-                        {
-                            totalGeralPecas += item.Price;
-                            <tr>
-                                <td style="border: 1px solid black; padding: 8px; text-align: center;">#@os.Id</td>
-                                <td style="border: 1px solid black; padding: 8px;">@item.Description</td>
-                                <td style="border: 1px solid black; padding: 8px; text-align: center;">@item.Quantity</td>
-                                <td style="border: 1px solid black; padding: 8px; text-align: right;">R$ @item.Price.ToString("N2")</td>
-                            </tr>
-                        }
-                    }
-                    <tr style="background-color: #eee !important; font-weight: bold; font-size: 12pt;">
-                        <td colspan="3" style="border: 1px solid black; padding: 12px; text-align: right;">VALOR TOTAL DAS SAÍDAS:</td>
-                        <td style="border: 1px solid black; padding: 12px; text-align: right;">R$ @totalGeralPecas.ToString("N2")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <RelatorioGeralMateriais Ordens="TodasOsParaRelatorio" Total="TotalGeralPecasRelatorio" />
 }
 
 <div class="toast-container position-fixed bottom-0 end-0 p-3 no-print" style="z-index: 1100;">
@@ -106,9 +65,8 @@
                 <ul class="mb-0 ps-3">
                     @foreach (var div in alertasInadimplencia)
                     {
-                        decimal faltaPagar = div.TotalAmount - div.AmountPaid;
                         <li>
-                            <strong class="text-warning">@div.Vehicle?.CustomerName</strong> - O.S. #@div.Id - Falta pagar: <strong>R$ @faltaPagar.ToString("N2")</strong>
+                            <strong class="text-warning">@div.Vehicle?.CustomerName</strong> - O.S. #@div.Id - Falta pagar: <strong>R$ @((div.TotalAmount - div.AmountPaid).ToString("N2"))</strong>
                             <span class="text-white-50 ms-1">(Promessa: @div.PromisedPaymentDate?.ToString("dd/MM/yyyy"))</span>
                             <button class="btn btn-sm btn-link text-info p-0 ms-2" @onclick="() => AbrirOsDoAlerta(div.Id)">[Abrir]</button>
                         </li>
@@ -239,7 +197,7 @@
                                         <div class="d-flex flex-column align-items-end gap-2 mb-1 bg-black p-2 rounded border border-secondary w-100">
                                             <div class="d-flex align-items-center justify-content-between w-100">
                                                 <small class="text-secondary fw-bold">SUBTOTAL:</small>
-                                                <span class="text-white">R$ @sel.Items.Sum(i => i.Price).ToString("N2")</span>
+                                                <span class="text-white">R$ @SubTotalSelecionado.ToString("N2")</span>
                                             </div>
                                             <div class="d-flex align-items-center justify-content-between w-100">
                                                 <small class="text-danger fw-bold">DESCONTO:</small>
@@ -257,13 +215,11 @@
                                     }
                                     else
                                     {
-                                        var subTotalExibicao = sel.Items.Sum(i => i.Price);
-                                        var descontoExibicao = subTotalExibicao - sel.TotalAmount;
                                         <div class="text-end" style="cursor: pointer;" @onclick="IniciarEdicaoTotal" title="Editar Total / Aplicar Desconto">
-                                            @if (descontoExibicao > 0)
+                                            @if (DescontoSelecionado > 0)
                                             {
                                                 <h5 class="text-white-50 mb-1">
-                                                    <small class="text-secondary fw-bold me-1 fs-6">TOTAL:</small> R$ @subTotalExibicao.ToString("N2")
+                                                    <small class="text-secondary fw-bold me-1 fs-6">TOTAL:</small> R$ @SubTotalSelecionado.ToString("N2")
                                                 </h5>
                                                 <h5 class="text-success fw-bold mb-1">
                                                     <small class="text-secondary fw-bold me-1 fs-6">VALOR COM DESCONTO:</small> R$ @sel.TotalAmount.ToString("N2") <i class="bi bi-pencil fs-6 text-secondary ms-1"></i>
@@ -430,13 +386,9 @@
                                         <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary mb-1" placeholder="🔍 Buscar por código ou nome..." value="@filtroProduto" @oninput="OnFiltroProdutoChanged" />
                                         <select class="form-select bg-dark text-white border-secondary" @bind="novoItem.ProductId">
                                             <option value="0">Selecionar Peça...</option>
-                                            @if (produtos != null)
+                                            @foreach (var p in ProdutosFiltrados)
                                             {
-                                                var filtrados = produtos.Where(p => string.IsNullOrEmpty(filtroProduto) || p.name.Contains(filtroProduto, StringComparison.OrdinalIgnoreCase) || p.code.Contains(filtroProduto, StringComparison.OrdinalIgnoreCase));
-                                                foreach (var p in filtrados)
-                                                {
-                                                    <option value="@p.id">[@p.code] @p.name (R$ @p.salePrice)</option>
-                                                }
+                                                <option value="@p.id">[@p.code] @p.name (R$ @p.salePrice)</option>
                                             }
                                         </select>
                                     </div>
@@ -510,19 +462,6 @@
                                 }
                             </div>
                         </div>
-
-                        <style>
-                            .print-overlay { display: none; }
-                            @@media print {
-                                .no-print, .container-fluid, .sidebar, .top-row, nav { display: none !important; }
-                                .print-overlay { display: block !important; position: relative !important; width: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; }
-                                body { background: white !important; }
-                            }
-                            .table-fixed { table-layout: fixed; width: 100%; }
-                            .table-fixed td, .table-fixed th { white-space: normal; word-wrap: break-word; vertical-align: middle; }
-                            .text-nowrap-custom { white-space: nowrap !important; }
-                            .badge-service { font-size: 0.6rem; background-color: #007bff; padding: 2px 6px; border-radius: 4px; }
-                        </style>
 
                         <table class="table table-dark table-hover align-middle table-fixed">
                             <thead>
@@ -601,49 +540,31 @@
 
 @if (osParaRelatorio != null)
 {
-    <div id="print-saidas" class="d-none d-print-block" style="width: 210mm; background: white; color: black; padding: 15mm; font-family: Arial;">
-        <div style="text-align: center; border-bottom: 2px solid black; margin-bottom: 20px;">
-            <h2 style="margin: 0;"> FREITAS AUTOCENTER</h2>
-            <h4 style="margin: 5px 0;">COMPROVANTE DE SAÍDA DE MATERIAIS</h4>
-            <p style="font-size: 10pt;">Referente à OS: #@osParaRelatorio.Id | Cliente: @osParaRelatorio.Vehicle?.CustomerName</p>
-        </div>
-
-        <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr style="background: #eee; border: 1px solid black;">
-                    <th style="padding: 10px; text-align: left;">Peça / Insumo</th>
-                    <th style="padding: 10px; text-align: center;">Qtd</th>
-                    <th style="padding: 10px; text-align: right;">Vlr. Unitário</th>
-                    <th style="padding: 10px; text-align: right;">Subtotal</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in osParaRelatorio.Items.Where(i => i.ItemType != "Service"))
-                {
-                    <tr style="border-bottom: 1px solid #ccc;">
-                        <td style="padding: 10px;">
-                            <strong>@item.Description</strong>
-                            <br /><small>@(item.ProductId == null ? "Item Avulso" : "Item de Estoque")</small>
-                        </td>
-                        <td style="padding: 10px; text-align: center;">@item.Quantity</td>
-                        <td style="padding: 10px; text-align: right;">R$ @item.Price.ToString("N2")</td>
-                        <td style="padding: 10px; text-align: right; font-weight: bold;">R$ @((item.Price * item.Quantity).ToString("N2"))</td>
-                    </tr>
-                }
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="3" style="text-align: right; padding: 20px; font-weight: bold; font-size: 12pt;">TOTAL DE MATERIAIS:</td>
-                    <td style="text-align: right; padding: 20px; font-weight: bold; font-size: 12pt;">
-                        R$ @osParaRelatorio.Items.Where(i => i.ItemType != "Service").Sum(i => i.Price * i.Quantity).ToString("N2")
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
+    <RelatorioSaidaOs Ordem="osParaRelatorio" />
 }
 
 @code {
+    // --- PROPRIEDADES COMPUTADAS ---
+
+    private List<ServiceOrderDTO> TodasOsParaRelatorio => (osAtivas ?? new()).Concat(osFinalizadas ?? new()).ToList();
+
+    private decimal TotalGeralPecasRelatorio => TodasOsParaRelatorio
+        .SelectMany(os => os.Items)
+        .Where(i => i.ItemType != "Service" && i.ProductId != null)
+        .Sum(i => i.Price);
+
+    private decimal SubTotalSelecionado => sel?.Items?.Sum(i => i.Price) ?? 0;
+
+    private decimal DescontoSelecionado => (SubTotalSelecionado - (sel?.TotalAmount ?? 0)) is decimal d && d > 0 ? d : 0;
+
+    private IEnumerable<ProductListDTO> ProdutosFiltrados => 
+        produtos?.Where(p => string.IsNullOrEmpty(filtroProduto) || 
+                            p.name.Contains(filtroProduto, StringComparison.OrdinalIgnoreCase) || 
+                            p.code.Contains(filtroProduto, StringComparison.OrdinalIgnoreCase)) 
+        ?? Enumerable.Empty<ProductListDTO>();
+
+    // --- ESTADOS ---
+
     private string chavePix = "";
     private string nomeRecebedor = "";
     private string cidadeRecebedor = "";

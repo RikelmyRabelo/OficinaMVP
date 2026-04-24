@@ -1,0 +1,44 @@
+﻿.table-fixed {
+table-layout: fixed;
+width: 100%;
+}
+
+.table-fixed td, .table-fixed th {
+white-space: normal;
+word-wrap: break-word;
+vertical-align: middle;
+}
+
+.text-nowrap-custom {
+white-space: nowrap !important;
+}
+
+.badge-service {
+font-size: 0.6rem;
+background-color: #007bff;
+padding: 2px 6px;
+border-radius: 4px;
+}
+
+.print-overlay {
+display: none;
+}
+
+@@media print {
+.no-print, .container-fluid, .sidebar, .top-row, nav {
+display: none !important;
+}
+
+.print-overlay {
+display: block !important;
+position: relative !important;
+width: 100% !important;
+margin: 0 !important;
+padding: 0 !important;
+background: white !important;
+}
+
+body {
+background: white !important;
+}
+}

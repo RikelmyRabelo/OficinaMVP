@@ -1,0 +1,49 @@
+﻿@using OficinaWeb.Models
+@using static OficinaWeb.Pages.RelatorioSaidas
+
+<div id="print-section" class="d-print-block d-none" style="width: 210mm; background-color: white; color: black !important; padding: 15mm; font-family: Arial, sans-serif;">
+    <div style="border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
+        <h1 style="margin: 0; font-size: 20pt;"> FREITAS AUTOCENTER</h1>
+        <h3 style="margin: 5px 0; color: #333; text-transform: uppercase;">@Titulo</h3>
+        <p style="font-size: 9pt;">Gerado em: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; font-size: 10pt; color: black !important;">
+        <thead>
+            <tr style="background-color: #eee; border-top: 2px solid black; border-bottom: 2px solid black;">
+                <th style="padding: 8px; text-align: left; border-bottom: 1px solid black;">DESCRIÇÃO DO ITEM</th>
+                <th style="padding: 8px; text-align: center; border-bottom: 1px solid black;">ORIGEM</th>
+                <th style="padding: 8px; text-align: center; border-bottom: 1px solid black;">QTD</th>
+                <th style="padding: 8px; text-align: right; border-bottom: 1px solid black;">UNITÁRIO</th>
+                <th style="padding: 8px; text-align: right; border-bottom: 1px solid black;">SUBTOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Itens)
+            {
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 8px;">
+                        <span style="font-weight: bold;">@item.Description</span><br />
+                        <small style="color: #666;">OS: #@item.ServiceOrderId</small>
+                    </td>
+                    <td style="padding: 8px; text-align: center;">@(item.IsAvulso ? "Avulso" : "Sistema")</td>
+                    <td style="padding: 8px; text-align: center;">@item.Quantity</td>
+                    <td style="padding: 8px; text-align: right;">R$ @item.UnitPrice.ToString("N2")</td>
+                    <td style="padding: 8px; text-align: right; font-weight: bold;">R$ @item.SubtotalManual.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr style="border-top: 2px solid black; background-color: #f9f9f9;">
+                <td colspan="4" style="padding: 15px; text-align: right; font-weight: bold; font-size: 11pt;">VALOR TOTAL:</td>
+                <td style="padding: 15px; text-align: right; font-weight: bold; font-size: 11pt;">R$ @Total.ToString("N2")</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = "";
+    [Parameter] public List<VendidoDTO> Itens { get; set; } = new();
+    [Parameter] public decimal Total { get; set; }
+}
