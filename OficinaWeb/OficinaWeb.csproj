@@ -18,6 +18,7 @@
     <Content Remove="Pages\Counter.razor" />
     <Content Remove="Pages\NotFound.razor" />
     <Content Remove="Pages\Weather.razor" />
+    <Content Remove="wwwroot\appsetings.json" />
   </ItemGroup>
 
   <ItemGroup>

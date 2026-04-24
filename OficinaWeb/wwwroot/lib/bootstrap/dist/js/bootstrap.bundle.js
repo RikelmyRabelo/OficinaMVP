@@ -1898,7 +1898,6 @@
     };
   }
 
-  // means it doesn't take into account transforms.
 
   function getLayoutRect(element) {
     var clientRect = getBoundingClientRect(element); // Use the clientRect sizes if it's not been transformed.

@@ -24,10 +24,6 @@ namespace OficinaAPI.Tests
             return databaseContext;
         }
 
-        // ==========================================================
-        // TESTES DE CONFIGURAÇÃO (SYSTEM SETTINGS)
-        // ==========================================================
-
         [Fact]
         public async Task Settings_DeveCriarConfiguracoesIniciais_AoConsultarPelaPrimeiraVez()
         {
@@ -35,7 +31,7 @@ namespace OficinaAPI.Tests
             var controller = new SettingsController(context);
 
             var result = await controller.GetSettings();
-            var settings = result.Value!; // O "!" silencia o warning de nulo
+            var settings = result.Value!;
 
             Assert.NotNull(settings);
             Assert.Equal(DateTime.Now.Month, settings.ActiveMonth);
@@ -73,10 +69,6 @@ namespace OficinaAPI.Tests
             Assert.Equal(1, settings.ActiveMonth);
             Assert.Equal(2027, settings.ActiveYear);
         }
-
-        // ==========================================================
-        // TESTES DE ESTOQUE E ORDENS DE SERVIÇO
-        // ==========================================================
 
         [Fact]
         public async Task OS_AdicionarItem_NaoDeveBaixarEstoqueImediatamente()
@@ -150,9 +142,6 @@ namespace OficinaAPI.Tests
             Assert.Equal(2, osAtualizada.Payments.Count);
         }
 
-        // ==========================================================
-        // TESTES DE FILTROS E RELATÓRIOS (NOVAS ROTAS OTIMIZADAS)
-        // ==========================================================
 
         [Fact]
         public async Task ResumoFinanceiro_DeveCalcularApenasDoMesContabilAtivo()
@@ -187,13 +176,13 @@ namespace OficinaAPI.Tests
             var context = GetDatabaseContext();
             var controller = new ServiceOrdersController(context);
 
-            // Adiciona um veículo simulado para satisfazer o .Include()
+            // Adiciona um veículo simulado
             context.Vehicles.Add(new Vehicle { Id = 1, CustomerName = "João", Model = "Carro" });
 
             context.ServiceOrders.AddRange(
-                new ServiceOrder { Id = 1, VehicleId = 1, Status = "Pending", IsDeleted = false }, // DEVE TRAZER
-                new ServiceOrder { Id = 2, VehicleId = 1, Status = "Completed", IsDeleted = false }, // NÃO DEVE TRAZER
-                new ServiceOrder { Id = 3, VehicleId = 1, Status = "Pending", IsDeleted = true }     // NÃO DEVE TRAZER
+                new ServiceOrder { Id = 1, VehicleId = 1, Status = "Pending", IsDeleted = false },
+                new ServiceOrder { Id = 2, VehicleId = 1, Status = "Completed", IsDeleted = false },
+                new ServiceOrder { Id = 3, VehicleId = 1, Status = "Pending", IsDeleted = true }  
             );
             await context.SaveChangesAsync();
 
@@ -210,7 +199,7 @@ namespace OficinaAPI.Tests
             var context = GetDatabaseContext();
             var controller = new ServiceOrdersController(context);
 
-            // Adiciona um veículo simulado para satisfazer o .Include()
+            // Adiciona um veículo simulado
             context.Vehicles.Add(new Vehicle { Id = 1, CustomerName = "Maria", Model = "Moto" });
 
             context.ServiceOrders.AddRange(
