@@ -39,7 +39,7 @@
                     decimal totalGeralPecas = 0;
                     @foreach (var os in todasGeral)
                     {
-                        @foreach (var item in os.Items.Where(i => i.ItemType != "Service" && (i.ProductId != null || (i.ProductId == null && i.MechanicId == null))))
+                        @foreach (var item in os.Items.Where(i => i.ItemType != "Service" && i.ProductId != null))
                         {
                             totalGeralPecas += item.Price;
                             <tr>
@@ -544,7 +544,7 @@
                                     @foreach (var item in sel.Items)
                                     {
                                         bool existeNoCatalogo = catalogoServicos?.Any(c => string.Equals(c.Name, item.Description, StringComparison.OrdinalIgnoreCase)) == true;
-                                        bool isServico = item.ItemType == "Service" || (item.ProductId == null && item.MechanicId != null) || (item.ProductId == null && item.Mechanic != null) || (item.ProductId == null && existeNoCatalogo);
+                                        bool isServico = item.ItemType == "Service" || (item.ProductId == null && existeNoCatalogo);
                                         bool isAvulso = !isServico && item.ProductId == null;
 
                                         <tr>
@@ -682,7 +682,6 @@
     private void GerarRelatorioGeralSaidas() { Nav.NavigateTo("relatorio-saidas"); }
 
     List<ProductListDTO>? produtos;
-    List<EmployeeListDTO>? mecanicos;
     List<LaborServiceDTO>? catalogoServicos;
 
     List<ServiceOrderDTO>? osAtivas;
@@ -759,7 +758,6 @@
         try {
             await Task.WhenAll(
                 CarregarProdutos(),
-                CarregarMecanicos(),
                 CarregarCatalogoServicos(),
                 CarregarOSAtivas(),
                 CarregarAlertas()
@@ -800,7 +798,6 @@
 
     async Task CarregarCatalogoServicos() { try { catalogoServicos = await Http.GetFromJsonAsync<List<LaborServiceDTO>>($"{ApiUrl}/api/laborservices"); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao carregar catálogo."); } }
     async Task CarregarProdutos() { try { produtos = await Http.GetFromJsonAsync<List<ProductListDTO>>($"{ApiUrl}/api/products"); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao carregar produtos."); } }
-    async Task CarregarMecanicos() { try { mecanicos = await Http.GetFromJsonAsync<List<EmployeeListDTO>>($"{ApiUrl}/api/employees"); } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao carregar mecânicos."); } }
 
     private void OnServiceSelected(ChangeEventArgs e)
     {
@@ -962,11 +959,14 @@
     async Task EnviarPixMeuCelular() { string urlImagem = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(pixCopiaCola)}"; string texto = $"*PIX - FREITAS AUTOCENTER*\nO.S. #{sel?.Id}\nVeículo: {sel?.Vehicle?.Model}\nValor: *R$ {valorPixGerado:N2}*\n\n*QR Code:* {urlImagem}\n\n*Pix Copia e Cola:*\n{pixCopiaCola}"; string url = $"https://wa.me/{meuNumeroWhatsApp}?text={Uri.EscapeDataString(texto)}"; await JS.InvokeVoidAsync("open", url, "_blank"); }
     async Task EnviarPixCliente() { if (sel?.Vehicle == null || string.IsNullOrEmpty(sel.Vehicle.CustomerPhone)) return; string fone = sel.Vehicle.CustomerPhone.Replace("(", "").Replace(")", "").Replace("-", "").Replace(" ", ""); if (!fone.StartsWith("55")) fone = "55" + fone; string urlImagem = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(pixCopiaCola)}"; string texto = $"Olá {sel.Vehicle.CustomerName}, segue o PIX para pagamento da sua O.S. #{sel.Id} na Freitas Autocenter.\n\n*Valor:* R$ {valorPixGerado:N2}\n\n*QR Code:* {urlImagem}\n\n*Pix Copia e Cola:*\n{pixCopiaCola}"; string url = $"https://wa.me/{fone}?text={Uri.EscapeDataString(texto)}"; await JS.InvokeVoidAsync("open", url, "_blank"); }
 
-    void AbrirEdicaoItem(ServiceItemDTO item) { itemParaEditar = item; decimal unitPrice = item.Price; if (item.ItemType != "Service" && item.Quantity > 1) { unitPrice = item.Price / item.Quantity; } itemEditRequest = new UpdateServiceItemDTO { Description = item.Description, Price = unitPrice, WarrantyPeriod = item.WarrantyPeriod, Quantity = item.Quantity > 0 ? item.Quantity : 1, ItemType = item.ItemType, MechanicId = item.MechanicId }; mostrarModalEdicaoItem = true; }
+    void AbrirEdicaoItem(ServiceItemDTO item) { itemParaEditar = item; decimal unitPrice = item.Price; if (item.ItemType != "Service" && item.Quantity > 1) { unitPrice = item.Price / item.Quantity; } itemEditRequest = new UpdateServiceItemDTO { Description = item.Description, Price = unitPrice, WarrantyPeriod = item.WarrantyPeriod, Quantity = item.Quantity > 0 ? item.Quantity : 1, ItemType = item.ItemType }; mostrarModalEdicaoItem = true; }
     void FecharEdicaoItem() { mostrarModalEdicaoItem = false; itemParaEditar = null; }
 
-    async Task SalvarEdicaoItem() { if (sel == null || itemParaEditar == null) return; var requestParaSalvar = new UpdateServiceItemDTO { Description = itemEditRequest.Description, Price = itemEditRequest.Price, WarrantyPeriod = itemEditRequest.WarrantyPeriod, Quantity = itemEditRequest.Quantity, ItemType = itemEditRequest.ItemType, MechanicId = itemEditRequest.MechanicId }; if (requestParaSalvar.ItemType != "Service") { requestParaSalvar.Price = requestParaSalvar.Price * (requestParaSalvar.Quantity > 0 ? requestParaSalvar.Quantity : 1); } try { var response = await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", requestParaSalvar); if (response.IsSuccessStatusCode) { FecharEdicaoItem(); await AtualizarTela(); MostrarSucesso("Item atualizado!"); } } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao salvar edição do item."); } }
+    async Task SalvarEdicaoItem() { if (sel == null || itemParaEditar == null) return; var requestParaSalvar = new UpdateServiceItemDTO { Description = itemEditRequest.Description, Price = itemEditRequest.Price, WarrantyPeriod = itemEditRequest.WarrantyPeriod, Quantity = itemEditRequest.Quantity, ItemType = itemEditRequest.ItemType }; if (requestParaSalvar.ItemType != "Service") { requestParaSalvar.Price = requestParaSalvar.Price * (requestParaSalvar.Quantity > 0 ? requestParaSalvar.Quantity : 1); } try { var response = await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", requestParaSalvar); if (response.IsSuccessStatusCode) { FecharEdicaoItem(); await AtualizarTela(); MostrarSucesso("Item atualizado!"); } } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao salvar edição do item."); } }
 
+    // =========================================================================
+    // UPLOAD OTIMIZADO VIA STREAMING (MULTIPART FORM DATA)
+    // =========================================================================
     async Task CarregarComprovantes(InputFileChangeEventArgs e) 
     { 
         if (sel == null) return; 
@@ -980,6 +980,7 @@
             { 
                 using var content = new MultipartFormDataContent();
                 
+                // Envia o arquivo por partes (stream) direto para o servidor (Max 15MB)
                 using var stream = file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024);
                 var fileContent = new StreamContent(stream);
                 fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
