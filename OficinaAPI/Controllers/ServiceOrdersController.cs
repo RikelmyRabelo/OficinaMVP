@@ -44,8 +44,10 @@ namespace OficinaAPI.Controllers
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items)
                 .Include(o => o.Payments)
+                .AsSplitQuery()
                 .Where(o => !o.IsDeleted)
-                .OrderByDescending(o => o.Id).ToListAsync();
+                .OrderByDescending(o => o.Id)
+                .ToListAsync();
         }
 
         [HttpGet("active")]
@@ -56,8 +58,10 @@ namespace OficinaAPI.Controllers
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items)
                 .Include(o => o.Payments)
+                .AsSplitQuery()
                 .Where(o => !o.IsDeleted && o.Status != "Completed")
-                .OrderByDescending(o => o.Id).ToListAsync();
+                .OrderByDescending(o => o.Id)
+                .ToListAsync();
         }
 
         [HttpGet("completed")]
@@ -68,6 +72,7 @@ namespace OficinaAPI.Controllers
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items)
                 .Include(o => o.Payments)
+                .AsSplitQuery()
                 .Where(o => !o.IsDeleted && o.Status == "Completed")
                 .OrderByDescending(o => o.Id)
                 .Take(take)
@@ -109,12 +114,14 @@ namespace OficinaAPI.Controllers
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items)
                 .Include(o => o.Payments)
+                .AsSplitQuery()
                 .Where(o => o.IsDeleted)
-                .OrderByDescending(o => o.DeletionDate).ToListAsync();
+                .OrderByDescending(o => o.DeletionDate)
+                .ToListAsync();
         }
 
         [HttpPost]
-        public async Task<ActionResult<ServiceOrder>> PostServiceOrder(CreateOSDTO request)
+        public async Task<ActionResult<ServiceOrder>> PostServiceOrder([FromBody] CreateOSDTO request)
         {
             var settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
 
@@ -126,6 +133,7 @@ namespace OficinaAPI.Controllers
                 CustomerAddress = request.CustomerAddress,
                 CustomerPhone = request.CustomerPhone
             };
+
             _context.Vehicles.Add(newVehicle);
             await _context.SaveChangesAsync();
 
@@ -136,7 +144,6 @@ namespace OficinaAPI.Controllers
                 Status = "Pending",
                 TotalAmount = 0,
                 AmountPaid = 0,
-
                 AccountingMonth = settings?.ActiveMonth ?? DateTime.Now.Month,
                 AccountingYear = settings?.ActiveYear ?? DateTime.Now.Year
             };
@@ -149,7 +156,7 @@ namespace OficinaAPI.Controllers
         }
 
         [HttpPost("{id}/items")]
-        public async Task<ActionResult<ServiceItem>> AddItem(int id, AddItemDTO itemDto)
+        public async Task<ActionResult<ServiceItem>> AddItem(int id, [FromBody] AddItemDTO itemDto)
         {
             var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
@@ -175,11 +182,12 @@ namespace OficinaAPI.Controllers
 
             _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
+
             return Ok(newItem);
         }
 
         [HttpPost("{id}/labor")]
-        public async Task<ActionResult<ServiceItem>> AddLabor(int id, AddLaborDTO laborDto)
+        public async Task<ActionResult<ServiceItem>> AddLabor(int id, [FromBody] AddLaborDTO laborDto)
         {
             var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
@@ -195,13 +203,15 @@ namespace OficinaAPI.Controllers
             };
 
             os.TotalAmount += newItem.Price;
+
             _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
+
             return Ok(newItem);
         }
 
         [HttpPost("{id}/custom-items")]
-        public async Task<ActionResult<ServiceItem>> AddCustomItem(int id, AddCustomItemDTO customDto)
+        public async Task<ActionResult<ServiceItem>> AddCustomItem(int id, [FromBody] AddCustomItemDTO customDto)
         {
             var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
@@ -217,8 +227,10 @@ namespace OficinaAPI.Controllers
             };
 
             os.TotalAmount += newItem.Price;
+
             _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
+
             return Ok(newItem);
         }
 
@@ -258,8 +270,10 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
+
             os.IsDeleted = true;
             os.DeletionDate = DateTime.Now;
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -267,10 +281,25 @@ namespace OficinaAPI.Controllers
         [HttpDelete("{id}/permanent")]
         public async Task<IActionResult> PermanentDeleteServiceOrder(int id)
         {
-            var os = await _context.ServiceOrders.FindAsync(id);
+            var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
+
+            // Corrige o problema do estorno de estoque na exclusão permanente
+            if (os.Status == "Completed")
+            {
+                foreach (var item in os.Items)
+                {
+                    if (item.ProductId != null)
+                    {
+                        var p = await _context.Products.FindAsync(item.ProductId);
+                        if (p != null) p.StockQuantity += item.Quantity;
+                    }
+                }
+            }
+
             _context.ServiceOrders.Remove(os);
             await _context.SaveChangesAsync();
+
             return NoContent();
         }
 
@@ -279,8 +308,10 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
+
             os.IsDeleted = false;
             os.DeletionDate = null;
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -295,6 +326,7 @@ namespace OficinaAPI.Controllers
             os.Vehicle.Model = request.VehicleModel;
             os.Vehicle.CustomerAddress = request.CustomerAddress;
             os.Vehicle.CustomerPhone = request.CustomerPhone;
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -304,7 +336,9 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
+
             os.TotalAmount = request.TotalAmount;
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -319,7 +353,9 @@ namespace OficinaAPI.Controllers
             os.PaymentMethod = request.PaymentMethod;
             os.PromisedPaymentDate = request.PromisedPaymentDate;
 
-            _context.ServiceOrderPayments.RemoveRange(os.Payments);
+            // Garante a exclusão real no banco de dados para evitar registros órfãos
+            var antigos = await _context.ServiceOrderPayments.Where(p => p.ServiceOrderId == id).ToListAsync();
+            _context.ServiceOrderPayments.RemoveRange(antigos);
 
             if (request.Payments != null && request.Payments.Any())
             {
@@ -403,6 +439,7 @@ namespace OficinaAPI.Controllers
 
             os.TotalAmount -= item.Price;
             _context.ServiceItems.Remove(item);
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -410,11 +447,14 @@ namespace OficinaAPI.Controllers
         [HttpGet("{id}/attachments")]
         public async Task<ActionResult<IEnumerable<ServiceOrderAttachment>>> GetAttachments(int id)
         {
-            return await _context.Set<ServiceOrderAttachment>().AsNoTracking().Where(a => a.ServiceOrderId == id).ToListAsync();
+            return await _context.Set<ServiceOrderAttachment>()
+                .AsNoTracking()
+                .Where(a => a.ServiceOrderId == id)
+                .ToListAsync();
         }
 
         [HttpPost("{id}/attachments")]
-        public async Task<IActionResult> AddAttachment(int id, IFormFile file)
+        public async Task<IActionResult> AddAttachment(int id, [FromForm] IFormFile file)
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
@@ -423,7 +463,9 @@ namespace OficinaAPI.Controllers
             var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "attachments");
             if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-            var uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
+            // Previne falha de Path Traversal pegando apenas a extensão
+            var extension = Path.GetExtension(file.FileName);
+            var uniqueFileName = $"{Guid.NewGuid()}{extension}";
             var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
             using (var stream = new FileStream(filePath, FileMode.Create))
@@ -544,19 +586,19 @@ namespace OficinaAPI.Controllers
             await _context.SaveChangesAsync();
             return Ok();
         }
-
-        public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-        public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-        public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }
-        public class AddLaborDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
-        public class AddCustomItemDTO { public string Description { get; set; } = ""; public int Quantity { get; set; } = 1; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
-        public class CompletionDTO { public DateTime CompletionDate { get; set; } }
-        public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
-        public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; public string? ItemType { get; set; } }
-        public class PaymentSplitDTO { public string PaymentMethod { get; set; } = ""; public decimal Amount { get; set; } public DateTime PaymentDate { get; set; } = DateTime.Now; }
-        public class UpdatePaymentDTO { public decimal AmountPaid { get; set; } public string? PaymentMethod { get; set; } public DateTime? PromisedPaymentDate { get; set; } public List<PaymentSplitDTO> Payments { get; set; } = new(); }
-        public class UploadAttachmentDTO { public string FileName { get; set; } = ""; public string FileType { get; set; } = ""; public string Base64Content { get; set; } = ""; }
-        public class CashAdjustmentDTO { public decimal Amount { get; set; } public string Description { get; set; } = ""; }
-        public class FinancialSummaryDTO { public decimal FaturamentoTotal { get; set; } public decimal FaturamentoSemanal { get; set; } public decimal Inadimplencia { get; set; } public decimal TotalPix { get; set; } public decimal TotalCredito { get; set; } public decimal TotalDebito { get; set; } }
     }
+
+    public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
+    public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
+    public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }
+    public class AddLaborDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
+    public class AddCustomItemDTO { public string Description { get; set; } = ""; public int Quantity { get; set; } = 1; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
+    public class CompletionDTO { public DateTime CompletionDate { get; set; } }
+    public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
+    public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; public string? ItemType { get; set; } }
+    public class PaymentSplitDTO { public string PaymentMethod { get; set; } = ""; public decimal Amount { get; set; } public DateTime PaymentDate { get; set; } = DateTime.Now; }
+    public class UpdatePaymentDTO { public decimal AmountPaid { get; set; } public string? PaymentMethod { get; set; } public DateTime? PromisedPaymentDate { get; set; } public List<PaymentSplitDTO> Payments { get; set; } = new(); }
+    public class UploadAttachmentDTO { public string FileName { get; set; } = ""; public string FileType { get; set; } = ""; public string Base64Content { get; set; } = ""; }
+    public class CashAdjustmentDTO { public decimal Amount { get; set; } public string Description { get; set; } = ""; }
+    public class FinancialSummaryDTO { public decimal FaturamentoTotal { get; set; } public decimal FaturamentoSemanal { get; set; } public decimal Inadimplencia { get; set; } public decimal TotalPix { get; set; } public decimal TotalCredito { get; set; } public decimal TotalDebito { get; set; } }
 }
