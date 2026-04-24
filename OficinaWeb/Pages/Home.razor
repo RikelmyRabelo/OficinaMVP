@@ -192,9 +192,12 @@ else
 
             faturamentoTotalGeral = osListAllCompleted?.Sum(x => x.AmountPaid) ?? 0;
             veiculosNoCiclo = osListPorPeriodo?.Count(x => x.Status == "Completed") ?? 0;
-            estoqueBaixo = prodList?.Count(x => x.StockQuantity <= x.MinimumStock) ?? 0;
+            estoqueBaixo = prodList?.Count(x => (x.StockQuantity ?? 0) <= x.MinimumStock) ?? 0;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro no carregamento Home: {ex.Message}");
+        }
         finally { isLoading = false; StateHasChanged(); }
     }
 
