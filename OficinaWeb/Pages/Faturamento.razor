@@ -211,8 +211,9 @@
             var settings = await Http.GetFromJsonAsync<SystemSettingsDTO>($"{ApiUrl}/api/settings");
             if (settings != null)
             {
-                activeMonth = settings.ActiveMonth;
-                activeYear = settings.ActiveYear;
+                // Correção: Conversão explícita de int? para int usando fallback
+                activeMonth = settings.ActiveMonth ?? DateTime.Now.Month;
+                activeYear = settings.ActiveYear ?? DateTime.Now.Year;
                 isPeriodMismatch = (activeMonth != DateTime.Now.Month || activeYear != DateTime.Now.Year);
             }
 
@@ -234,7 +235,10 @@
                 .OrderByDescending(t => t.CompletionDate)
                 .ToList() ?? new();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro no financeiro: {ex.Message}");
+        }
         finally { isLoading = false; StateHasChanged(); }
     }
 

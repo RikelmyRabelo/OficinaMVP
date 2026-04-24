@@ -182,16 +182,27 @@ else
         {
             isLoading = true;
             
+            // Busca configurações do sistema (Mês e Ano ativos)
             var settings = await Http.GetFromJsonAsync<SystemSettingsDTO>($"{ApiUrl}/api/settings");
+            
+            // Correção: Tratamento de nulos para converter de int? (do DTO) para int (variável local)
             activeMonth = settings?.ActiveMonth ?? DateTime.Now.Month;
             activeYear = settings?.ActiveYear ?? DateTime.Now.Year;
 
+            // Busca O.S. filtradas pelo período ativo
             var osListPorPeriodo = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/periodo?mes={activeMonth}&ano={activeYear}");
+            
+            // Busca todas as O.S. finalizadas para o faturamento total acumulado
             var osListAllCompleted = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/completed?take=1000");
+            
+            // Busca lista de produtos para verificar alertas de estoque
             var prodList = await Http.GetFromJsonAsync<List<ProductDTO>>($"{ApiUrl}/api/products");
 
+            // Atribuição dos indicadores
             faturamentoTotalGeral = osListAllCompleted?.Sum(x => x.AmountPaid) ?? 0;
             veiculosNoCiclo = osListPorPeriodo?.Count(x => x.Status == "Completed") ?? 0;
+            
+            // Correção: Verificação de estoque baixo tratando o StockQuantity nulo
             estoqueBaixo = prodList?.Count(x => (x.StockQuantity ?? 0) <= x.MinimumStock) ?? 0;
         }
         catch (Exception ex)
@@ -215,7 +226,7 @@ else
                 await CarregarDados();
             }
         } catch { opSucesso = false; feedbackMsg = "Erro ao fechar período."; }
-        finally { isBusy = false; }
+        finally { isBusy = false; StateHasChanged(); }
     }
 
     private async Task GerarBackup() => await ExecutarAcao("api/backup/gerar", "Backup concluído!");

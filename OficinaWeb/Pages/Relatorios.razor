@@ -264,8 +264,13 @@
     {
         try {
             var settings = await Http.GetFromJsonAsync<SystemSettingsDTO>($"{ApiUrl}/api/settings");
-            if (settings != null) { selectedMonth = settings.ActiveMonth; selectedYear = settings.ActiveYear; }
-        } catch { selectedMonth = DateTime.Now.Month; selectedYear = DateTime.Now.Year; }
+            // Correção: Uso de null-coalescing para garantir conversão de int? para int
+            selectedMonth = settings?.ActiveMonth ?? DateTime.Now.Month;
+            selectedYear = settings?.ActiveYear ?? DateTime.Now.Year;
+        } catch { 
+            selectedMonth = DateTime.Now.Month; 
+            selectedYear = DateTime.Now.Year; 
+        }
         await LoadData();
     }
 
@@ -324,7 +329,11 @@
                 })
                 .OrderBy(p => p.DataOriginal).ToList();
         }
-        catch { } finally { isLoading = false; StateHasChanged(); }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro no carregamento Relatórios: {ex.Message}");
+        }
+        finally { isLoading = false; StateHasChanged(); }
     }
 
     private int CalcularAltura(decimal valor) {

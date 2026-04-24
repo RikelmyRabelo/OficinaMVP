@@ -7,10 +7,10 @@ namespace OficinaWeb.Models
     public class SystemSettingsDTO
     {
         [JsonPropertyName("activeMonth")]
-        public int ActiveMonth { get; set; }
+        public int? ActiveMonth { get; set; }
 
         [JsonPropertyName("activeYear")]
-        public int ActiveYear { get; set; }
+        public int? ActiveYear { get; set; }
     }
 
     public class FinancialSummaryDTO
@@ -76,10 +76,10 @@ namespace OficinaWeb.Models
         public DateTime? PromisedPaymentDate { get; set; }
 
         [JsonPropertyName("accountingMonth")]
-        public int AccountingMonth { get; set; }
+        public int? AccountingMonth { get; set; }
 
         [JsonPropertyName("accountingYear")]
-        public int AccountingYear { get; set; }
+        public int? AccountingYear { get; set; }
 
         [JsonPropertyName("isDeleted")]
         public bool IsDeleted { get; set; }
