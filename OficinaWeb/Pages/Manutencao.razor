@@ -321,10 +321,10 @@
                                                     <input type="text" class="form-control form-control-sm text-center mb-2" style="font-size: 0.7rem;" value="@pixCopiaCola" readonly />
                                                     <div class="d-flex flex-wrap gap-1 justify-content-center">
                                                         <button class="btn btn-sm btn-outline-dark" @onclick="CopiarPix"><i class="bi bi-clipboard me-1"></i>Copiar</button>
-                                                        <button class="btn btn-sm btn-success" @onclick="EnviarPixMeuCelular" title="Enviar para meu WhatsApp"><i class="bi bi-phone"></i> Meu Celular</button>
+                                                        <button class="btn btn-sm btn-success" @onclick="() => EnviarPixWhatsApp(false)" title="Enviar para meu WhatsApp"><i class="bi bi-phone"></i> Meu Celular</button>
                                                         @if (!string.IsNullOrEmpty(sel.Vehicle?.CustomerPhone))
                                                         {
-                                                            <button class="btn btn-sm btn-outline-success" @onclick="EnviarPixCliente" title="Enviar para o WhatsApp do cliente"><i class="bi bi-whatsapp"></i> Cliente</button>
+                                                            <button class="btn btn-sm btn-outline-success" @onclick="() => EnviarPixWhatsApp(true)" title="Enviar para o WhatsApp do cliente"><i class="bi bi-whatsapp"></i> Cliente</button>
                                                         }
                                                     </div>
                                                 </div>
@@ -950,19 +950,24 @@
     }
 
     async Task CopiarPix() { await JS.InvokeVoidAsync("navigator.clipboard.writeText", pixCopiaCola); MostrarSucesso("Código PIX copiado!"); }
-    async Task EnviarPixMeuCelular() 
-    { 
+
+    async Task EnviarPixWhatsApp(bool paraCliente)
+    {
+        string numero = meuNumeroWhatsApp;
+        string saudacao = "*PIX - FREITAS AUTOCENTER*\nO.S. #" + (sel?.Id ?? 0);
+
+        if (paraCliente && sel?.Vehicle != null)
+        {
+            numero = sel.Vehicle.CustomerPhone?.Replace("(", "").Replace(")", "").Replace("-", "").Replace(" ", "") ?? "";
+            if (!numero.StartsWith("55")) numero = "55" + numero;
+            saudacao = $"Olá {sel.Vehicle.CustomerName}, segue o PIX para pagamento da sua O.S. #{sel.Id} na Freitas Autocenter.";
+        }
+
         string urlImagem = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(pixCopiaCola)}";
-        string texto = $"*PIX - FREITAS AUTOCENTER*\nO.S. #{sel?.Id}\nVeículo: {sel?.Vehicle?.Model}\nValor: *R$ {valorPixGerado:N2}*\n\n*Pix Copia e Cola:*\n{pixCopiaCola}";
-        await JS.InvokeVoidAsync("open", $"https://wa.me/{meuNumeroWhatsApp}?text={Uri.EscapeDataString(texto)}", "_blank"); 
-    }
-    async Task EnviarPixCliente() 
-    { 
-        if (sel?.Vehicle?.CustomerPhone == null) return;
-        string fone = sel.Vehicle.CustomerPhone.Replace("(", "").Replace(")", "").Replace("-", "").Replace(" ", "");
-        if (!fone.StartsWith("55")) fone = "55" + fone;
-        string texto = $"Olá {sel.Vehicle.CustomerName}, segue o PIX para pagamento da sua O.S. #{sel.Id}.\n*Valor:* R$ {valorPixGerado:N2}\n\n*Pix Copia e Cola:*\n{pixCopiaCola}";
-        await JS.InvokeVoidAsync("open", $"https://wa.me/{fone}?text={Uri.EscapeDataString(texto)}", "_blank"); 
+        string texto = $"{saudacao}\n\n*Valor:* R$ {valorPixGerado:N2}\n\n*QR Code:* {urlImagem}\n\n*Pix Copia e Cola:*\n{pixCopiaCola}";
+        string url = $"https://wa.me/{numero}?text={Uri.EscapeDataString(texto)}";
+        
+        await JS.InvokeVoidAsync("open", url, "_blank");
     }
 
     void AbrirEdicaoItem(ServiceItemDTO item) 
