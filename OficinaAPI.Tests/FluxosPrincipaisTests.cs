@@ -8,11 +8,23 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
+using Moq;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace OficinaAPI.Tests
 {
     public class FluxosPrincipaisTests
     {
+        private readonly Mock<IWebHostEnvironment> _mockEnv;
+        private readonly IMemoryCache _cache;
+
+        public FluxosPrincipaisTests()
+        {
+            _mockEnv = new Mock<IWebHostEnvironment>();
+            _cache = new MemoryCache(new MemoryCacheOptions());
+        }
+
         private OficinaContext GetDatabaseContext()
         {
             var options = new DbContextOptionsBuilder<OficinaContext>()
@@ -75,18 +87,17 @@ namespace OficinaAPI.Tests
         {
             var context = GetDatabaseContext();
             var prodController = new ProductsController(context);
-            var osController = new ServiceOrdersController(context);
+            var osController = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
             await prodController.PostProduct(new Product { Code = "PNEU01", Name = "Pneu", SalePrice = 400, StockQuantity = 10 });
             var produtoSalvo = await context.Products.FirstAsync();
 
-            var resOs = await osController.PostServiceOrder(new ServiceOrdersController.CreateOSDTO { ClientName = "Rikelmy", VehicleModel = "Moto" });
+            var resOs = await osController.PostServiceOrder(new CreateOSDTO { ClientName = "Rikelmy", VehicleModel = "Moto" });
             var osCriada = (resOs.Result as OkObjectResult)!.Value as ServiceOrder;
 
-            await osController.AddItem(osCriada!.Id, new ServiceOrdersController.AddItemDTO { ProductId = produtoSalvo.Id, Quantity = 2 });
+            await osController.AddItem(osCriada!.Id, new AddItemDTO { ProductId = produtoSalvo.Id, Quantity = 2 });
 
             var produtoNoBanco = await context.Products.FindAsync(produtoSalvo.Id);
-            // O estoque não baixa enquanto a OS for "Pending"
             Assert.Equal(10, produtoNoBanco!.StockQuantity);
 
             var osNoBanco = await context.ServiceOrders.FindAsync(osCriada.Id);
@@ -98,20 +109,19 @@ namespace OficinaAPI.Tests
         {
             var context = GetDatabaseContext();
             var prodController = new ProductsController(context);
-            var osController = new ServiceOrdersController(context);
+            var osController = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
             await prodController.PostProduct(new Product { Code = "PNEU01", Name = "Pneu", SalePrice = 400, StockQuantity = 10 });
             var p = await context.Products.FirstAsync();
 
-            var resOs = await osController.PostServiceOrder(new ServiceOrdersController.CreateOSDTO { ClientName = "Test", VehicleModel = "Car" });
+            var resOs = await osController.PostServiceOrder(new CreateOSDTO { ClientName = "Test", VehicleModel = "Car" });
             var os = (resOs.Result as OkObjectResult)!.Value as ServiceOrder;
 
-            await osController.AddItem(os!.Id, new ServiceOrdersController.AddItemDTO { ProductId = p.Id, Quantity = 2 });
+            await osController.AddItem(os!.Id, new AddItemDTO { ProductId = p.Id, Quantity = 2 });
 
-            await osController.CompleteOrder(os.Id, new ServiceOrdersController.CompletionDTO { CompletionDate = DateTime.Now });
+            await osController.CompleteOrder(os.Id, new CompletionDTO { CompletionDate = DateTime.Now });
 
             var produtoFinal = await context.Products.FindAsync(p.Id);
-            // Ao finalizar, o estoque deve cair para 8
             Assert.Equal(8, produtoFinal!.StockQuantity);
         }
 
@@ -119,19 +129,19 @@ namespace OficinaAPI.Tests
         public async Task PagamentoMisto_DeveSalvarMultiplasFormasDePagamento()
         {
             var context = GetDatabaseContext();
-            var controller = new ServiceOrdersController(context);
+            var controller = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
-            var resOs = await controller.PostServiceOrder(new ServiceOrdersController.CreateOSDTO { ClientName = "Cliente Pagador", VehicleModel = "Civic" });
+            var resOs = await controller.PostServiceOrder(new CreateOSDTO { ClientName = "Cliente Pagador", VehicleModel = "Civic" });
             var os = (resOs.Result as OkObjectResult)!.Value as ServiceOrder;
 
-            var updatePaymentDto = new ServiceOrdersController.UpdatePaymentDTO
+            var updatePaymentDto = new UpdatePaymentDTO
             {
                 AmountPaid = 500,
                 PaymentMethod = "Misto",
-                Payments = new List<ServiceOrdersController.PaymentSplitDTO>
+                Payments = new List<PaymentSplitDTO>
                 {
-                    new ServiceOrdersController.PaymentSplitDTO { PaymentMethod = "PIX", Amount = 200 },
-                    new ServiceOrdersController.PaymentSplitDTO { PaymentMethod = "Dinheiro", Amount = 300 }
+                    new PaymentSplitDTO { PaymentMethod = "PIX", Amount = 200 },
+                    new PaymentSplitDTO { PaymentMethod = "Dinheiro", Amount = 300 }
                 }
             };
 
@@ -147,26 +157,20 @@ namespace OficinaAPI.Tests
         public async Task ResumoFinanceiro_DeveCalcularApenasDoMesContabilAtivo()
         {
             var context = GetDatabaseContext();
-            var controller = new ServiceOrdersController(context);
+            var controller = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
-            // Define Mês Ativo como Março de 2026
             context.SystemSettings.Add(new SystemSettings { ActiveMonth = 3, ActiveYear = 2026 });
 
-            // O.S. de Janeiro (Fora do mês contábil)
             var os1 = new ServiceOrder { Status = "Completed", TotalAmount = 500, AmountPaid = 500, AccountingMonth = 1, AccountingYear = 2026 };
-
-            // O.S. de Março (Dentro do mês contábil)
             var os2 = new ServiceOrder { Status = "Completed", TotalAmount = 1000, AmountPaid = 600, AccountingMonth = 3, AccountingYear = 2026 };
 
             context.ServiceOrders.AddRange(os1, os2);
             await context.SaveChangesAsync();
 
             var res = await controller.GetFinancialSummary();
-            var summary = (res.Result as OkObjectResult)!.Value as ServiceOrdersController.FinancialSummaryDTO;
+            var summary = (res.Result as OkObjectResult)!.Value as FinancialSummaryDTO;
 
-            // O Faturamento deve ser apenas os 600 da OS2 (Março)
             Assert.Equal(600, summary!.FaturamentoTotal);
-            // Inadimplência deve ser apenas 400 da OS2 (Março)
             Assert.Equal(400, summary.Inadimplencia);
         }
 
@@ -174,15 +178,14 @@ namespace OficinaAPI.Tests
         public async Task OS_GetActive_NaoDeveTrazerOrdensFinalizadasOuDeletadas()
         {
             var context = GetDatabaseContext();
-            var controller = new ServiceOrdersController(context);
+            var controller = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
-            // Adiciona um veículo simulado
             context.Vehicles.Add(new Vehicle { Id = 1, CustomerName = "João", Model = "Carro" });
 
             context.ServiceOrders.AddRange(
                 new ServiceOrder { Id = 1, VehicleId = 1, Status = "Pending", IsDeleted = false },
                 new ServiceOrder { Id = 2, VehicleId = 1, Status = "Completed", IsDeleted = false },
-                new ServiceOrder { Id = 3, VehicleId = 1, Status = "Pending", IsDeleted = true }  
+                new ServiceOrder { Id = 3, VehicleId = 1, Status = "Pending", IsDeleted = true }
             );
             await context.SaveChangesAsync();
 
@@ -197,17 +200,13 @@ namespace OficinaAPI.Tests
         public async Task OS_Alertas_DeveTrazerApenasInadimplentesAtrasados()
         {
             var context = GetDatabaseContext();
-            var controller = new ServiceOrdersController(context);
+            var controller = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
-            // Adiciona um veículo simulado
             context.Vehicles.Add(new Vehicle { Id = 1, CustomerName = "Maria", Model = "Moto" });
 
             context.ServiceOrders.AddRange(
-                // Pago, sem dívida
                 new ServiceOrder { Id = 1, VehicleId = 1, Status = "Completed", TotalAmount = 100, AmountPaid = 100 },
-                // Devendo, mas prazo é amanhã
                 new ServiceOrder { Id = 2, VehicleId = 1, Status = "Completed", TotalAmount = 100, AmountPaid = 50, PromisedPaymentDate = DateTime.Today.AddDays(1) },
-                // Devendo, prazo foi ontem (DEVE CAIR NO ALERTA)
                 new ServiceOrder { Id = 3, VehicleId = 1, Status = "Completed", TotalAmount = 100, AmountPaid = 50, PromisedPaymentDate = DateTime.Today.AddDays(-1) }
             );
             await context.SaveChangesAsync();
@@ -223,9 +222,9 @@ namespace OficinaAPI.Tests
         public async Task Lixeira_SoftDelete_DeveRemoverDaListaAtiva()
         {
             var context = GetDatabaseContext();
-            var osController = new ServiceOrdersController(context);
+            var osController = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
-            var resOs = await osController.PostServiceOrder(new ServiceOrdersController.CreateOSDTO { ClientName = "Cliente Lixeira", VehicleModel = "Moto" });
+            var resOs = await osController.PostServiceOrder(new CreateOSDTO { ClientName = "Cliente Lixeira", VehicleModel = "Moto" });
             var os = (resOs.Result as OkObjectResult)!.Value as ServiceOrder;
 
             await osController.SoftDeleteServiceOrder(os!.Id);
@@ -248,9 +247,9 @@ namespace OficinaAPI.Tests
 
             context.Products.AddRange(
                 new Product { Code = "A", Name = "Prod A", StockQuantity = 10, IsDeleted = false },
-                new Product { Code = "B", Name = "Prod B", StockQuantity = 3, IsDeleted = false }, // Baixo estoque
-                new Product { Code = "C", Name = "Prod C", StockQuantity = 1, IsDeleted = false }, // Baixo estoque
-                new Product { Code = "D", Name = "Prod D", StockQuantity = 0, IsDeleted = true }   // Deletado, não deve vir
+                new Product { Code = "B", Name = "Prod B", StockQuantity = 3, IsDeleted = false },
+                new Product { Code = "C", Name = "Prod C", StockQuantity = 1, IsDeleted = false },
+                new Product { Code = "D", Name = "Prod D", StockQuantity = 0, IsDeleted = true }
             );
             await context.SaveChangesAsync();
 

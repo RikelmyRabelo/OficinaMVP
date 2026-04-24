@@ -133,10 +133,10 @@
                                     {
                                         <tr @onclick="() => AbrirDetalhes(t)" style="cursor:pointer;">
                                             <td class="text-warning fw-bold">#@t.Id</td>
-                                            <td>@t.Cliente</td>
-                                            <td class="text-white-50">@t.DataPagamento.ToString("dd/MM HH:mm")</td>
-                                            <td class="text-center"><span class="badge @GetBadgeClass(t.Forma)">@t.Forma</span></td>
-                                            <td class="text-end fw-bold">R$ @t.ValorPago.ToString("N2")</td>
+                                            <td>@(t.Vehicle?.CustomerName ?? "Consumidor")</td>
+                                            <td class="text-white-50">@(t.CompletionDate?.ToString("dd/MM HH:mm") ?? "--")</td>
+                                            <td class="text-center"><span class="badge @GetBadgeClass(t.PaymentMethod)">@(t.PaymentMethod?.ToUpper())</span></td>
+                                            <td class="text-end fw-bold">R$ @t.AmountPaid.ToString("N2")</td>
                                         </tr>
                                     }
                                 }
@@ -163,19 +163,19 @@
                     <button type="button" class="btn-close btn-close-white" @onclick="FecharDetalhes"></button>
                 </div>
                 <div class="modal-body text-center">
-                    <h4 class="text-white mb-0">@transacaoSelecionada.Cliente</h4>
+                    <h4 class="text-white mb-0">@(transacaoSelecionada.Vehicle?.CustomerName ?? "Consumidor")</h4>
                     <p class="text-warning mb-4">Ordem de Serviço #@transacaoSelecionada.Id</p>
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="p-3 bg-black rounded">
                                 <small class="text-muted d-block">TOTAL O.S.</small>
-                                <strong>R$ @transacaoSelecionada.ValorTotal.ToString("N2")</strong>
+                                <strong>R$ @transacaoSelecionada.TotalAmount.ToString("N2")</strong>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="p-3 bg-black rounded">
                                 <small class="text-success d-block">VALOR PAGO</small>
-                                <strong class="text-success">R$ @transacaoSelecionada.ValorPago.ToString("N2")</strong>
+                                <strong class="text-success">R$ @transacaoSelecionada.AmountPaid.ToString("N2")</strong>
                             </div>
                         </div>
                     </div>
@@ -190,12 +190,11 @@
 
 @code {
     private string ApiUrl = "";
-    private bool isLoading = true, mostrarToast, mostrarModalDetalhes, isPeriodMismatch;
+    private bool isLoading = true, mostrarModalDetalhes, isPeriodMismatch;
     private int activeMonth, activeYear;
     private decimal faturamentoTotal, totalDinheiro, totalPix, totalCredito, totalDebito, totalInadimplencia;
-    private string toastMensagem = "", toastTipo = "sucesso";
-    private List<TransacaoVisao> transacoesRecentes = new();
-    private TransacaoVisao? transacaoSelecionada;
+    private List<ServiceOrderDTO> transacoesRecentes = new();
+    private ServiceOrderDTO? transacaoSelecionada;
 
     protected override async Task OnInitializedAsync()
     {
@@ -209,10 +208,13 @@
         {
             isLoading = true;
             
-            var settings = await Http.GetFromJsonAsync<JsonElement>($"{ApiUrl}/api/settings");
-            activeMonth = GetInt(settings, "activeMonth");
-            activeYear = GetInt(settings, "activeYear");
-            isPeriodMismatch = (activeMonth != DateTime.Now.Month || activeYear != DateTime.Now.Year);
+            var settings = await Http.GetFromJsonAsync<SystemSettingsDTO>($"{ApiUrl}/api/settings");
+            if (settings != null)
+            {
+                activeMonth = settings.ActiveMonth;
+                activeYear = settings.ActiveYear;
+                isPeriodMismatch = (activeMonth != DateTime.Now.Month || activeYear != DateTime.Now.Year);
+            }
 
             var summary = await Http.GetFromJsonAsync<FinancialSummaryDTO>($"{ApiUrl}/api/serviceorders/financial-summary");
             if (summary != null)
@@ -226,60 +228,17 @@
 
             totalDinheiro = await Http.GetFromJsonAsync<decimal>($"{ApiUrl}/api/serviceorders/cash-balance");
 
-            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders/periodo?mes={activeMonth}&ano={activeYear}") ?? new();
-            transacoesRecentes = osList
-                .Where(x => GetString(x, "status") == "Completed")
-                .Select(os => MapearTransacao(os))
-                .OrderByDescending(t => t.DataPagamento)
-                .ToList();
+            var osList = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/periodo?mes={activeMonth}&ano={activeYear}");
+            transacoesRecentes = osList?
+                .Where(x => x.Status == "Completed")
+                .OrderByDescending(t => t.CompletionDate)
+                .ToList() ?? new();
         }
         catch { }
         finally { isLoading = false; StateHasChanged(); }
     }
 
-    private TransacaoVisao MapearTransacao(JsonElement os)
-    {
-        decimal pago = GetDecimal(os, "amountPaid");
-        decimal total = GetDecimal(os, "totalAmount");
-        string cliente = "Consumidor";
-
-        if (os.TryGetProperty("vehicle", out var vh) && vh.ValueKind != JsonValueKind.Null)
-            cliente = GetString(vh, "customerName");
-
-        return new TransacaoVisao
-        {
-            Id = GetInt(os, "id"),
-            Cliente = cliente,
-            DataPagamento = DateTime.TryParse(GetString(os, "completionDate"), out var dt) ? dt : DateTime.Now,
-            Forma = GetString(os, "paymentMethod").ToUpper(),
-            ValorPago = pago,
-            ValorTotal = total,
-            FaltaPagar = Math.Max(0, total - pago)
-        };
-    }
-
-    private string GetString(JsonElement el, string name)
-    {
-        if (el.TryGetProperty(name, out var p)) return p.ToString();
-        string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        return el.TryGetProperty(pascal, out p) ? p.ToString() : "";
-    }
-
-    private int GetInt(JsonElement el, string name)
-    {
-        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetInt32();
-        string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetInt32() : 0;
-    }
-
-    private decimal GetDecimal(JsonElement el, string name)
-    {
-        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetDecimal();
-        string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetDecimal() : 0;
-    }
-
-    private string GetBadgeClass(string forma) => forma switch
+    private string GetBadgeClass(string? forma) => (forma?.ToUpper()) switch
     {
         "DINHEIRO" => "bg-success",
         "PIX" => "bg-info text-dark",
@@ -288,7 +247,7 @@
         _ => "bg-secondary"
     };
 
-    private void AbrirDetalhes(TransacaoVisao t) { transacaoSelecionada = t; mostrarModalDetalhes = true; }
+    private void AbrirDetalhes(ServiceOrderDTO t) { transacaoSelecionada = t; mostrarModalDetalhes = true; }
     private void FecharDetalhes() { mostrarModalDetalhes = false; transacaoSelecionada = null; }
     private string MesNome(int m) => System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(m > 0 && m <= 12 ? m : 1).ToUpper();
 
@@ -300,8 +259,4 @@
             if (res.IsSuccessStatusCode) await CarregarDados();
         }
     }
-
-    public class FinancialSummaryDTO { public decimal FaturamentoTotal { get; set; } public decimal Inadimplencia { get; set; } public decimal TotalPix { get; set; } public decimal TotalCredito { get; set; } public decimal TotalDebito { get; set; } }
-    public class TransacaoVisao { public int Id { get; set; } public string Cliente { get; set; } = ""; public DateTime DataPagamento { get; set; } public string Forma { get; set; } = ""; public decimal ValorPago { get; set; } public decimal ValorTotal { get; set; } public decimal FaltaPagar { get; set; } }
-    public class CashAdjustmentDTO { public decimal Amount { get; set; } public string Description { get; set; } = ""; }
 }

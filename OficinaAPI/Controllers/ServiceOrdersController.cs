@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using OficinaAPI.Data;
 using OficinaAPI.Models;
-using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using System.IO;
@@ -30,10 +29,7 @@ namespace OficinaAPI.Controllers
             if (!_cache.TryGetValue("SystemSettings", out SystemSettings? settings))
             {
                 settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
-
-                var cacheEntryOptions = new MemoryCacheEntryOptions()
-                    .SetSlidingExpiration(TimeSpan.FromMinutes(30)); 
-
+                var cacheEntryOptions = new MemoryCacheEntryOptions().SetSlidingExpiration(TimeSpan.FromMinutes(30));
                 _cache.Set("SystemSettings", settings, cacheEntryOptions);
             }
             return settings;
@@ -41,7 +37,7 @@ namespace OficinaAPI.Controllers
 
         private async Task<DateTime> GetActiveReferenceDate()
         {
-            var settings = await GetCachedSettingsAsync(); // Usando o Cache
+            var settings = await GetCachedSettingsAsync();
             var agora = DateTime.Now;
 
             if (settings != null && (settings.ActiveMonth != agora.Month || settings.ActiveYear != agora.Year))
@@ -134,9 +130,7 @@ namespace OficinaAPI.Controllers
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetTrash()
         {
             var threshold = DateTime.Now.AddDays(-30);
-            var expiredOrders = await _context.ServiceOrders
-                .Where(o => o.IsDeleted && o.DeletionDate < threshold)
-                .ToListAsync();
+            var expiredOrders = await _context.ServiceOrders.Where(o => o.IsDeleted && o.DeletionDate < threshold).ToListAsync();
 
             if (expiredOrders.Any())
             {
@@ -158,8 +152,7 @@ namespace OficinaAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ServiceOrder>> PostServiceOrder([FromBody] CreateOSDTO request)
         {
-            var settings = await GetCachedSettingsAsync(); // Usando o Cache
-
+            var settings = await GetCachedSettingsAsync();
             var newVehicle = new Vehicle
             {
                 CustomerName = request.ClientName,
@@ -185,7 +178,6 @@ namespace OficinaAPI.Controllers
 
             _context.ServiceOrders.Add(os);
             await _context.SaveChangesAsync();
-
             os.Vehicle = newVehicle;
             return Ok(os);
         }
@@ -200,7 +192,6 @@ namespace OficinaAPI.Controllers
             if (product == null) return BadRequest("Produto não encontrado.");
 
             decimal precoUnitario = itemDto.Price ?? product.SalePrice;
-
             var newItem = new ServiceItem
             {
                 ServiceOrderId = id,
@@ -217,7 +208,6 @@ namespace OficinaAPI.Controllers
 
             _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
-
             return Ok(newItem);
         }
 
@@ -238,10 +228,8 @@ namespace OficinaAPI.Controllers
             };
 
             os.TotalAmount += newItem.Price;
-
             _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
-
             return Ok(newItem);
         }
 
@@ -262,10 +250,8 @@ namespace OficinaAPI.Controllers
             };
 
             os.TotalAmount += newItem.Price;
-
             _context.ServiceItems.Add(newItem);
             await _context.SaveChangesAsync();
-
             return Ok(newItem);
         }
 
@@ -276,8 +262,7 @@ namespace OficinaAPI.Controllers
             if (os == null) return NotFound();
             if (os.Status == "Completed") return BadRequest("O.S. já finalizada.");
 
-            var settings = await GetCachedSettingsAsync(); // Usando o Cache
-
+            var settings = await GetCachedSettingsAsync();
             os.Status = "Completed";
             os.CompletionDate = DateTime.Now;
 
@@ -305,10 +290,8 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
-
             os.IsDeleted = true;
             os.DeletionDate = DateTime.Now;
-
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -319,7 +302,6 @@ namespace OficinaAPI.Controllers
             var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
 
-            // Estorno de estoque na exclusão permanente
             if (os.Status == "Completed")
             {
                 foreach (var item in os.Items)
@@ -334,7 +316,6 @@ namespace OficinaAPI.Controllers
 
             _context.ServiceOrders.Remove(os);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
@@ -343,10 +324,8 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
-
             os.IsDeleted = false;
             os.DeletionDate = null;
-
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -371,9 +350,7 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
-
             os.TotalAmount = request.TotalAmount;
-
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -406,24 +383,14 @@ namespace OficinaAPI.Controllers
                 }
             }
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
+            try { await _context.SaveChangesAsync(); }
             catch (DbUpdateConcurrencyException)
             {
-                if (!_context.ServiceOrders.Any(e => e.Id == id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    var entry = _context.Entry(os);
-                    await entry.GetDatabaseValuesAsync();
-                    await _context.SaveChangesAsync();
-                }
+                if (!_context.ServiceOrders.Any(e => e.Id == id)) return NotFound();
+                var entry = _context.Entry(os);
+                await entry.GetDatabaseValuesAsync();
+                await _context.SaveChangesAsync();
             }
-
             return NoContent();
         }
 
@@ -473,7 +440,6 @@ namespace OficinaAPI.Controllers
 
             os.TotalAmount -= item.Price;
             _context.ServiceItems.Remove(item);
-
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -481,10 +447,7 @@ namespace OficinaAPI.Controllers
         [HttpGet("{id}/attachments")]
         public async Task<ActionResult<IEnumerable<ServiceOrderAttachment>>> GetAttachments(int id)
         {
-            return await _context.Set<ServiceOrderAttachment>()
-                .AsNoTracking()
-                .Where(a => a.ServiceOrderId == id)
-                .ToListAsync();
+            return await _context.Set<ServiceOrderAttachment>().AsNoTracking().Where(a => a.ServiceOrderId == id).ToListAsync();
         }
 
         [HttpPost("{id}/attachments")]
@@ -497,26 +460,14 @@ namespace OficinaAPI.Controllers
             var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "attachments");
             if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-            // Previne Path Traversal
             var extension = Path.GetExtension(file.FileName);
             var uniqueFileName = $"{Guid.NewGuid()}{extension}";
             var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream);
-            }
+            using (var stream = new FileStream(filePath, FileMode.Create)) { await file.CopyToAsync(stream); }
 
             var fileUrl = $"/uploads/attachments/{uniqueFileName}";
-
-            _context.Set<ServiceOrderAttachment>().Add(new ServiceOrderAttachment
-            {
-                ServiceOrderId = id,
-                FileName = file.FileName,
-                FileType = file.ContentType,
-                Base64Content = fileUrl
-            });
-
+            _context.Set<ServiceOrderAttachment>().Add(new ServiceOrderAttachment { ServiceOrderId = id, FileName = file.FileName, FileType = file.ContentType, Base64Content = fileUrl });
             await _context.SaveChangesAsync();
             return Ok();
         }
@@ -531,11 +482,7 @@ namespace OficinaAPI.Controllers
             {
                 var relativePath = a.Base64Content.TrimStart('/');
                 var fullPath = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), relativePath);
-
-                if (System.IO.File.Exists(fullPath))
-                {
-                    System.IO.File.Delete(fullPath);
-                }
+                if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
             }
 
             _context.Set<ServiceOrderAttachment>().Remove(a);
@@ -546,7 +493,7 @@ namespace OficinaAPI.Controllers
         [HttpGet("financial-summary")]
         public async Task<ActionResult<FinancialSummaryDTO>> GetFinancialSummary()
         {
-            var settings = await GetCachedSettingsAsync(); // Usando o Cache
+            var settings = await GetCachedSettingsAsync();
             if (settings == null) return BadRequest("Configurações não encontradas.");
 
             var query = _context.ServiceOrders.AsNoTracking()
@@ -555,7 +502,6 @@ namespace OficinaAPI.Controllers
                             o.AccountingYear == settings.ActiveYear);
 
             var osData = await query.Select(o => new { o.Id, o.TotalAmount, o.AmountPaid, o.PaymentMethod, Data = o.CompletionDate ?? DateTime.MinValue }).ToListAsync();
-
             var multiPayments = await _context.ServiceOrderPayments.AsNoTracking().Include(p => p.ServiceOrder)
                 .Where(p => p.ServiceOrder != null && p.ServiceOrder.Status == "Completed" && !p.ServiceOrder.IsDeleted &&
                             p.ServiceOrder.AccountingMonth == settings.ActiveMonth &&
@@ -621,7 +567,10 @@ namespace OficinaAPI.Controllers
             return Ok();
         }
     }
+}
 
+namespace OficinaAPI.Models
+{
     public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }

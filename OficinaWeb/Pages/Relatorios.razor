@@ -3,6 +3,7 @@
 @inject IConfiguration Config
 @using System.Net.Http.Json
 @using System.Text.Json
+@using OficinaWeb.Models
 
 <PageTitle>Estatísticas Avançadas - FREITAS AUTOCENTER</PageTitle>
 
@@ -57,7 +58,6 @@
                 </div>
             </div>
             
-            @* Card Total Saídas *@
             <div class="col-md-3">
                 <div class="card h-100 border-0 shadow-sm card-clickable" @onclick="() => showProductModal = true" style="background: #111; border-bottom: 3px solid #ffc107 !important; cursor: pointer;">
                     <div class="card-body p-4">
@@ -84,7 +84,6 @@
             </div>
         </div>
 
-        @* Gráfico e Divisão de Meios *@
         <div class="row g-4 mb-5">
             <div class="col-lg-8">
                 <div class="card border-0 p-4 shadow-lg h-100" style="background: #0d0d0d; border: 1px solid #222 !important;">
@@ -139,7 +138,6 @@
             </div>
         </div>
 
-        @* Tabela Principal *@
         <div class="card border-0 p-4 shadow-lg mb-5" style="background: #0d0d0d; border: 1px solid #222 !important;">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h5 class="text-white mb-0 text-uppercase small fw-bold">Histórico Geral do Ciclo</h5>
@@ -161,10 +159,10 @@
                         {
                             <tr class="border-secondary">
                                 <td><span class="badge rounded-pill bg-success-subtle text-success border border-success" style="font-size: 0.65rem;">CONCLUÍDO</span></td>
-                                <td class="small">@os.Data.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td class="fw-bold">@os.Cliente</td>
-                                <td class="text-white-50">@os.Veiculo</td>
-                                <td class="text-end fw-bold">@os.Total.ToString("C2")</td>
+                                <td class="small">@(os.CompletionDate?.ToString("dd/MM/yyyy HH:mm") ?? "--")</td>
+                                <td class="fw-bold">@(os.Vehicle?.CustomerName ?? "Consumidor")</td>
+                                <td class="text-white-50">@(os.Vehicle?.Model ?? "Geral")</td>
+                                <td class="text-end fw-bold">@os.TotalAmount.ToString("C2")</td>
                             </tr>
                         }
                     </tbody>
@@ -174,7 +172,6 @@
     }
 </div>
 
-@* MODAL DE DETALHAMENTO DE PRODUTOS *@
 @if (showProductModal)
 {
     <div class="modal fade show d-block" style="background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);" tabindex="-1">
@@ -249,13 +246,11 @@
 </style>
 
 @code {
-    private bool isLoading = true;
-    private bool showProductModal = false;
-    private int selectedMonth, selectedYear;
+    private bool isLoading = true, showProductModal = false;
+    private int selectedMonth, selectedYear, carrosResolvidos;
     private decimal faturamentoMensal, totalPix, totalCredito, totalDinheiro, totalSaidasEstoque;
-    private int carrosResolvidos;
     private List<PontoGrafico> faturamentoDiario = new();
-    private List<OSSimple> ordensNoMes = new();
+    private List<ServiceOrderDTO> ordensNoMes = new();
     private List<ProductExit> produtosSaidaList = new();
     private string ApiUrl = "";
 
@@ -267,29 +262,16 @@
 
     private async Task InitialLoad()
     {
-        await CarregarPeriodoAtivo();
-        await LoadData();
-    }
-
-    private async Task CarregarPeriodoAtivo()
-    {
         try {
-            var settings = await Http.GetFromJsonAsync<JsonElement>($"{ApiUrl}/api/settings");
-            selectedMonth = GetInt(settings, "activeMonth");
-            selectedYear = GetInt(settings, "activeYear");
-        } catch {
-            selectedMonth = DateTime.Now.Month;
-            selectedYear = DateTime.Now.Year;
-        }
+            var settings = await Http.GetFromJsonAsync<SystemSettingsDTO>($"{ApiUrl}/api/settings");
+            if (settings != null) { selectedMonth = settings.ActiveMonth; selectedYear = settings.ActiveYear; }
+        } catch { selectedMonth = DateTime.Now.Month; selectedYear = DateTime.Now.Year; }
+        await LoadData();
     }
 
     private async Task OnMonthChanged(ChangeEventArgs e)
     {
-        if (int.TryParse(e.Value?.ToString(), out int m))
-        {
-            selectedMonth = m;
-            await LoadData();
-        }
+        if (int.TryParse(e.Value?.ToString(), out int m)) { selectedMonth = m; await LoadData(); }
     }
 
     private async Task LoadData()
@@ -297,104 +279,59 @@
         try 
         {
             isLoading = true;
-            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders/periodo?mes={selectedMonth}&ano={selectedYear}") ?? new();
+            var osList = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/periodo?mes={selectedMonth}&ano={selectedYear}") ?? new();
             
             faturamentoMensal = 0; totalPix = 0; totalCredito = 0; totalDinheiro = 0; totalSaidasEstoque = 0;
-            ordensNoMes.Clear();
-            produtosSaidaList.Clear();
+            ordensNoMes.Clear(); produtosSaidaList.Clear();
 
-            var filtradas = osList.Where(x => GetString(x, "status") == "Completed").ToList();
-
+            var filtradas = osList.Where(x => x.Status == "Completed").ToList();
             carrosResolvidos = filtradas.Count;
 
             foreach (var os in filtradas)
             {
-                decimal valor = GetDecimal(os, "amountPaid");
-                string metodo = GetString(os, "paymentMethod").ToUpper();
-                DateTime dataConclusao = DateTime.Parse(GetString(os, "completionDate"));
+                decimal valor = os.AmountPaid;
+                string metodo = (os.PaymentMethod ?? "").ToUpper();
+                DateTime dataConclusao = os.CompletionDate ?? DateTime.Now;
 
                 faturamentoMensal += valor;
                 if (metodo == "PIX") totalPix += valor;
                 else if (metodo.Contains("CREDITO") || metodo.Contains("CRÉDITO")) totalCredito += valor;
                 else if (metodo == "DINHEIRO") totalDinheiro += valor;
 
-                string cliente = "Consumidor";
-                string veiculo = "Geral";
-                if (os.TryGetProperty("vehicle", out var vh) && vh.ValueKind != JsonValueKind.Null)
+                if (os.Items != null)
                 {
-                    cliente = GetString(vh, "customerName");
-                    veiculo = GetString(vh, "model");
-                }
-
-                if (os.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var item in items.EnumerateArray())
+                    foreach (var item in os.Items.Where(i => i.ProductId != null))
                     {
-                        if (item.TryGetProperty("productId", out var pid) && pid.ValueKind != JsonValueKind.Null)
-                        {
-                            decimal precoItem = GetDecimal(item, "price");
-                            totalSaidasEstoque += precoItem;
-
-                            produtosSaidaList.Add(new ProductExit {
-                                Data = dataConclusao,
-                                Descricao = GetString(item, "description"),
-                                Cliente = cliente,
-                                Quantidade = GetInt(item, "quantity"),
-                                ValorTotal = precoItem
-                            });
-                        }
+                        totalSaidasEstoque += item.Price;
+                        produtosSaidaList.Add(new ProductExit {
+                            Data = dataConclusao,
+                            Descricao = item.Description,
+                            Cliente = os.Vehicle?.CustomerName ?? "Consumidor",
+                            Quantidade = item.Quantity,
+                            ValorTotal = item.Price
+                        });
                     }
                 }
-
-                ordensNoMes.Add(new OSSimple {
-                    Data = dataConclusao,
-                    Cliente = cliente,
-                    Veiculo = veiculo,
-                    Total = valor
-                });
+                ordensNoMes.Add(os);
             }
 
-            ordensNoMes = ordensNoMes.OrderBy(o => o.Data).ToList();
             faturamentoDiario = ordensNoMes
-                .GroupBy(o => o.Data.Date)
+                .GroupBy(o => (o.CompletionDate ?? DateTime.Now).Date)
                 .Select(g => new PontoGrafico {
                     DataOriginal = g.Key,
                     DataRotulo = g.Key.ToString("dd/MM"),
-                    Valor = g.Sum(o => o.Total)
+                    Valor = g.Sum(o => o.AmountPaid)
                 })
                 .OrderBy(p => p.DataOriginal).ToList();
         }
-        catch (Exception ex) { Console.WriteLine("Erro: " + ex.Message); } 
-        finally { isLoading = false; StateHasChanged(); }
+        catch { } finally { isLoading = false; StateHasChanged(); }
     }
 
-    private string GetString(JsonElement el, string name) {
-        if (el.TryGetProperty(name, out var p)) return p.ToString();
-        string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        return el.TryGetProperty(pascal, out p) ? p.ToString() : "";
-    }
-    private int GetInt(JsonElement el, string name) {
-        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetInt32();
-        string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetInt32() : 0;
-    }
-    private decimal GetDecimal(JsonElement el, string name) {
-        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetDecimal();
-        string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetDecimal() : 0;
-    }
     private int CalcularAltura(decimal valor) {
         var max = faturamentoDiario.Any() ? faturamentoDiario.Max(d => d.Valor) : 0;
         return max == 0 ? 0 : (int)((valor / max) * 180);
     }
 
-    public class ProductExit {
-        public DateTime Data { get; set; }
-        public string Descricao { get; set; } = "";
-        public string Cliente { get; set; } = "";
-        public int Quantidade { get; set; }
-        public decimal ValorTotal { get; set; }
-    }
+    public class ProductExit { public DateTime Data { get; set; } public string Descricao { get; set; } = ""; public string Cliente { get; set; } = ""; public int Quantidade { get; set; } public decimal ValorTotal { get; set; } }
     public class PontoGrafico { public DateTime DataOriginal { get; set; } public string DataRotulo { get; set; } = ""; public decimal Valor { get; set; } }
-    public class OSSimple { public DateTime Data { get; set; } public string Cliente { get; set; } = ""; public string Veiculo { get; set; } = ""; public decimal Total { get; set; } }
 }

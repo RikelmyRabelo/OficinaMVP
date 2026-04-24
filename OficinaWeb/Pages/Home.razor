@@ -1,9 +1,10 @@
 ﻿@page "/"
 @inject HttpClient Http
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 @inject IConfiguration Config
 @using System.Net.Http.Json
-@using System.Text.Json
+@using OficinaWeb.Models
 
 <PageTitle>FREITAS AUTOCENTER - Início</PageTitle>
 
@@ -180,19 +181,18 @@ else
         try
         {
             isLoading = true;
-            var settings = await Http.GetFromJsonAsync<JsonElement>($"{ApiUrl}/api/settings");
-            activeMonth = GetInt(settings, "activeMonth");
-            activeYear = GetInt(settings, "activeYear");
+            
+            var settings = await Http.GetFromJsonAsync<SystemSettingsDTO>($"{ApiUrl}/api/settings");
+            activeMonth = settings?.ActiveMonth ?? DateTime.Now.Month;
+            activeYear = settings?.ActiveYear ?? DateTime.Now.Year;
 
-            var osListPorPeriodo = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders/periodo?mes={activeMonth}&ano={activeYear}") ?? new();
-            var osListAllCompleted = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders/completed?take=1000") ?? new(); // Supondo que "completed" tenha take
-            var prodList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/products") ?? new();
+            var osListPorPeriodo = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/periodo?mes={activeMonth}&ano={activeYear}");
+            var osListAllCompleted = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/completed?take=1000");
+            var prodList = await Http.GetFromJsonAsync<List<ProductDTO>>($"{ApiUrl}/api/products");
 
-            faturamentoTotalGeral = osListAllCompleted.Sum(x => GetDecimal(x, "amountPaid"));
-
-            veiculosNoCiclo = osListPorPeriodo.Count(x => GetString(x, "status") == "Completed");
-
-            estoqueBaixo = prodList.Count(x => GetInt(x, "stockQuantity") <= GetInt(x, "minimumStock"));
+            faturamentoTotalGeral = osListAllCompleted?.Sum(x => x.AmountPaid) ?? 0;
+            veiculosNoCiclo = osListPorPeriodo?.Count(x => x.Status == "Completed") ?? 0;
+            estoqueBaixo = prodList?.Count(x => x.StockQuantity <= x.MinimumStock) ?? 0;
         }
         catch { }
         finally { isLoading = false; StateHasChanged(); }
@@ -233,24 +233,6 @@ else
     {
         ocultarValores = !ocultarValores;
         await JS.InvokeVoidAsync("localStorage.setItem", "ocultarValoresHome", ocultarValores.ToString());
-    }
-
-    private string GetString(JsonElement el, string name) {
-        if (el.TryGetProperty(name, out var p)) return p.ToString();
-        string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        return el.TryGetProperty(pascal, out p) ? p.ToString() : "";
-    }
-
-    private int GetInt(JsonElement el, string name) {
-        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetInt32();
-        string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetInt32() : 0;
-    }
-
-    private decimal GetDecimal(JsonElement el, string name) {
-        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null) return p.GetDecimal();
-        string pascal = char.ToUpper(name[0]) + name.Substring(1);
-        return (el.TryGetProperty(pascal, out p) && p.ValueKind != JsonValueKind.Null) ? p.GetDecimal() : 0;
     }
 
     private string MesNome(int m) => System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(m > 0 && m <= 12 ? m : 1).ToUpper();

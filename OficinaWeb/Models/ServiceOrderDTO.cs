@@ -3,25 +3,91 @@ using System.Collections.Generic;
 
 namespace OficinaWeb.Models
 {
+    public class SystemSettingsDTO
+    {
+        public int ActiveMonth { get; set; }
+        public int ActiveYear { get; set; }
+    }
+
+    public class FinancialSummaryDTO
+    {
+        public decimal FaturamentoTotal { get; set; }
+        public decimal Inadimplencia { get; set; }
+        public decimal TotalPix { get; set; }
+        public decimal TotalCredito { get; set; }
+        public decimal TotalDebito { get; set; }
+    }
+
+    public class CashAdjustmentDTO
+    {
+        public decimal Amount { get; set; }
+        public string Description { get; set; } = "";
+    }
+
     public class ServiceOrderDTO
     {
         public int Id { get; set; }
+        public int VehicleId { get; set; }
         public VehicleDTO? Vehicle { get; set; }
-        public string Status { get; set; } = "Pending";
+        public DateTime EntryDate { get; set; }
+        public DateTime? CompletionDate { get; set; }
+        public string Status { get; set; } = "";
         public decimal TotalAmount { get; set; }
         public decimal AmountPaid { get; set; }
         public string? PaymentMethod { get; set; }
         public DateTime? PromisedPaymentDate { get; set; }
-        public decimal RemainingAmount => Math.Max(0, TotalAmount - AmountPaid);
-        public decimal OverpaidAmount => Math.Max(0, AmountPaid - TotalAmount);
-        public List<AttachmentDTO> Attachments { get; set; } = new();
-        public DateTime EntryDate { get; set; }
-        public DateTime? CompletionDate { get; set; }
+        public int AccountingMonth { get; set; }
+        public int AccountingYear { get; set; }
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletionDate { get; set; }
         public List<ServiceItemDTO> Items { get; set; } = new();
         public List<PaymentSplitDTO> Payments { get; set; } = new();
+        public List<AttachmentDTO> Attachments { get; set; } = new();
 
-        public bool IsDeleted { get; set; } = false;
-        public DateTime? DeletionDate { get; set; }
+        public decimal RemainingAmount => TotalAmount - AmountPaid;
+        public decimal OverpaidAmount => Math.Max(0, AmountPaid - TotalAmount);
+    }
+
+    public class VehicleDTO
+    {
+        public string Model { get; set; } = "";
+        public string CustomerName { get; set; } = "";
+        public string CustomerAddress { get; set; } = "";
+        public string CustomerPhone { get; set; } = "";
+    }
+
+    public class ServiceItemDTO
+    {
+        public int Id { get; set; }
+        public string Description { get; set; } = "";
+        public decimal Price { get; set; }
+        public int? ProductId { get; set; }
+        public string? WarrantyPeriod { get; set; }
+        public EmployeeListDTO? Mechanic { get; set; }
+        public int Quantity { get; set; } = 1;
+        public int? MechanicId { get; set; }
+        public string ItemType { get; set; } = "Product";
+        public int PrintLine { get; set; }
+
+        public string ProductCodeDisplay
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(Description)) return "-";
+                int idx = Description.IndexOf(" - ");
+                return idx > 0 ? Description.Substring(0, idx) : "-";
+            }
+        }
+
+        public string ProductDescriptionDisplay
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(Description)) return "";
+                int idx = Description.IndexOf(" - ");
+                return idx > 0 ? Description.Substring(idx + 3) : Description;
+            }
+        }
     }
 
     public class PaymentSplitDTO
@@ -47,42 +113,15 @@ namespace OficinaWeb.Models
         public string Base64Content { get; set; } = "";
     }
 
-    public class VehicleDTO { public string Model { get; set; } = ""; public string CustomerName { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-
-    public class ServiceItemDTO
+    public class ProductDTO
     {
         public int Id { get; set; }
-        public string Description { get; set; } = "";
-        public decimal Price { get; set; }
-        public int? ProductId { get; set; }
-        public string? WarrantyPeriod { get; set; }
-        public EmployeeListDTO? Mechanic { get; set; }
-        public int Quantity { get; set; } = 1;
-        public int? MechanicId { get; set; }
-        public string ItemType { get; set; } = "Product";
-
-        public int PrintLine { get; set; }
-
-        // Propriedades Otimizadas para não processar Split no HTML
-        public string ProductCodeDisplay
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(Description)) return "-";
-                int idx = Description.IndexOf(" - ");
-                return idx > 0 ? Description.Substring(0, idx) : "-";
-            }
-        }
-
-        public string ProductDescriptionDisplay
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(Description)) return "";
-                int idx = Description.IndexOf(" - ");
-                return idx > 0 ? Description.Substring(idx + 3) : Description;
-            }
-        }
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+        public decimal? SalePrice { get; set; }
+        public int? StockQuantity { get; set; }
+        public int MinimumStock { get; set; } = 5;
+        public bool IsExternal { get; set; }
     }
 
     public class ProductListDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal salePrice { get; set; } public int stockQuantity { get; set; } }
@@ -105,5 +144,21 @@ namespace OficinaWeb.Models
         public int Quantity { get; set; } = 1;
         public int? MechanicId { get; set; }
         public string ItemType { get; set; } = "Product";
+    }
+
+    public class HistoricalValueDTO
+    {
+        public decimal CurrentInventoryValue { get; set; }
+        public decimal TotalExitedValue { get; set; }
+        public decimal TotalHistoricalValue { get; set; }
+    }
+
+    public class AuditItemDTO
+    {
+        public int OsId { get; set; }
+        public DateTime Data { get; set; }
+        public string Descricao { get; set; } = "";
+        public int Quantidade { get; set; }
+        public decimal ValorTotal { get; set; }
     }
 }
