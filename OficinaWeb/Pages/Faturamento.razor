@@ -2,6 +2,7 @@
 @inject HttpClient Http
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject IConfiguration Config
 @using System.Net.Http.Json
 @using System.Text.Json
 @using OficinaWeb.Models
@@ -152,7 +153,6 @@
     }
 </div>
 
-@* MODAL DETALHES *@
 @if (mostrarModalDetalhes && transacaoSelecionada != null)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8); z-index: 1050;" tabindex="-1">
@@ -189,7 +189,7 @@
 }
 
 @code {
-    private string ApiUrl = "https://localhost:7082";
+    private string ApiUrl = "";
     private bool isLoading = true, mostrarToast, mostrarModalDetalhes, isPeriodMismatch;
     private int activeMonth, activeYear;
     private decimal faturamentoTotal, totalDinheiro, totalPix, totalCredito, totalDebito, totalInadimplencia;
@@ -197,7 +197,11 @@
     private List<TransacaoVisao> transacoesRecentes = new();
     private TransacaoVisao? transacaoSelecionada;
 
-    protected override async Task OnInitializedAsync() => await CarregarDados();
+    protected override async Task OnInitializedAsync()
+    {
+        ApiUrl = Config["ApiBaseUrl"] ?? "https://localhost:7082";
+        await CarregarDados();
+    }
 
     private async Task CarregarDados()
     {
@@ -205,13 +209,11 @@
         {
             isLoading = true;
             
-            // 1. Configurações com Helpers
             var settings = await Http.GetFromJsonAsync<JsonElement>($"{ApiUrl}/api/settings");
             activeMonth = GetInt(settings, "activeMonth");
             activeYear = GetInt(settings, "activeYear");
             isPeriodMismatch = (activeMonth != DateTime.Now.Month || activeYear != DateTime.Now.Year);
 
-            // 2. Resumo financeiro
             var summary = await Http.GetFromJsonAsync<FinancialSummaryDTO>($"{ApiUrl}/api/serviceorders/financial-summary");
             if (summary != null)
             {
@@ -224,30 +226,14 @@
 
             totalDinheiro = await Http.GetFromJsonAsync<decimal>($"{ApiUrl}/api/serviceorders/cash-balance");
 
-            // 3. Histórico com Helpers e Filtro de Competência
-            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders") ?? new();
+            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders/periodo?mes={activeMonth}&ano={activeYear}") ?? new();
             transacoesRecentes = osList
-                .Where(x =>
-                {
-                    string status = GetString(x, "status");
-                    int am = GetInt(x, "accountingMonth");
-                    int ay = GetInt(x, "accountingYear");
-
-                    if (status != "Completed") return false;
-
-                    if (am > 0) return am == activeMonth && ay == activeYear;
-
-                    var dateStr = GetString(x, "completionDate");
-                    if (DateTime.TryParse(dateStr, out DateTime dt))
-                        return dt.Month == activeMonth && dt.Year == activeYear;
-
-                    return false;
-                })
+                .Where(x => GetString(x, "status") == "Completed")
                 .Select(os => MapearTransacao(os))
                 .OrderByDescending(t => t.DataPagamento)
                 .ToList();
         }
-        catch {  }
+        catch { }
         finally { isLoading = false; StateHasChanged(); }
     }
 

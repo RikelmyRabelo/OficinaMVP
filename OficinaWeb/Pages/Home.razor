@@ -1,6 +1,7 @@
 ﻿@page "/"
 @inject HttpClient Http
 @inject IJSRuntime JS
+@inject IConfiguration Config
 @using System.Net.Http.Json
 @using System.Text.Json
 
@@ -145,13 +146,17 @@ else
 </style>
 
 @code {
-    private string ApiUrl = "https://localhost:7082";
+    private string ApiUrl = "";
     private bool isLoading = true, isBusy, opSucesso, ocultarValores;
     private int veiculosNoCiclo, estoqueBaixo, activeMonth, activeYear;
     private decimal faturamentoTotalGeral;
     private string feedbackMsg = "";
 
-    protected override async Task OnInitializedAsync() => await CarregarDados();
+    protected override async Task OnInitializedAsync()
+    {
+        ApiUrl = Config["ApiBaseUrl"] ?? "https://localhost:7082";
+        await CarregarDados();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -179,29 +184,13 @@ else
             activeMonth = GetInt(settings, "activeMonth");
             activeYear = GetInt(settings, "activeYear");
 
-            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders") ?? new();
+            var osListPorPeriodo = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders/periodo?mes={activeMonth}&ano={activeYear}") ?? new();
+            var osListAllCompleted = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders/completed?take=1000") ?? new(); // Supondo que "completed" tenha take
             var prodList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/products") ?? new();
 
-            // Faturamento Total acumulado de toda a história da loja
-            faturamentoTotalGeral = osList
-                .Where(x => GetString(x, "status") == "Completed")
-                .Sum(x => GetDecimal(x, "amountPaid"));
+            faturamentoTotalGeral = osListAllCompleted.Sum(x => GetDecimal(x, "amountPaid"));
 
-            // Veículos processados apenas no ciclo de trabalho ativo
-            veiculosNoCiclo = osList.Count(x => 
-            {
-                if (GetString(x, "status") != "Completed") return false;
-                int am = GetInt(x, "accountingMonth");
-                int ay = GetInt(x, "accountingYear");
-
-                if (am > 0) return am == activeMonth && ay == activeYear;
-
-                var dStr = GetString(x, "completionDate");
-                if (DateTime.TryParse(dStr, out DateTime dt))
-                    return dt.Month == activeMonth && dt.Year == activeYear;
-
-                return false;
-            });
+            veiculosNoCiclo = osListPorPeriodo.Count(x => GetString(x, "status") == "Completed");
 
             estoqueBaixo = prodList.Count(x => GetInt(x, "stockQuantity") <= GetInt(x, "minimumStock"));
         }

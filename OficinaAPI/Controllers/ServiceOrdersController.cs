@@ -6,6 +6,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using System.IO;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace OficinaAPI.Controllers
 {
@@ -15,16 +16,32 @@ namespace OficinaAPI.Controllers
     {
         private readonly OficinaContext _context;
         private readonly IWebHostEnvironment _env;
+        private readonly IMemoryCache _cache;
 
-        public ServiceOrdersController(OficinaContext context, IWebHostEnvironment env)
+        public ServiceOrdersController(OficinaContext context, IWebHostEnvironment env, IMemoryCache cache)
         {
             _context = context;
             _env = env;
+            _cache = cache;
+        }
+
+        private async Task<SystemSettings?> GetCachedSettingsAsync()
+        {
+            if (!_cache.TryGetValue("SystemSettings", out SystemSettings? settings))
+            {
+                settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
+
+                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                    .SetSlidingExpiration(TimeSpan.FromMinutes(30)); 
+
+                _cache.Set("SystemSettings", settings, cacheEntryOptions);
+            }
+            return settings;
         }
 
         private async Task<DateTime> GetActiveReferenceDate()
         {
-            var settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
+            var settings = await GetCachedSettingsAsync(); // Usando o Cache
             var agora = DateTime.Now;
 
             if (settings != null && (settings.ActiveMonth != agora.Month || settings.ActiveYear != agora.Year))
@@ -37,7 +54,7 @@ namespace OficinaAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetServiceOrders()
+        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetServiceOrders([FromQuery] int skip = 0, [FromQuery] int take = 100)
         {
             return await _context.ServiceOrders
                 .AsNoTracking()
@@ -47,11 +64,13 @@ namespace OficinaAPI.Controllers
                 .AsSplitQuery()
                 .Where(o => !o.IsDeleted)
                 .OrderByDescending(o => o.Id)
+                .Skip(skip)
+                .Take(take)
                 .ToListAsync();
         }
 
         [HttpGet("active")]
-        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetActiveServiceOrders()
+        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetActiveServiceOrders([FromQuery] int skip = 0, [FromQuery] int take = 100)
         {
             return await _context.ServiceOrders
                 .AsNoTracking()
@@ -61,6 +80,8 @@ namespace OficinaAPI.Controllers
                 .AsSplitQuery()
                 .Where(o => !o.IsDeleted && o.Status != "Completed")
                 .OrderByDescending(o => o.Id)
+                .Skip(skip)
+                .Take(take)
                 .ToListAsync();
         }
 
@@ -76,6 +97,20 @@ namespace OficinaAPI.Controllers
                 .Where(o => !o.IsDeleted && o.Status == "Completed")
                 .OrderByDescending(o => o.Id)
                 .Take(take)
+                .ToListAsync();
+        }
+
+        [HttpGet("periodo")]
+        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetServiceOrdersByPeriod([FromQuery] int mes, [FromQuery] int ano)
+        {
+            return await _context.ServiceOrders
+                .AsNoTracking()
+                .Include(o => o.Vehicle)
+                .Include(o => o.Items)
+                .Include(o => o.Payments)
+                .AsSplitQuery()
+                .Where(o => !o.IsDeleted && o.AccountingMonth == mes && o.AccountingYear == ano)
+                .OrderByDescending(o => o.Id)
                 .ToListAsync();
         }
 
@@ -123,7 +158,7 @@ namespace OficinaAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ServiceOrder>> PostServiceOrder([FromBody] CreateOSDTO request)
         {
-            var settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
+            var settings = await GetCachedSettingsAsync(); // Usando o Cache
 
             var newVehicle = new Vehicle
             {
@@ -241,7 +276,7 @@ namespace OficinaAPI.Controllers
             if (os == null) return NotFound();
             if (os.Status == "Completed") return BadRequest("O.S. já finalizada.");
 
-            var settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
+            var settings = await GetCachedSettingsAsync(); // Usando o Cache
 
             os.Status = "Completed";
             os.CompletionDate = DateTime.Now;
@@ -284,7 +319,7 @@ namespace OficinaAPI.Controllers
             var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
 
-            // Corrige o problema do estorno de estoque na exclusão permanente
+            // Estorno de estoque na exclusão permanente
             if (os.Status == "Completed")
             {
                 foreach (var item in os.Items)
@@ -353,7 +388,6 @@ namespace OficinaAPI.Controllers
             os.PaymentMethod = request.PaymentMethod;
             os.PromisedPaymentDate = request.PromisedPaymentDate;
 
-            // Garante a exclusão real no banco de dados para evitar registros órfãos
             var antigos = await _context.ServiceOrderPayments.Where(p => p.ServiceOrderId == id).ToListAsync();
             _context.ServiceOrderPayments.RemoveRange(antigos);
 
@@ -463,7 +497,7 @@ namespace OficinaAPI.Controllers
             var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "attachments");
             if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-            // Previne falha de Path Traversal pegando apenas a extensão
+            // Previne Path Traversal
             var extension = Path.GetExtension(file.FileName);
             var uniqueFileName = $"{Guid.NewGuid()}{extension}";
             var filePath = Path.Combine(uploadsFolder, uniqueFileName);
@@ -512,7 +546,7 @@ namespace OficinaAPI.Controllers
         [HttpGet("financial-summary")]
         public async Task<ActionResult<FinancialSummaryDTO>> GetFinancialSummary()
         {
-            var settings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync();
+            var settings = await GetCachedSettingsAsync(); // Usando o Cache
             if (settings == null) return BadRequest("Configurações não encontradas.");
 
             var query = _context.ServiceOrders.AsNoTracking()

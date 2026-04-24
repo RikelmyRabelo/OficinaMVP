@@ -1,5 +1,6 @@
 ﻿@page "/relatorios"
 @inject HttpClient Http
+@inject IConfiguration Config
 @using System.Net.Http.Json
 @using System.Text.Json
 
@@ -256,9 +257,13 @@
     private List<PontoGrafico> faturamentoDiario = new();
     private List<OSSimple> ordensNoMes = new();
     private List<ProductExit> produtosSaidaList = new();
-    private string ApiUrl = "https://localhost:7082";
+    private string ApiUrl = "";
 
-    protected override async Task OnInitializedAsync() => await InitialLoad();
+    protected override async Task OnInitializedAsync()
+    {
+        ApiUrl = Config["ApiBaseUrl"] ?? "https://localhost:7082";
+        await InitialLoad();
+    }
 
     private async Task InitialLoad()
     {
@@ -292,28 +297,13 @@
         try 
         {
             isLoading = true;
-            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders") ?? new();
+            var osList = await Http.GetFromJsonAsync<List<JsonElement>>($"{ApiUrl}/api/serviceorders/periodo?mes={selectedMonth}&ano={selectedYear}") ?? new();
             
             faturamentoMensal = 0; totalPix = 0; totalCredito = 0; totalDinheiro = 0; totalSaidasEstoque = 0;
             ordensNoMes.Clear();
             produtosSaidaList.Clear();
 
-            var filtradas = osList.Where(x => 
-            {
-                string status = GetString(x, "status");
-                if (status != "Completed") return false;
-
-                int am = GetInt(x, "accountingMonth");
-                int ay = GetInt(x, "accountingYear");
-
-                if (am > 0 && ay > 0) return am == selectedMonth && ay == selectedYear;
-                
-                var dStr = GetString(x, "completionDate");
-                if (!string.IsNullOrEmpty(dStr) && DateTime.TryParse(dStr, out DateTime dt))
-                    return dt.Month == selectedMonth && dt.Year == selectedYear;
-
-                return false;
-            }).ToList();
+            var filtradas = osList.Where(x => GetString(x, "status") == "Completed").ToList();
 
             carrosResolvidos = filtradas.Count;
 
@@ -336,7 +326,6 @@
                     veiculo = GetString(vh, "model");
                 }
 
-                // Processamento de Itens de Estoque (Saídas)
                 if (os.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var item in items.EnumerateArray())
@@ -379,7 +368,6 @@
         finally { isLoading = false; StateHasChanged(); }
     }
 
-    // Helpers
     private string GetString(JsonElement el, string name) {
         if (el.TryGetProperty(name, out var p)) return p.ToString();
         string pascal = char.ToUpper(name[0]) + name.Substring(1);
@@ -400,7 +388,6 @@
         return max == 0 ? 0 : (int)((valor / max) * 180);
     }
 
-    // Classes DTO
     public class ProductExit {
         public DateTime Data { get; set; }
         public string Descricao { get; set; } = "";

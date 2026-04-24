@@ -964,9 +964,6 @@
 
     async Task SalvarEdicaoItem() { if (sel == null || itemParaEditar == null) return; var requestParaSalvar = new UpdateServiceItemDTO { Description = itemEditRequest.Description, Price = itemEditRequest.Price, WarrantyPeriod = itemEditRequest.WarrantyPeriod, Quantity = itemEditRequest.Quantity, ItemType = itemEditRequest.ItemType }; if (requestParaSalvar.ItemType != "Service") { requestParaSalvar.Price = requestParaSalvar.Price * (requestParaSalvar.Quantity > 0 ? requestParaSalvar.Quantity : 1); } try { var response = await Http.PutAsJsonAsync($"{ApiUrl}/api/serviceorders/{sel.Id}/items/{itemParaEditar.Id}", requestParaSalvar); if (response.IsSuccessStatusCode) { FecharEdicaoItem(); await AtualizarTela(); MostrarSucesso("Item atualizado!"); } } catch (Exception ex) { Console.WriteLine(ex.Message); MostrarErro("Erro ao salvar edição do item."); } }
 
-    // =========================================================================
-    // UPLOAD OTIMIZADO VIA STREAMING (MULTIPART FORM DATA)
-    // =========================================================================
     async Task CarregarComprovantes(InputFileChangeEventArgs e) 
     { 
         if (sel == null) return; 
@@ -980,7 +977,6 @@
             { 
                 using var content = new MultipartFormDataContent();
                 
-                // Envia o arquivo por partes (stream) direto para o servidor (Max 15MB)
                 using var stream = file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024);
                 var fileContent = new StreamContent(stream);
                 fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
