@@ -106,11 +106,7 @@
                                 <div>
                                     <h6>
                                         @(os.Vehicle?.CustomerName)
-<<<<<<< HEAD
                                         @if (os.Status == STATUS_COMPLETED && os.RemainingAmount > 0)
-=======
-                                        @if (os.Status == OrderStatus.Completed && os.RemainingAmount > 0)
->>>>>>> d961a7d3a987c5a17838d20c67e967596d7a8417
                                         {
                                             <span class="badge bg-danger ms-1" style="font-size: 0.65rem;" title="Débito Pendente">PENDENTE</span>
                                         }
@@ -394,21 +390,12 @@
 
                         <div class="p-3 rounded-3 mb-4" style="background-color: #0a0a0a; border: 1px solid #333;">
                             <ul class="nav nav-pills mb-3 gap-2">
-<<<<<<< HEAD
                                 <li><button class="btn btn-sm @(tipoItem == TIPO_PECA ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = TIPO_PECA'>PEÇA ESTOQUE</button></li>
                                 <li><button class="btn btn-sm @(tipoItem == TIPO_AVULSO ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = TIPO_AVULSO'>ITEM AVULSO</button></li>
                                 <li><button class="btn btn-sm @(tipoItem == TIPO_SERVICO ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = TIPO_SERVICO'>MÃO DE OBRA</button></li>
                             </ul>
                             <div class="row g-2 align-items-end mb-4">
                                 @if (tipoItem == TIPO_PECA)
-=======
-                                <li><button class="btn btn-sm @(tipoItem == ItemTypes.SelectionPeca ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = ItemTypes.SelectionPeca'>PEÇA ESTOQUE</button></li>
-                                <li><button class="btn btn-sm @(tipoItem == ItemTypes.SelectionAvulso ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = ItemTypes.SelectionAvulso'>ITEM AVULSO</button></li>
-                                <li><button class="btn btn-sm @(tipoItem == ItemTypes.SelectionServico ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = ItemTypes.SelectionServico'>MÃO DE OBRA</button></li>
-                            </ul>
-                            <div class="row g-2 align-items-end mb-4">
-                                @if (tipoItem == ItemTypes.SelectionPeca)
->>>>>>> d961a7d3a987c5a17838d20c67e967596d7a8417
                                 {
                                     <div class="col-md-4">
                                         <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary mb-1" placeholder="🔍 Buscar por código ou nome..." value="@filtroProduto" @oninput="OnFiltroProdutoChanged" />
@@ -433,11 +420,7 @@
                                         <button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItem">ADD PEÇA</button>
                                     </div>
                                 }
-<<<<<<< HEAD
                                 else if (tipoItem == TIPO_AVULSO)
-=======
-                                else if (tipoItem == ItemTypes.SelectionAvulso)
->>>>>>> d961a7d3a987c5a17838d20c67e967596d7a8417
                                 {
                                     <div class="col-md-4">
                                         <input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Description" placeholder="Descrição do Item" title="Descrição do Item" />
@@ -481,11 +464,7 @@
                                 }
                             </div>
                             <div class="mt-4 pt-3 border-top border-secondary">
-<<<<<<< HEAD
                                 @if (sel.Status != STATUS_COMPLETED)
-=======
-                                @if (sel.Status != OrderStatus.Completed)
->>>>>>> d961a7d3a987c5a17838d20c67e967596d7a8417
                                 {
                                     <input type="datetime-local" class="form-control bg-dark text-white border-secondary w-50 d-inline-block" @bind="dataEntregaManual" />
                                     <button class="btn btn-success fw-bold" @onclick="FinalizarOS">FINALIZAR E ENTREGAR</button>
@@ -517,11 +496,7 @@
                                     @foreach (var item in sel.Items)
                                     {
                                         bool existeNoCatalogo = catalogoServicos?.Any(c => string.Equals(c.Name, item.Description, StringComparison.OrdinalIgnoreCase)) == true;
-<<<<<<< HEAD
                                         bool isServico = item.ItemType == ITEM_TYPE_SERVICE || (item.ProductId == null && existeNoCatalogo);
-=======
-                                        bool isServico = item.ItemType == ItemTypes.Service || (item.ProductId == null && existeNoCatalogo);
->>>>>>> d961a7d3a987c5a17838d20c67e967596d7a8417
                                         bool isAvulso = !isServico && item.ProductId == null;
 
                                         <tr>
@@ -597,11 +572,7 @@
 
     private decimal TotalGeralPecasRelatorio => TodasOsParaRelatorio
         .SelectMany(os => os.Items)
-<<<<<<< HEAD
         .Where(i => i.ItemType != ITEM_TYPE_SERVICE && i.ProductId != null)
-=======
-        .Where(i => i.ItemType != ItemTypes.Service && i.ProductId != null)
->>>>>>> d961a7d3a987c5a17838d20c67e967596d7a8417
         .Sum(i => i.Price);
 
     private decimal SubTotalSelecionado => sel?.Items?.Sum(i => i.Price) ?? 0;
@@ -665,11 +636,7 @@
     AddCustomItemInput novoItemAvulso = new();
     AddLaborInput novoServico = new();
     DateTime dataEntregaManual = DateTime.Now;
-<<<<<<< HEAD
     string tipoItem = TIPO_PECA;
-=======
-    string tipoItem = ItemTypes.SelectionPeca;
->>>>>>> d961a7d3a987c5a17838d20c67e967596d7a8417
     string filtroProduto = "";
 
     bool mostrarToast = false;
@@ -958,7 +925,6 @@
     void AbrirEdicaoItem(ServiceItemDTO item) 
     { 
         itemParaEditar = item; 
-<<<<<<< HEAD
         itemEditRequest = new UpdateServiceItemDTO { 
             Description = item.Description, 
             Price = CalcularPrecoUnitario(item), 
@@ -966,10 +932,6 @@
             Quantity = item.Quantity > 0 ? item.Quantity : 1, 
             ItemType = item.ItemType 
         }; 
-=======
-        decimal unitPrice = (item.ItemType != ItemTypes.Service && item.Quantity > 1) ? item.Price / item.Quantity : item.Price;
-        itemEditRequest = new UpdateServiceItemDTO { Description = item.Description, Price = unitPrice, WarrantyPeriod = item.WarrantyPeriod, Quantity = item.Quantity > 0 ? item.Quantity : 1, ItemType = item.ItemType }; 
->>>>>>> d961a7d3a987c5a17838d20c67e967596d7a8417
         mostrarModalEdicaoItem = true; 
     }
 
@@ -977,11 +939,7 @@
 
     async Task SalvarEdicaoItem() 
     { 
-<<<<<<< HEAD
         if (itemEditRequest.ItemType != ITEM_TYPE_SERVICE) itemEditRequest.Price *= itemEditRequest.Quantity;
-=======
-        if (itemEditRequest.ItemType != ItemTypes.Service) itemEditRequest.Price *= itemEditRequest.Quantity;
->>>>>>> d961a7d3a987c5a17838d20c67e967596d7a8417
         if (await OSByService.UpdateItemAsync(sel!.Id, itemParaEditar!.Id, itemEditRequest))
         { FecharEdicaoItem(); await AtualizarTela(); MostrarSucesso("Item atualizado!"); }
         else { MostrarErro("Erro ao salvar edição."); }
