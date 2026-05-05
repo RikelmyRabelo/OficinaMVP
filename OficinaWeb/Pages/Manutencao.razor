@@ -106,7 +106,7 @@
                                 <div>
                                     <h6>
                                         @(os.Vehicle?.CustomerName)
-                                        @if (os.Status == "Completed" && os.RemainingAmount > 0)
+                                        @if (os.Status == STATUS_COMPLETED && os.RemainingAmount > 0)
                                         {
                                             <span class="badge bg-danger ms-1" style="font-size: 0.65rem;" title="Débito Pendente">PENDENTE</span>
                                         }
@@ -299,7 +299,7 @@
                                                 <div class="d-flex flex-wrap justify-content-end gap-1 mt-1">
                                                     @foreach (var p in sel.Payments)
                                                     {
-                                                        <span class="badge bg-dark border border-secondary text-white-50" style="font-size: 0.65rem;">@p.PaymentMethod: @p.Amount.ToString("C")</span>
+                                                        <span class="badge bg-dark border border-secondary text-white-50" style="font-size: 0.65rem;" title="@p.PaymentDate.ToString("dd/MM/yyyy HH:mm")">@p.PaymentMethod: @p.Amount.ToString("C")</span>
                                                     }
                                                 </div>
                                             }
@@ -335,6 +335,21 @@
                                             </div>
                                         }
                                     </div>
+                                    
+                                    @if (sel.Payments != null && sel.Payments.Any())
+                                    {
+                                        <div class="mt-3 w-100 text-end">
+                                            <small class="text-muted text-uppercase fw-bold border-bottom border-secondary d-block mb-1">Histórico de Parcelas</small>
+                                            @foreach (var p in sel.Payments.OrderByDescending(x => x.PaymentDate))
+                                            {
+                                                <div class="small text-white-50">
+                                                    <span class="text-info">@p.PaymentDate.ToString("dd/MM/yy HH:mm")</span> - 
+                                                    <span>@p.PaymentMethod</span>: 
+                                                    <span class="text-success fw-bold">R$ @p.Amount.ToString("N2")</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
 
                                     <div class="mt-3 w-100 text-end no-print">
                                         <label class="btn btn-sm btn-outline-secondary fw-bold mb-2" style="cursor: pointer;">
@@ -375,12 +390,12 @@
 
                         <div class="p-3 rounded-3 mb-4" style="background-color: #0a0a0a; border: 1px solid #333;">
                             <ul class="nav nav-pills mb-3 gap-2">
-                                <li><button class="btn btn-sm @(tipoItem == "peca" ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = "peca"'>PEÇA ESTOQUE</button></li>
-                                <li><button class="btn btn-sm @(tipoItem == "avulso" ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = "avulso"'>ITEM AVULSO</button></li>
-                                <li><button class="btn btn-sm @(tipoItem == "servico" ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = "servico"'>MÃO DE OBRA</button></li>
+                                <li><button class="btn btn-sm @(tipoItem == TIPO_PECA ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = TIPO_PECA'>PEÇA ESTOQUE</button></li>
+                                <li><button class="btn btn-sm @(tipoItem == TIPO_AVULSO ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = TIPO_AVULSO'>ITEM AVULSO</button></li>
+                                <li><button class="btn btn-sm @(tipoItem == TIPO_SERVICO ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = TIPO_SERVICO'>MÃO DE OBRA</button></li>
                             </ul>
                             <div class="row g-2 align-items-end mb-4">
-                                @if (tipoItem == "peca")
+                                @if (tipoItem == TIPO_PECA)
                                 {
                                     <div class="col-md-4">
                                         <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary mb-1" placeholder="🔍 Buscar por código ou nome..." value="@filtroProduto" @oninput="OnFiltroProdutoChanged" />
@@ -405,7 +420,7 @@
                                         <button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItem">ADD PEÇA</button>
                                     </div>
                                 }
-                                else if (tipoItem == "avulso")
+                                else if (tipoItem == TIPO_AVULSO)
                                 {
                                     <div class="col-md-4">
                                         <input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Description" placeholder="Descrição do Item" title="Descrição do Item" />
@@ -449,7 +464,7 @@
                                 }
                             </div>
                             <div class="mt-4 pt-3 border-top border-secondary">
-                                @if (sel.Status != "Completed")
+                                @if (sel.Status != STATUS_COMPLETED)
                                 {
                                     <input type="datetime-local" class="form-control bg-dark text-white border-secondary w-50 d-inline-block" @bind="dataEntregaManual" />
                                     <button class="btn btn-success fw-bold" @onclick="FinalizarOS">FINALIZAR E ENTREGAR</button>
@@ -481,7 +496,7 @@
                                     @foreach (var item in sel.Items)
                                     {
                                         bool existeNoCatalogo = catalogoServicos?.Any(c => string.Equals(c.Name, item.Description, StringComparison.OrdinalIgnoreCase)) == true;
-                                        bool isServico = item.ItemType == "Service" || (item.ProductId == null && existeNoCatalogo);
+                                        bool isServico = item.ItemType == ITEM_TYPE_SERVICE || (item.ProductId == null && existeNoCatalogo);
                                         bool isAvulso = !isServico && item.ProductId == null;
 
                                         <tr>
@@ -511,7 +526,7 @@
                                             </td>
 
                                             <td class="text-end text-nowrap-custom text-white-50 small">
-                                                @if (!isServico) { @($"R$ {(item.Price / (item.Quantity > 0 ? item.Quantity : 1)):N2}") }
+                                                @if (!isServico) { @($"R$ {CalcularPrecoUnitario(item):N2}") }
                                                 else { <span class="text-muted">-</span> }
                                             </td>
 
@@ -544,13 +559,20 @@
 }
 
 @code {
+    // --- CONSTANTES ---
+    private const string STATUS_COMPLETED = "Completed";
+    private const string ITEM_TYPE_SERVICE = "Service";
+    private const string TIPO_PECA = "peca";
+    private const string TIPO_AVULSO = "avulso";
+    private const string TIPO_SERVICO = "servico";
+
     // --- PROPRIEDADES COMPUTADAS ---
 
     private List<ServiceOrderDTO> TodasOsParaRelatorio => (osAtivas ?? new()).Concat(osFinalizadas ?? new()).ToList();
 
     private decimal TotalGeralPecasRelatorio => TodasOsParaRelatorio
         .SelectMany(os => os.Items)
-        .Where(i => i.ItemType != "Service" && i.ProductId != null)
+        .Where(i => i.ItemType != ITEM_TYPE_SERVICE && i.ProductId != null)
         .Sum(i => i.Price);
 
     private decimal SubTotalSelecionado => sel?.Items?.Sum(i => i.Price) ?? 0;
@@ -579,7 +601,7 @@
     private ServiceOrderDTO? osParaRelatorio;
     private bool _iniciarImpressao = false;
 
-    private async Task GerarRelatorioSaida(ServiceOrderDTO os)
+    private void GerarRelatorioSaida(ServiceOrderDTO os)
     {
         osParaRelatorio = os;
         _iniciarImpressao = true;
@@ -614,7 +636,7 @@
     AddCustomItemInput novoItemAvulso = new();
     AddLaborInput novoServico = new();
     DateTime dataEntregaManual = DateTime.Now;
-    string tipoItem = "peca";
+    string tipoItem = TIPO_PECA;
     string filtroProduto = "";
 
     bool mostrarToast = false;
@@ -655,11 +677,11 @@
         if (_debounceTimer != null) { _debounceTimer.Stop(); _debounceTimer.Dispose(); }
         
         _debounceTimer = new System.Timers.Timer(300);
-        _debounceTimer.Elapsed += async (sender, args) =>
+        _debounceTimer.Elapsed += (sender, args) =>
         {
             _debounceTimer.Dispose();
             _debounceTimer = null;
-            await InvokeAsync(StateHasChanged);
+            InvokeAsync(StateHasChanged);
         };
         _debounceTimer.Start();
     }
@@ -891,18 +913,33 @@
         await JS.InvokeVoidAsync("open", url, "_blank");
     }
 
+    private decimal CalcularPrecoUnitario(ServiceItemDTO item)
+    {
+        if (item == null) return 0;
+        if (item.ItemType == ITEM_TYPE_SERVICE || item.Quantity <= 0) 
+            return item.Price;
+            
+        return item.Price / item.Quantity;
+    }
+
     void AbrirEdicaoItem(ServiceItemDTO item) 
     { 
         itemParaEditar = item; 
-        decimal unitPrice = (item.ItemType != "Service" && item.Quantity > 1) ? item.Price / item.Quantity : item.Price;
-        itemEditRequest = new UpdateServiceItemDTO { Description = item.Description, Price = unitPrice, WarrantyPeriod = item.WarrantyPeriod, Quantity = item.Quantity > 0 ? item.Quantity : 1, ItemType = item.ItemType }; 
+        itemEditRequest = new UpdateServiceItemDTO { 
+            Description = item.Description, 
+            Price = CalcularPrecoUnitario(item), 
+            WarrantyPeriod = item.WarrantyPeriod, 
+            Quantity = item.Quantity > 0 ? item.Quantity : 1, 
+            ItemType = item.ItemType 
+        }; 
         mostrarModalEdicaoItem = true; 
     }
+
     void FecharEdicaoItem() { mostrarModalEdicaoItem = false; itemParaEditar = null; }
 
     async Task SalvarEdicaoItem() 
     { 
-        if (itemEditRequest.ItemType != "Service") itemEditRequest.Price *= itemEditRequest.Quantity;
+        if (itemEditRequest.ItemType != ITEM_TYPE_SERVICE) itemEditRequest.Price *= itemEditRequest.Quantity;
         if (await OSByService.UpdateItemAsync(sel!.Id, itemParaEditar!.Id, itemEditRequest))
         { FecharEdicaoItem(); await AtualizarTela(); MostrarSucesso("Item atualizado!"); }
         else { MostrarErro("Erro ao salvar edição."); }
