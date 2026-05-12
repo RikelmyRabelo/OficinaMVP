@@ -41,7 +41,7 @@
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #198754 !important;">
                     <div class="card-body p-4">
                         <h6 class="text-white-50 text-uppercase x-small mb-3">Receita do Ciclo</h6>
-                        <h2 class="text-white fw-bold mb-1">@faturamentoMensal.ToString("C2")</h2>
+                        <h2 class="text-white fw-bold mb-1 fs-4 text-nowrap">@faturamentoMensal.ToString("C2")</h2>
                         <small class="text-success"><i class="bi bi-graph-up me-1"></i>Total apurado</small>
                     </div>
                 </div>
@@ -51,7 +51,7 @@
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #0d6efd !important;">
                     <div class="card-body p-4">
                         <h6 class="text-white-50 text-uppercase x-small mb-3">Volume de Fluxo</h6>
-                        <h2 class="text-white fw-bold mb-1">@carrosResolvidos</h2>
+                        <h2 class="text-white fw-bold mb-1 fs-4 text-nowrap">@carrosResolvidos</h2>
                         <small class="text-primary"><i class="bi bi-check2-circle me-1"></i>O.S. Finalizadas</small>
                     </div>
                 </div>
@@ -63,7 +63,7 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <h6 class="text-white-50 text-uppercase x-small mb-3">Total Saídas (Estoque)</h6>
-                                <h2 class="text-white fw-bold mb-1">@totalSaidasEstoque.ToString("C2")</h2>
+                                <h2 class="text-white fw-bold mb-1 fs-4 text-nowrap">@totalSaidasEstoque.ToString("C2")</h2>
                             </div>
                             <i class="bi bi-search text-warning opacity-50"></i>
                         </div>
@@ -78,7 +78,7 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <h6 class="text-white-50 text-uppercase x-small mb-3">Lucro Avulsos</h6>
-                                <h2 class="text-white fw-bold mb-1">@lucroAvulsoTotal.ToString("C2")</h2>
+                                <h2 class="text-white fw-bold mb-1 fs-4 text-nowrap">@lucroAvulsoTotal.ToString("C2")</h2>
                             </div>
                             <i class="bi bi-search text-danger opacity-50"></i>
                         </div>
@@ -91,7 +91,7 @@
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #6c757d !important;">
                     <div class="card-body p-4">
                         <h6 class="text-white-50 text-uppercase x-small mb-3">Conversão PIX</h6>
-                        <h2 class="text-white fw-bold mb-1">@totalPix.ToString("C2")</h2>
+                        <h2 class="text-white fw-bold mb-1 fs-4 text-nowrap">@totalPix.ToString("C2")</h2>
                         <small class="text-secondary"><i class="bi bi-lightning-charge me-1"></i>Recebimento instantâneo</small>
                     </div>
                 </div>
@@ -236,7 +236,7 @@
                 <div class="modal-footer border-secondary p-3 bg-black">
                     <div class="w-100 d-flex justify-content-between align-items-center">
                         <span class="text-white-50 small">Total acumulado em peças:</span>
-                        <h4 class="text-warning fw-bold mb-0">@totalSaidasEstoque.ToString("C2")</h4>
+                        <h4 class="text-warning fw-bold mb-0 text-nowrap">@totalSaidasEstoque.ToString("C2")</h4>
                     </div>
                 </div>
             </div>
@@ -296,7 +296,7 @@
                 <div class="modal-footer border-secondary p-3 bg-black">
                     <div class="w-100 d-flex justify-content-between align-items-center">
                         <span class="text-white-50 small">Lucro Líquido Acumulado (Avulsos):</span>
-                        <h4 class="text-success fw-bold mb-0">@lucroAvulsoTotal.ToString("C2")</h4>
+                        <h4 class="text-success fw-bold mb-0 text-nowrap">@lucroAvulsoTotal.ToString("C2")</h4>
                     </div>
                 </div>
             </div>
