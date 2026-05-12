@@ -394,10 +394,11 @@
                                 <li><button class="btn btn-sm @(tipoItem == TIPO_AVULSO ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = TIPO_AVULSO'>ITEM AVULSO</button></li>
                                 <li><button class="btn btn-sm @(tipoItem == TIPO_SERVICO ? "btn-warning" : "btn-outline-light")" @onclick='() => tipoItem = TIPO_SERVICO'>MÃO DE OBRA</button></li>
                             </ul>
-                            <div class="row g-2 align-items-end mb-4">
+                            <div class="row g-3 align-items-end mb-4">
                                 @if (tipoItem == TIPO_PECA)
                                 {
-                                    <div class="col-md-4">
+                                    <div class="col-md-5">
+                                        <label class="small text-white-50 mb-1 fw-bold">Buscar Peça do Estoque *</label>
                                         <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary mb-1" placeholder="🔍 Buscar por código ou nome..." value="@filtroProduto" @oninput="OnFiltroProdutoChanged" />
                                         <select class="form-select bg-dark text-white border-secondary" @bind="novoItem.ProductId">
                                             <option value="0">Selecionar Peça...</option>
@@ -408,43 +409,52 @@
                                         </select>
                                     </div>
                                     <div class="col-md-2">
-                                        <input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Quantity" placeholder="Quantidade" min="1" title="Quantidade" />
+                                        <label class="small text-white-50 mb-1 fw-bold">Quantidade *</label>
+                                        <input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Quantity" min="1" />
                                     </div>
                                     <div class="col-md-2">
-                                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Price" placeholder="Valor Unitário (R$)" title="Valor Unitário (Se deixar em branco, usará o valor do estoque.)" />
+                                        <label class="small text-white-50 mb-1 fw-bold">Venda Un. (R$)</label>
+                                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItem.Price" placeholder="Auto" title="Se deixar em branco, usará o valor do estoque." />
                                     </div>
-                                    <div class="col-md-2">
-                                        <input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItem.WarrantyPeriod" placeholder="Garantia" title="Garantia" />
+                                    <div class="col-md-3">
+                                        <label class="small text-white-50 mb-1 fw-bold">Garantia (Opcional)</label>
+                                        <input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItem.WarrantyPeriod" />
                                     </div>
-                                    <div class="col-md-2">
-                                        <button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItem">ADD PEÇA</button>
+                                    <div class="col-md-12 mt-3">
+                                        <button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItem"><i class="bi bi-plus-circle-fill me-2"></i>ADD PEÇA DO ESTOQUE</button>
                                     </div>
                                 }
                                 else if (tipoItem == TIPO_AVULSO)
                                 {
-                                    <div class="col-md-3">
-                                        <input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Description" placeholder="Descrição do Item" title="Descrição do Item" />
-                                    </div>
-                                    <div class="col-md-1">
-                                        <input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Quantity" placeholder="Qtd" min="1" title="Quantidade" />
+                                    <div class="col-md-4">
+                                        <label class="small text-white-50 mb-1 fw-bold">Descrição do Item *</label>
+                                        <input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Description" />
                                     </div>
                                     <div class="col-md-2">
-                                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.CostPrice" placeholder="Custo Un. (R$)" title="Custo Unitário (R$)" />
+                                        <label class="small text-white-50 mb-1 fw-bold">Quantidade *</label>
+                                        <input type="number" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Quantity" min="1" />
                                     </div>
                                     <div class="col-md-2">
-                                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Price" placeholder="Venda Un. (R$)" title="Valor Unitário de Venda (R$)" />
+                                        <label class="small text-white-50 mb-1 fw-bold">Custo Un. (R$)</label>
+                                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.CostPrice" />
                                     </div>
                                     <div class="col-md-2">
-                                        <input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.WarrantyPeriod" placeholder="Garantia" title="Garantia" />
+                                        <label class="small text-white-50 mb-1 fw-bold">Venda Un. (R$)</label>
+                                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.Price" />
                                     </div>
                                     <div class="col-md-2">
-                                        <button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItemAvulso">ADD AVULSO</button>
+                                        <label class="small text-white-50 mb-1 fw-bold">Garantia</label>
+                                        <input type="text" class="form-control bg-dark text-white border-secondary" @bind="novoItemAvulso.WarrantyPeriod" />
+                                    </div>
+                                    <div class="col-md-12 mt-3">
+                                        <button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarItemAvulso"><i class="bi bi-plus-circle-fill me-2"></i>ADD ITEM AVULSO</button>
                                     </div>
                                 }
                                 else
                                 {
                                     <div class="col-md-4">
-                                        <select class="form-select bg-dark text-white border-secondary" @onchange="OnServiceSelected" title="Serviço do Catálogo">
+                                        <label class="small text-white-50 mb-1 fw-bold">Serviço do Catálogo</label>
+                                        <select class="form-select bg-dark text-white border-secondary" @onchange="OnServiceSelected">
                                             <option value="0">Selecionar no catálogo...</option>
                                             @if (catalogoServicos != null)
                                             {
@@ -456,13 +466,15 @@
                                         </select>
                                     </div>
                                     <div class="col-md-5">
-                                        <input class="form-control bg-dark text-white border-secondary" @bind="novoServico.Description" placeholder="Descrição na O.S." title="Descrição na O.S." />
+                                        <label class="small text-white-50 mb-1 fw-bold">Descrição na O.S. *</label>
+                                        <input class="form-control bg-dark text-white border-secondary" @bind="novoServico.Description" />
                                     </div>
                                     <div class="col-md-3">
-                                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" placeholder="Valor (R$)" title="Valor (R$)" />
+                                        <label class="small text-white-50 mb-1 fw-bold">Valor (R$) *</label>
+                                        <input type="number" step="0.01" class="form-control bg-dark text-white border-secondary" @bind="novoServico.Price" />
                                     </div>
-                                    <div class="col-md-12 mt-2">
-                                        <button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarServico">ADICIONAR MÃO DE OBRA</button>
+                                    <div class="col-md-12 mt-3">
+                                        <button class="btn btn-warning w-100 fw-bold" @onclick="AdicionarServico"><i class="bi bi-plus-circle-fill me-2"></i>ADD MÃO DE OBRA</button>
                                     </div>
                                 }
                             </div>
@@ -562,14 +574,12 @@
 }
 
 @code {
-    // --- CONSTANTES ---
     private const string STATUS_COMPLETED = "Completed";
     private const string ITEM_TYPE_SERVICE = "Service";
     private const string TIPO_PECA = "peca";
     private const string TIPO_AVULSO = "avulso";
     private const string TIPO_SERVICO = "servico";
 
-    // --- PROPRIEDADES COMPUTADAS ---
 
     private List<ServiceOrderDTO> TodasOsParaRelatorio => (osAtivas ?? new()).Concat(osFinalizadas ?? new()).ToList();
 
@@ -587,8 +597,6 @@
                             p.name.Contains(filtroProduto, StringComparison.OrdinalIgnoreCase) || 
                             p.code.Contains(filtroProduto, StringComparison.OrdinalIgnoreCase)) 
         ?? Enumerable.Empty<ProductListDTO>();
-
-    // --- ESTADOS ---
 
     private string chavePix = "";
     private string nomeRecebedor = "";
