@@ -129,6 +129,9 @@ namespace OficinaWeb.Models
         [JsonPropertyName("price")]
         public decimal Price { get; set; }
 
+        [JsonPropertyName("costPrice")]
+        public decimal CostPrice { get; set; }
+
         [JsonPropertyName("productId")]
         public int? ProductId { get; set; }
 
@@ -149,6 +152,9 @@ namespace OficinaWeb.Models
 
         [JsonPropertyName("printLine")]
         public int PrintLine { get; set; }
+
+        [JsonIgnore]
+        public decimal Profit => (Price - CostPrice) * Quantity;
 
         [JsonIgnore]
         public string ProductCodeDisplay
@@ -229,6 +235,9 @@ namespace OficinaWeb.Models
         [JsonPropertyName("salePrice")]
         public decimal? SalePrice { get; set; }
 
+        [JsonPropertyName("costPrice")]
+        public decimal? CostPrice { get; set; }
+
         [JsonPropertyName("stockQuantity")]
         public int? StockQuantity { get; set; }
 
@@ -252,6 +261,9 @@ namespace OficinaWeb.Models
 
         [JsonPropertyName("salePrice")]
         public decimal salePrice { get; set; }
+
+        [JsonPropertyName("costPrice")]
+        public decimal costPrice { get; set; }
 
         [JsonPropertyName("stockQuantity")]
         public int stockQuantity { get; set; }
@@ -304,6 +316,9 @@ namespace OficinaWeb.Models
         [JsonPropertyName("price")]
         public decimal? Price { get; set; }
 
+        [JsonPropertyName("costPrice")]
+        public decimal? CostPrice { get; set; }
+
         [JsonPropertyName("warrantyPeriod")]
         public string? WarrantyPeriod { get; set; }
     }
@@ -318,6 +333,9 @@ namespace OficinaWeb.Models
 
         [JsonPropertyName("price")]
         public decimal Price { get; set; }
+
+        [JsonPropertyName("costPrice")]
+        public decimal CostPrice { get; set; }
 
         [JsonPropertyName("warrantyPeriod")]
         public string? WarrantyPeriod { get; set; }
@@ -366,6 +384,9 @@ namespace OficinaWeb.Models
 
         [JsonPropertyName("price")]
         public decimal Price { get; set; }
+
+        [JsonPropertyName("costPrice")]
+        public decimal CostPrice { get; set; }
 
         [JsonPropertyName("warrantyPeriod")]
         public string? WarrantyPeriod { get; set; }

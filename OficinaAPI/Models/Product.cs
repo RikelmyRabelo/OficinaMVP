@@ -22,6 +22,9 @@ namespace OficinaAPI.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal SalePrice { get; set; }
 
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal CostPrice { get; set; }
+
         public int StockQuantity { get; set; }
         public int MinimumStock { get; set; } = 5;
         public string? LocationCode { get; set; }

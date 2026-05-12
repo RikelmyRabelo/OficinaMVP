@@ -42,6 +42,8 @@ namespace OficinaAPI.Models
         public int Quantity { get; set; } = 1;
         [Column(TypeName = "decimal(18,2)")]
         public decimal Price { get; set; }
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal CostPrice { get; set; }
         public string? WarrantyPeriod { get; set; }
         public DateTime? WarrantyExpirationDate { get; set; }
 
