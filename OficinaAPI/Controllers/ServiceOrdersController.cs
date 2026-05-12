@@ -192,12 +192,14 @@ namespace OficinaAPI.Controllers
             if (product == null) return BadRequest("Produto não encontrado.");
 
             decimal precoUnitario = itemDto.Price ?? product.SalePrice;
+            decimal custoUnitario = itemDto.CostPrice ?? product.CostPrice;
             var newItem = new ServiceItem
             {
                 ServiceOrderId = id,
                 ProductId = product.Id,
                 Description = $"{product.Code} - {product.Name}",
                 Price = precoUnitario * itemDto.Quantity,
+                CostPrice = custoUnitario * itemDto.Quantity,
                 WarrantyPeriod = itemDto.WarrantyPeriod,
                 Quantity = itemDto.Quantity,
                 ItemType = "Product"
@@ -222,6 +224,7 @@ namespace OficinaAPI.Controllers
                 ServiceOrderId = id,
                 Description = laborDto.Description,
                 Price = laborDto.Price,
+                CostPrice = 0,
                 WarrantyPeriod = laborDto.WarrantyPeriod,
                 Quantity = 1,
                 ItemType = "Service"
@@ -244,6 +247,7 @@ namespace OficinaAPI.Controllers
                 ServiceOrderId = id,
                 Description = customDto.Description,
                 Price = customDto.Price,
+                CostPrice = customDto.CostPrice,
                 WarrantyPeriod = customDto.WarrantyPeriod,
                 Quantity = customDto.Quantity,
                 ItemType = "Custom"
@@ -415,6 +419,7 @@ namespace OficinaAPI.Controllers
 
             item.Description = request.Description;
             item.Price = request.Price;
+            item.CostPrice = request.CostPrice;
             item.WarrantyPeriod = request.WarrantyPeriod;
             item.Quantity = request.Quantity;
             if (!string.IsNullOrEmpty(request.ItemType)) item.ItemType = request.ItemType;
@@ -536,6 +541,59 @@ namespace OficinaAPI.Controllers
             return Ok(summary);
         }
 
+        [HttpGet("profit-summary")]
+        public async Task<ActionResult<ProfitSummaryDTO>> GetProfitSummary()
+        {
+            var settings = await GetCachedSettingsAsync();
+            if (settings == null) return BadRequest("Configurações não encontradas.");
+
+            var orders = await _context.ServiceOrders
+                .Include(o => o.Items)
+                .Include(o => o.Payments)
+                .AsNoTracking()
+                .Where(o => o.Status == "Completed" && !o.IsDeleted &&
+                            o.AccountingMonth == settings.ActiveMonth &&
+                            o.AccountingYear == settings.ActiveYear)
+                .ToListAsync();
+
+            var summary = new ProfitSummaryDTO();
+            var paymentDict = new Dictionary<string, PaymentMethodProfitDTO>();
+
+            foreach (var os in orders)
+            {
+                decimal osCost = os.Items.Sum(i => i.CostPrice);
+                decimal osProfit = os.TotalAmount - osCost;
+
+                summary.TotalRevenue += os.TotalAmount;
+                summary.TotalCost += osCost;
+
+                if (os.Payments.Any())
+                {
+                    foreach (var p in os.Payments)
+                    {
+                        var method = string.IsNullOrWhiteSpace(p.PaymentMethod) ? "Não Informado" : p.PaymentMethod.ToUpper();
+                        if (!paymentDict.ContainsKey(method)) paymentDict[method] = new PaymentMethodProfitDTO { PaymentMethod = method };
+
+                        paymentDict[method].Revenue += p.Amount;
+                        decimal proportion = os.TotalAmount > 0 ? (p.Amount / os.TotalAmount) : 0;
+                        paymentDict[method].Profit += (osProfit * proportion);
+                    }
+                }
+                else
+                {
+                    var method = string.IsNullOrWhiteSpace(os.PaymentMethod) ? "Não Informado" : os.PaymentMethod.ToUpper();
+                    if (!paymentDict.ContainsKey(method)) paymentDict[method] = new PaymentMethodProfitDTO { PaymentMethod = method };
+
+                    paymentDict[method].Revenue += os.AmountPaid;
+                    decimal proportion = os.TotalAmount > 0 ? (os.AmountPaid / os.TotalAmount) : 0;
+                    paymentDict[method].Profit += (osProfit * proportion);
+                }
+            }
+
+            summary.ByPaymentMethod = paymentDict.Values.ToList();
+            return Ok(summary);
+        }
+
         [HttpGet("cash-balance")]
         public async Task<ActionResult<decimal>> GetCashBalance()
         {
@@ -573,15 +631,17 @@ namespace OficinaAPI.Models
 {
     public class CreateOSDTO { public string ClientName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
     public class UpdateVehicleDTO { public string CustomerName { get; set; } = ""; public string VehicleModel { get; set; } = ""; public string CustomerAddress { get; set; } = ""; public string CustomerPhone { get; set; } = ""; }
-    public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public decimal? Price { get; set; } public string? WarrantyPeriod { get; set; } }
+    public class AddItemDTO { public int ProductId { get; set; } public int Quantity { get; set; } public decimal? Price { get; set; } public decimal? CostPrice { get; set; } public string? WarrantyPeriod { get; set; } }
     public class AddLaborDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
-    public class AddCustomItemDTO { public string Description { get; set; } = ""; public int Quantity { get; set; } = 1; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } }
+    public class AddCustomItemDTO { public string Description { get; set; } = ""; public int Quantity { get; set; } = 1; public decimal Price { get; set; } public decimal CostPrice { get; set; } public string? WarrantyPeriod { get; set; } }
     public class CompletionDTO { public DateTime CompletionDate { get; set; } }
     public class UpdateTotalDTO { public decimal TotalAmount { get; set; } }
-    public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; public string? ItemType { get; set; } }
+    public class UpdateServiceItemDTO { public string Description { get; set; } = ""; public decimal Price { get; set; } public decimal CostPrice { get; set; } public string? WarrantyPeriod { get; set; } public int Quantity { get; set; } = 1; public string? ItemType { get; set; } }
     public class PaymentSplitDTO { public string PaymentMethod { get; set; } = ""; public decimal Amount { get; set; } public DateTime PaymentDate { get; set; } = DateTime.Now; }
     public class UpdatePaymentDTO { public decimal AmountPaid { get; set; } public string? PaymentMethod { get; set; } public DateTime? PromisedPaymentDate { get; set; } public List<PaymentSplitDTO> Payments { get; set; } = new(); }
     public class UploadAttachmentDTO { public string FileName { get; set; } = ""; public string FileType { get; set; } = ""; public string Base64Content { get; set; } = ""; }
     public class CashAdjustmentDTO { public decimal Amount { get; set; } public string Description { get; set; } = ""; }
     public class FinancialSummaryDTO { public decimal FaturamentoTotal { get; set; } public decimal FaturamentoSemanal { get; set; } public decimal Inadimplencia { get; set; } public decimal TotalPix { get; set; } public decimal TotalCredito { get; set; } public decimal TotalDebito { get; set; } }
+    public class ProfitSummaryDTO { public decimal TotalRevenue { get; set; } public decimal TotalCost { get; set; } public decimal TotalProfit => TotalRevenue - TotalCost; public List<PaymentMethodProfitDTO> ByPaymentMethod { get; set; } = new(); }
+    public class PaymentMethodProfitDTO { public string PaymentMethod { get; set; } = ""; public decimal Revenue { get; set; } public decimal Profit { get; set; } }
 }
