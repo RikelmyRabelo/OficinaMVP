@@ -8,7 +8,6 @@
 <PageTitle>Estatísticas Avançadas - FREITAS AUTOCENTER</PageTitle>
 
 <div class="container-fluid py-4 px-lg-5">
-    @* Header *@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
         <div>
             <h1 class="fw-bold mb-1" style="color: #ff6600; letter-spacing: -1px;">DASHBOARD EXECUTIVO <span class="text-white-50 fw-light">@selectedYear</span></h1>
@@ -37,9 +36,8 @@
     }
     else
     {
-        @* Cards de Resumo *@
-        <div class="row g-4 mb-5">
-            <div class="col-md-3">
+        <div class="row g-4 mb-5 row-cols-1 row-cols-md-2 row-cols-xl-5">
+            <div class="col">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #198754 !important;">
                     <div class="card-body p-4">
                         <h6 class="text-white-50 text-uppercase x-small mb-3">Receita do Ciclo</h6>
@@ -48,7 +46,8 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            
+            <div class="col">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #0d6efd !important;">
                     <div class="card-body p-4">
                         <h6 class="text-white-50 text-uppercase x-small mb-3">Volume de Fluxo</h6>
@@ -58,12 +57,12 @@
                 </div>
             </div>
             
-            <div class="col-md-3">
+            <div class="col">
                 <div class="card h-100 border-0 shadow-sm card-clickable" @onclick="() => showProductModal = true" style="background: #111; border-bottom: 3px solid #ffc107 !important; cursor: pointer;">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <h6 class="text-white-50 text-uppercase x-small mb-3">Total Saídas (O.S.)</h6>
+                                <h6 class="text-white-50 text-uppercase x-small mb-3">Total Saídas (Estoque)</h6>
                                 <h2 class="text-white fw-bold mb-1">@totalSaidasEstoque.ToString("C2")</h2>
                             </div>
                             <i class="bi bi-search text-warning opacity-50"></i>
@@ -73,7 +72,22 @@
                 </div>
             </div>
 
-            <div class="col-md-3">
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm card-clickable" @onclick="() => showAvulsoModal = true" style="background: #111; border-bottom: 3px solid #dc3545 !important; cursor: pointer;">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="text-white-50 text-uppercase x-small mb-3">Lucro Avulsos</h6>
+                                <h2 class="text-white fw-bold mb-1">@lucroAvulsoTotal.ToString("C2")</h2>
+                            </div>
+                            <i class="bi bi-search text-danger opacity-50"></i>
+                        </div>
+                        <small class="text-danger"><i class="bi bi-bag-plus me-1"></i>Prestação de contas</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #6c757d !important;">
                     <div class="card-body p-4">
                         <h6 class="text-white-50 text-uppercase x-small mb-3">Conversão PIX</h6>
@@ -230,10 +244,70 @@
     </div>
 }
 
+@if (showAvulsoModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary shadow-lg">
+                <div class="modal-header border-secondary p-4">
+                    <h5 class="modal-title fw-bold text-danger d-flex align-items-center">
+                        <i class="bi bi-bag-plus me-2"></i> PRESTAÇÃO DE CONTAS - AVULSOS
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => showAvulsoModal = false"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive" style="max-height: 500px;">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead class="sticky-top bg-dark text-white-50 x-small text-uppercase border-secondary">
+                                <tr>
+                                    <th class="p-3">Data</th>
+                                    <th class="p-3">Item Avulso</th>
+                                    <th class="p-3">Cliente</th>
+                                    <th class="p-3 text-end">Custo</th>
+                                    <th class="p-3 text-end">Venda</th>
+                                    <th class="p-3 text-end text-success">Lucro</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (avulsosList.Any())
+                                {
+                                    @foreach (var item in avulsosList.OrderByDescending(i => i.Data))
+                                    {
+                                        <tr class="border-secondary">
+                                            <td class="p-3 small text-white-50">@item.Data.ToString("dd/MM/yy")</td>
+                                            <td class="p-3 fw-bold">@item.Descricao</td>
+                                            <td class="p-3 small">@item.Cliente</td>
+                                            <td class="p-3 text-end text-warning">@item.ValorCusto.ToString("C2")</td>
+                                            <td class="p-3 text-end text-info">@item.ValorVenda.ToString("C2")</td>
+                                            <td class="p-3 text-end text-success fw-bold">@item.Lucro.ToString("C2")</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5 text-white-50">Nenhum item avulso com custo registrado neste ciclo.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary p-3 bg-black">
+                    <div class="w-100 d-flex justify-content-between align-items-center">
+                        <span class="text-white-50 small">Lucro Líquido Acumulado (Avulsos):</span>
+                        <h4 class="text-success fw-bold mb-0">@lucroAvulsoTotal.ToString("C2")</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <style>
     .x-small { font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; }
     .chart-bar { 
-        background: linear-gradient(180deg, #ffc107 0%, #ff6600 100%); 
+        background: linear-gradient(180deg, #ffc107 0%, #ff6600 100%);
         border-radius: 4px 4px 0 0; 
         width: 100%;
         opacity: 0.8;
@@ -246,12 +320,17 @@
 </style>
 
 @code {
-    private bool isLoading = true, showProductModal = false;
+    private bool isLoading = true, showProductModal = false, showAvulsoModal = false;
     private int selectedMonth, selectedYear, carrosResolvidos;
     private decimal faturamentoMensal, totalPix, totalCredito, totalDinheiro, totalSaidasEstoque;
+    private decimal lucroAvulsoTotal;
+
     private List<PontoGrafico> faturamentoDiario = new();
     private List<ServiceOrderDTO> ordensNoMes = new();
     private List<ProductExit> produtosSaidaList = new();
+    private List<AvulsoExit> avulsosList = new();
+    private List<LaborServiceDTO>? catalogoServicos;
+
     private string ApiUrl = "";
 
     protected override async Task OnInitializedAsync()
@@ -264,11 +343,10 @@
     {
         try {
             var settings = await Http.GetFromJsonAsync<SystemSettingsDTO>($"{ApiUrl}/api/settings");
-            // Correção: Uso de null-coalescing para garantir conversão de int? para int
             selectedMonth = settings?.ActiveMonth ?? DateTime.Now.Month;
             selectedYear = settings?.ActiveYear ?? DateTime.Now.Year;
         } catch { 
-            selectedMonth = DateTime.Now.Month; 
+            selectedMonth = DateTime.Now.Month;
             selectedYear = DateTime.Now.Year; 
         }
         await LoadData();
@@ -284,10 +362,11 @@
         try 
         {
             isLoading = true;
+            catalogoServicos = await Http.GetFromJsonAsync<List<LaborServiceDTO>>($"{ApiUrl}/api/laborservices") ?? new();
             var osList = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/periodo?mes={selectedMonth}&ano={selectedYear}") ?? new();
             
-            faturamentoMensal = 0; totalPix = 0; totalCredito = 0; totalDinheiro = 0; totalSaidasEstoque = 0;
-            ordensNoMes.Clear(); produtosSaidaList.Clear();
+            faturamentoMensal = 0; totalPix = 0; totalCredito = 0; totalDinheiro = 0; totalSaidasEstoque = 0; lucroAvulsoTotal = 0;
+            ordensNoMes.Clear(); produtosSaidaList.Clear(); avulsosList.Clear();
 
             var filtradas = osList.Where(x => x.Status == "Completed").ToList();
             carrosResolvidos = filtradas.Count;
@@ -305,16 +384,35 @@
 
                 if (os.Items != null)
                 {
-                    foreach (var item in os.Items.Where(i => i.ProductId != null))
+                    foreach (var item in os.Items)
                     {
-                        totalSaidasEstoque += item.Price;
-                        produtosSaidaList.Add(new ProductExit {
-                            Data = dataConclusao,
-                            Descricao = item.Description,
-                            Cliente = os.Vehicle?.CustomerName ?? "Consumidor",
-                            Quantidade = item.Quantity,
-                            ValorTotal = item.Price
-                        });
+                        if (item.ProductId != null)
+                        {
+                            totalSaidasEstoque += item.Price;
+                            produtosSaidaList.Add(new ProductExit {
+                                Data = dataConclusao,
+                                Descricao = item.Description,
+                                Cliente = os.Vehicle?.CustomerName ?? "Consumidor",
+                                Quantidade = item.Quantity,
+                                ValorTotal = item.Price
+                            });
+                        }
+
+                        bool existeNoCatalogo = catalogoServicos.Any(c => string.Equals(c.Name, item.Description, StringComparison.OrdinalIgnoreCase));
+                        bool isServico = item.ItemType == "Service" || (item.ProductId == null && existeNoCatalogo);
+                        bool isAvulso = !isServico && item.ProductId == null;
+
+                        if (isAvulso && item.CostPrice > 0)
+                        {
+                            lucroAvulsoTotal += (item.Price - item.CostPrice);
+                            avulsosList.Add(new AvulsoExit {
+                                Data = dataConclusao,
+                                Descricao = item.Description,
+                                Cliente = os.Vehicle?.CustomerName ?? "Consumidor",
+                                ValorVenda = item.Price,
+                                ValorCusto = item.CostPrice
+                            });
+                        }
                     }
                 }
                 ordensNoMes.Add(os);
@@ -329,10 +427,7 @@
                 })
                 .OrderBy(p => p.DataOriginal).ToList();
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro no carregamento Relatórios: {ex.Message}");
-        }
+        catch (Exception ex) { Console.WriteLine($"Erro: {ex.Message}"); }
         finally { isLoading = false; StateHasChanged(); }
     }
 
@@ -342,5 +437,6 @@
     }
 
     public class ProductExit { public DateTime Data { get; set; } public string Descricao { get; set; } = ""; public string Cliente { get; set; } = ""; public int Quantidade { get; set; } public decimal ValorTotal { get; set; } }
+    public class AvulsoExit { public DateTime Data { get; set; } public string Descricao { get; set; } = ""; public string Cliente { get; set; } = ""; public decimal ValorVenda { get; set; } public decimal ValorCusto { get; set; } public decimal Lucro => ValorVenda - ValorCusto; }
     public class PontoGrafico { public DateTime DataOriginal { get; set; } public string DataRotulo { get; set; } = ""; public decimal Valor { get; set; } }
 }
