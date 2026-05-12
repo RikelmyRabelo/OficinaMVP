@@ -1,0 +1,44 @@
+﻿.nav-pills .nav-link {
+    border-radius: 0;
+}
+
+.table-dark {
+    --bs-table-bg: #000;
+}
+
+.print-only {
+    display: none;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .no-print, .sidebar, .top-row, .nav, .card, .btn, .input-group, hr {
+        display: none !important;
+    }
+
+    .print-only, .print-only * {
+        visibility: visible !important;
+    }
+
+    .print-only {
+        display: block !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background-color: white !important;
+        color: black !important;
+    }
+
+    table {
+        width: 100%;
+        color: black !important;
+    }
+
+    th, td {
+        border: 1px solid black !important;
+    }
+}

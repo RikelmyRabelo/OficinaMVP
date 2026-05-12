@@ -1,0 +1,34 @@
+﻿.x-small {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.chart-bar {
+    background: linear-gradient(180deg, #ffc107 0%, #ff6600 100%);
+    border-radius: 4px 4px 0 0;
+    width: 100%;
+    opacity: 0.8;
+    transition: all 0.3s;
+}
+
+    .chart-bar:hover {
+        opacity: 1;
+        transform: scaleX(1.1);
+        cursor: crosshair;
+        filter: brightness(1.2);
+    }
+
+.table-hover tbody tr:hover {
+    background-color: #151515 !important;
+}
+
+.ls-2 {
+    letter-spacing: 2px;
+}
+
+.card-clickable:hover {
+    transform: translateY(-3px);
+    transition: 0.2s;
+    filter: brightness(1.2);
+}
