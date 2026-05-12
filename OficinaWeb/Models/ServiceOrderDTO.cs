@@ -430,4 +430,31 @@ namespace OficinaWeb.Models
         [JsonPropertyName("valorTotal")]
         public decimal ValorTotal { get; set; }
     }
+
+    public class ProfitSummaryDTO
+    {
+        [JsonPropertyName("totalRevenue")]
+        public decimal TotalRevenue { get; set; }
+
+        [JsonPropertyName("totalCost")]
+        public decimal TotalCost { get; set; }
+
+        [JsonPropertyName("totalProfit")]
+        public decimal TotalProfit { get; set; }
+
+        [JsonPropertyName("byPaymentMethod")]
+        public List<PaymentMethodProfitDTO> ByPaymentMethod { get; set; } = new();
+    }
+
+    public class PaymentMethodProfitDTO
+    {
+        [JsonPropertyName("paymentMethod")]
+        public string PaymentMethod { get; set; } = "";
+
+        [JsonPropertyName("revenue")]
+        public decimal Revenue { get; set; }
+
+        [JsonPropertyName("profit")]
+        public decimal Profit { get; set; }
+    }
 }

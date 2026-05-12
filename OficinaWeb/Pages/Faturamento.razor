@@ -27,12 +27,15 @@
                 <i class="bi bi-arrow-left me-2"></i>Voltar
             </button>
         </div>
-        <div class="col-md-6 text-center">
+        <div class="col-md-5 text-center">
             <h2 class="fw-bold text-uppercase mb-0" style="color: #28a745;">
                 <i class="bi bi-wallet2 me-2"></i>Fechamento: @MesNome(activeMonth)/@activeYear
             </h2>
         </div>
-        <div class="col-md-3 text-end">
+        <div class="col-md-4 text-end d-flex justify-content-end gap-2">
+            <button class="btn btn-outline-info fw-bold" @onclick="AbrirModalLucro" disabled="@isLoading">
+                <i class="bi bi-graph-up-arrow me-2"></i>PRESTAÇÃO DE CONTAS
+            </button>
             <button class="btn btn-outline-success fw-bold" @onclick="CarregarDados" disabled="@isLoading">
                 <i class="bi bi-arrow-clockwise me-2"></i>ATUALIZAR
             </button>
@@ -188,13 +191,84 @@
     </div>
 }
 
+@if (mostrarModalLucro && profitSummary != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.85); z-index: 1050;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-dark text-white border-info shadow-lg">
+                <div class="modal-header border-info">
+                    <h5 class="modal-title fw-bold text-info"><i class="bi bi-graph-up-arrow me-2"></i>Prestação de Contas Semanal / Mensal</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="FecharModalLucro"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row text-center mb-5 g-3">
+                        <div class="col-4">
+                            <div class="p-3 bg-black rounded border border-secondary">
+                                <h6 class="text-white-50 small text-uppercase">Receita Total</h6>
+                                <h4 class="text-white mb-0">R$ @profitSummary.TotalRevenue.ToString("N2")</h4>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-3 bg-black rounded border border-secondary">
+                                <h6 class="text-white-50 small text-uppercase">Custo Peças</h6>
+                                <h4 class="text-danger mb-0">R$ @profitSummary.TotalCost.ToString("N2")</h4>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-3 bg-black rounded border border-success">
+                                <h6 class="text-white-50 small text-uppercase">Lucro Líquido</h6>
+                                <h4 class="text-success fw-bold mb-0">R$ @profitSummary.TotalProfit.ToString("N2")</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="text-warning mb-3 fw-bold"><i class="bi bi-layout-split me-2"></i>Divisão de Lucro por Tipo de Pagamento</h6>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-bordered border-secondary text-center align-middle mb-0">
+                            <thead class="text-white-50 small text-uppercase">
+                                <tr>
+                                    <th>Forma de Pagamento</th>
+                                    <th>Valor Recebido</th>
+                                    <th>Lucro Proporcional</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (profitSummary.ByPaymentMethod.Any())
+                                {
+                                    @foreach (var item in profitSummary.ByPaymentMethod.OrderByDescending(x => x.Profit))
+                                    {
+                                        <tr>
+                                            <td class="fw-bold text-info">@item.PaymentMethod</td>
+                                            <td>R$ @item.Revenue.ToString("N2")</td>
+                                            <td class="text-success fw-bold">R$ @item.Profit.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr><td colspan="3" class="py-4 text-white-50">Sem dados processados neste ciclo.</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer border-info d-flex justify-content-between bg-black">
+                    <span class="text-white-50 small"><i class="bi bi-info-circle me-1"></i>O reset do lucro ocorre automaticamente ao alterar o Mês Ativo nas Configurações.</span>
+                    <button class="btn btn-outline-light px-4" @onclick="FecharModalLucro">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private string ApiUrl = "";
-    private bool isLoading = true, mostrarModalDetalhes, isPeriodMismatch;
+    private bool isLoading = true, mostrarModalDetalhes, mostrarModalLucro, isPeriodMismatch;
     private int activeMonth, activeYear;
     private decimal faturamentoTotal, totalDinheiro, totalPix, totalCredito, totalDebito, totalInadimplencia;
     private List<ServiceOrderDTO> transacoesRecentes = new();
     private ServiceOrderDTO? transacaoSelecionada;
+    private ProfitSummaryDTO? profitSummary;
 
     protected override async Task OnInitializedAsync()
     {
@@ -207,11 +281,9 @@
         try
         {
             isLoading = true;
-            
             var settings = await Http.GetFromJsonAsync<SystemSettingsDTO>($"{ApiUrl}/api/settings");
             if (settings != null)
             {
-                // Correção: Conversão explícita de int? para int usando fallback
                 activeMonth = settings.ActiveMonth ?? DateTime.Now.Month;
                 activeYear = settings.ActiveYear ?? DateTime.Now.Year;
                 isPeriodMismatch = (activeMonth != DateTime.Now.Month || activeYear != DateTime.Now.Year);
@@ -228,6 +300,7 @@
             }
 
             totalDinheiro = await Http.GetFromJsonAsync<decimal>($"{ApiUrl}/api/serviceorders/cash-balance");
+            profitSummary = await Http.GetFromJsonAsync<ProfitSummaryDTO>($"{ApiUrl}/api/serviceorders/profit-summary");
 
             var osList = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/periodo?mes={activeMonth}&ano={activeYear}");
             transacoesRecentes = osList?
@@ -253,6 +326,10 @@
 
     private void AbrirDetalhes(ServiceOrderDTO t) { transacaoSelecionada = t; mostrarModalDetalhes = true; }
     private void FecharDetalhes() { mostrarModalDetalhes = false; transacaoSelecionada = null; }
+    
+    private void AbrirModalLucro() { mostrarModalLucro = true; }
+    private void FecharModalLucro() { mostrarModalLucro = false; }
+
     private string MesNome(int m) => System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(m > 0 && m <= 12 ? m : 1).ToUpper();
 
     private async Task ZerarGaveta()
