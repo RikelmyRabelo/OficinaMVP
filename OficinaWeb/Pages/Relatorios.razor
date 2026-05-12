@@ -63,7 +63,7 @@
                     <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <h6 class="text-white-50 text-uppercase x-small mb-2">Total Saídas (Estoque)</h6>
+                                <h6 class="text-white-50 text-uppercase x-small mb-3">Total Saídas (Estoque)</h6>
                                 <h4 class="text-white fw-bold mb-1 text-nowrap">R$ @totalSaidasEstoque.ToString("N2")</h4>
                             </div>
                             <i class="bi bi-search text-warning opacity-50"></i>
@@ -78,7 +78,7 @@
                     <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <h6 class="text-white-50 text-uppercase x-small mb-2">Lucro Avulsos</h6>
+                                <h6 class="text-white-50 text-uppercase x-small mb-3">Lucro Avulsos</h6>
                                 <h4 class="text-white fw-bold mb-1 text-nowrap">R$ @lucroAvulsoTotal.ToString("N2")</h4>
                             </div>
                             <i class="bi bi-search text-danger opacity-50"></i>
@@ -112,8 +112,8 @@
                             @foreach (var ponto in faturamentoDiario)
                             {
                                 <div class="flex-grow-1 text-center group-bar" style="min-width: 35px;">
-                                    <div class="chart-bar" 
-                                         style="height: @(CalcularAltura(ponto.Valor))px;" 
+                                    <div class="chart-bar"
+                                         style="height: @(CalcularAltura(ponto.Valor))px;"
                                          title="Data @ponto.DataRotulo: R$ @ponto.Valor.ToString("N2")">
                                     </div>
                                     <small class="text-white-50 d-block mt-2" style="font-size: 0.6rem; white-space: nowrap;">@ponto.DataRotulo</small>
@@ -345,21 +345,6 @@
     </div>
 }
 
-<style>
-    .x-small { font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; }
-    .chart-bar { 
-        background: linear-gradient(180deg, #ffc107 0%, #ff6600 100%);
-        border-radius: 4px 4px 0 0; 
-        width: 100%;
-        opacity: 0.8;
-        transition: all 0.3s;
-    }
-    .chart-bar:hover { opacity: 1; transform: scaleX(1.1); cursor: crosshair; filter: brightness(1.2); }
-    .table-hover tbody tr:hover { background-color: #151515 !important; }
-    .ls-2 { letter-spacing: 2px; }
-    .card-clickable:hover { transform: translateY(-3px); transition: 0.2s; filter: brightness(1.2); }
-</style>
-
 @code {
     private bool isLoading = true, showProductModal = false, showAvulsoModal = false, isLoadingCycle = false;
     private int selectedMonth, selectedYear, carrosResolvidos;
@@ -385,14 +370,17 @@
 
     private async Task InitialLoad()
     {
-        try {
+        try
+        {
             var settings = await Http.GetFromJsonAsync<SystemSettingsDTO>($"{ApiUrl}/api/settings");
             selectedMonth = settings?.ActiveMonth ?? DateTime.Now.Month;
             selectedYear = settings?.ActiveYear ?? DateTime.Now.Year;
             lastClosingDate = settings?.LastClosingDate ?? DateTime.MinValue;
-        } catch { 
+        }
+        catch
+        {
             selectedMonth = DateTime.Now.Month;
-            selectedYear = DateTime.Now.Year; 
+            selectedYear = DateTime.Now.Year;
         }
         await LoadData();
     }
@@ -404,7 +392,7 @@
 
     private async Task LoadData()
     {
-        try 
+        try
         {
             isLoading = true;
             catalogoServicos = await Http.GetFromJsonAsync<List<LaborServiceDTO>>($"{ApiUrl}/api/laborservices") ?? new();
@@ -434,7 +422,8 @@
                         if (item.ProductId != null)
                         {
                             totalSaidasEstoque += item.Price;
-                            produtosSaidaList.Add(new ProductExit {
+                            produtosSaidaList.Add(new ProductExit
+                            {
                                 OsId = os.Id,
                                 Data = dataConclusao,
                                 Descricao = item.Description,
@@ -459,7 +448,8 @@
 
             faturamentoDiario = ordensNoMes
                 .GroupBy(o => (o.CompletionDate ?? DateTime.Now).Date)
-                .Select(g => new PontoGrafico {
+                .Select(g => new PontoGrafico
+                {
                     DataOriginal = g.Key,
                     DataRotulo = g.Key.ToString("dd/MM"),
                     Valor = g.Sum(o => o.AmountPaid)
@@ -522,11 +512,12 @@
                                 else if (m.Contains("DINHEIRO")) lucroCicloDinheiro += lucroItem;
                             }
 
-                            string metodosStr = os.Payments != null && os.Payments.Any() 
-                                ? string.Join(" / ", os.Payments.Select(p => p.PaymentMethod)) 
+                            string metodosStr = os.Payments != null && os.Payments.Any()
+                                ? string.Join(" / ", os.Payments.Select(p => p.PaymentMethod))
                                 : (os.PaymentMethod ?? "N/A");
 
-                            avulsosCiclo.Add(new AvulsoExit {
+                            avulsosCiclo.Add(new AvulsoExit
+                            {
                                 OsId = os.Id,
                                 Data = os.CompletionDate ?? DateTime.Now,
                                 Descricao = item.Description,
@@ -551,10 +542,12 @@
         {
             await Http.PostAsync($"{ApiUrl}/api/settings/close-cycle", null);
             await LoadCycleData();
+            await LoadData();
         }
     }
 
-    private int CalcularAltura(decimal valor) {
+    private int CalcularAltura(decimal valor)
+    {
         var max = faturamentoDiario.Any() ? faturamentoDiario.Max(d => d.Valor) : 0;
         return max == 0 ? 0 : (int)((valor / max) * 180);
     }
