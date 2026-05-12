@@ -39,9 +39,9 @@
         <div class="row g-4 mb-5 row-cols-1 row-cols-md-2 row-cols-xl-5">
             <div class="col">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #198754 !important;">
-                    <div class="card-body p-4">
-                        <h6 class="text-white-50 text-uppercase x-small mb-3">Receita do Ciclo</h6>
-                        <h2 class="text-white fw-bold mb-1 fs-4 text-nowrap">@faturamentoMensal.ToString("C2")</h2>
+                    <div class="card-body p-3">
+                        <h6 class="text-white-50 text-uppercase x-small mb-2">Receita do Ciclo</h6>
+                        <h4 class="text-white fw-bold mb-1 text-nowrap">R$ @faturamentoMensal.ToString("N2")</h4>
                         <small class="text-success"><i class="bi bi-graph-up me-1"></i>Total apurado</small>
                     </div>
                 </div>
@@ -49,9 +49,9 @@
             
             <div class="col">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #0d6efd !important;">
-                    <div class="card-body p-4">
-                        <h6 class="text-white-50 text-uppercase x-small mb-3">Volume de Fluxo</h6>
-                        <h2 class="text-white fw-bold mb-1 fs-4 text-nowrap">@carrosResolvidos</h2>
+                    <div class="card-body p-3">
+                        <h6 class="text-white-50 text-uppercase x-small mb-2">Volume de Fluxo</h6>
+                        <h4 class="text-white fw-bold mb-1 text-nowrap">@carrosResolvidos</h4>
                         <small class="text-primary"><i class="bi bi-check2-circle me-1"></i>O.S. Finalizadas</small>
                     </div>
                 </div>
@@ -59,11 +59,11 @@
             
             <div class="col">
                 <div class="card h-100 border-0 shadow-sm card-clickable" @onclick="() => showProductModal = true" style="background: #111; border-bottom: 3px solid #ffc107 !important; cursor: pointer;">
-                    <div class="card-body p-4">
+                    <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <h6 class="text-white-50 text-uppercase x-small mb-3">Total Saídas (Estoque)</h6>
-                                <h2 class="text-white fw-bold mb-1 fs-4 text-nowrap">@totalSaidasEstoque.ToString("C2")</h2>
+                                <h6 class="text-white-50 text-uppercase x-small mb-2">Total Saídas (Estoque)</h6>
+                                <h4 class="text-white fw-bold mb-1 text-nowrap">R$ @totalSaidasEstoque.ToString("N2")</h4>
                             </div>
                             <i class="bi bi-search text-warning opacity-50"></i>
                         </div>
@@ -74,11 +74,11 @@
 
             <div class="col">
                 <div class="card h-100 border-0 shadow-sm card-clickable" @onclick="() => showAvulsoModal = true" style="background: #111; border-bottom: 3px solid #dc3545 !important; cursor: pointer;">
-                    <div class="card-body p-4">
+                    <div class="card-body p-3">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <h6 class="text-white-50 text-uppercase x-small mb-3">Lucro Avulsos</h6>
-                                <h2 class="text-white fw-bold mb-1 fs-4 text-nowrap">@lucroAvulsoTotal.ToString("C2")</h2>
+                                <h6 class="text-white-50 text-uppercase x-small mb-2">Lucro Avulsos</h6>
+                                <h4 class="text-white fw-bold mb-1 text-nowrap">R$ @lucroAvulsoTotal.ToString("N2")</h4>
                             </div>
                             <i class="bi bi-search text-danger opacity-50"></i>
                         </div>
@@ -89,9 +89,9 @@
 
             <div class="col">
                 <div class="card h-100 border-0 shadow-sm" style="background: #111; border-bottom: 3px solid #6c757d !important;">
-                    <div class="card-body p-4">
-                        <h6 class="text-white-50 text-uppercase x-small mb-3">Conversão PIX</h6>
-                        <h2 class="text-white fw-bold mb-1 fs-4 text-nowrap">@totalPix.ToString("C2")</h2>
+                    <div class="card-body p-3">
+                        <h6 class="text-white-50 text-uppercase x-small mb-2">Conversão PIX</h6>
+                        <h4 class="text-white fw-bold mb-1 text-nowrap">R$ @totalPix.ToString("N2")</h4>
                         <small class="text-secondary"><i class="bi bi-lightning-charge me-1"></i>Recebimento instantâneo</small>
                     </div>
                 </div>
@@ -113,7 +113,7 @@
                                 <div class="flex-grow-1 text-center group-bar" style="min-width: 35px;">
                                     <div class="chart-bar" 
                                          style="height: @(CalcularAltura(ponto.Valor))px;" 
-                                         title="Data @ponto.DataRotulo: @ponto.Valor.ToString("C2")">
+                                         title="Data @ponto.DataRotulo: R$ @ponto.Valor.ToString("N2")">
                                     </div>
                                     <small class="text-white-50 d-block mt-2" style="font-size: 0.6rem; white-space: nowrap;">@ponto.DataRotulo</small>
                                 </div>
@@ -176,7 +176,7 @@
                                 <td class="small">@(os.CompletionDate?.ToString("dd/MM/yyyy HH:mm") ?? "--")</td>
                                 <td class="fw-bold">@(os.Vehicle?.CustomerName ?? "Consumidor")</td>
                                 <td class="text-white-50">@(os.Vehicle?.Model ?? "Geral")</td>
-                                <td class="text-end fw-bold">@os.TotalAmount.ToString("C2")</td>
+                                <td class="text-end fw-bold">R$ @os.TotalAmount.ToString("N2")</td>
                             </tr>
                         }
                     </tbody>
@@ -202,6 +202,7 @@
                         <table class="table table-dark table-hover mb-0">
                             <thead class="sticky-top bg-dark text-white-50 x-small text-uppercase border-secondary">
                                 <tr>
+                                    <th class="p-3">O.S.</th>
                                     <th class="p-3">Data</th>
                                     <th class="p-3">Produto</th>
                                     <th class="p-3">Cliente</th>
@@ -215,18 +216,19 @@
                                     @foreach (var item in produtosSaidaList.OrderByDescending(i => i.Data))
                                     {
                                         <tr class="border-secondary">
+                                            <td class="p-3 text-warning fw-bold">#@item.OsId</td>
                                             <td class="p-3 small text-white-50">@item.Data.ToString("dd/MM/yy")</td>
                                             <td class="p-3 fw-bold">@item.Descricao</td>
                                             <td class="p-3 small">@item.Cliente</td>
                                             <td class="p-3 text-center"><span class="badge bg-secondary">@item.Quantidade</span></td>
-                                            <td class="p-3 text-end fw-bold text-warning">@item.ValorTotal.ToString("C2")</td>
+                                            <td class="p-3 text-end fw-bold text-warning">R$ @item.ValorTotal.ToString("N2")</td>
                                         </tr>
                                     }
                                 }
                                 else
                                 {
                                     <tr>
-                                        <td colspan="5" class="text-center py-5 text-white-50">Nenhum produto com código registrado neste ciclo.</td>
+                                        <td colspan="6" class="text-center py-5 text-white-50">Nenhum produto com código registrado neste ciclo.</td>
                                     </tr>
                                 }
                             </tbody>
@@ -236,7 +238,7 @@
                 <div class="modal-footer border-secondary p-3 bg-black">
                     <div class="w-100 d-flex justify-content-between align-items-center">
                         <span class="text-white-50 small">Total acumulado em peças:</span>
-                        <h4 class="text-warning fw-bold mb-0 text-nowrap">@totalSaidasEstoque.ToString("C2")</h4>
+                        <h4 class="text-warning fw-bold mb-0 text-nowrap">R$ @totalSaidasEstoque.ToString("N2")</h4>
                     </div>
                 </div>
             </div>
@@ -260,6 +262,7 @@
                         <table class="table table-dark table-hover mb-0">
                             <thead class="sticky-top bg-dark text-white-50 x-small text-uppercase border-secondary">
                                 <tr>
+                                    <th class="p-3">O.S.</th>
                                     <th class="p-3">Data</th>
                                     <th class="p-3">Item Avulso</th>
                                     <th class="p-3">Cliente</th>
@@ -274,19 +277,20 @@
                                     @foreach (var item in avulsosList.OrderByDescending(i => i.Data))
                                     {
                                         <tr class="border-secondary">
+                                            <td class="p-3 text-warning fw-bold">#@item.OsId</td>
                                             <td class="p-3 small text-white-50">@item.Data.ToString("dd/MM/yy")</td>
                                             <td class="p-3 fw-bold">@item.Descricao</td>
                                             <td class="p-3 small">@item.Cliente</td>
-                                            <td class="p-3 text-end text-warning">@item.ValorCusto.ToString("C2")</td>
-                                            <td class="p-3 text-end text-info">@item.ValorVenda.ToString("C2")</td>
-                                            <td class="p-3 text-end text-success fw-bold">@item.Lucro.ToString("C2")</td>
+                                            <td class="p-3 text-end text-warning">R$ @item.ValorCusto.ToString("N2")</td>
+                                            <td class="p-3 text-end text-info">R$ @item.ValorVenda.ToString("N2")</td>
+                                            <td class="p-3 text-end text-success fw-bold">R$ @item.Lucro.ToString("N2")</td>
                                         </tr>
                                     }
                                 }
                                 else
                                 {
                                     <tr>
-                                        <td colspan="6" class="text-center py-5 text-white-50">Nenhum item avulso com custo registrado neste ciclo.</td>
+                                        <td colspan="7" class="text-center py-5 text-white-50">Nenhum item avulso com custo registrado neste ciclo.</td>
                                     </tr>
                                 }
                             </tbody>
@@ -296,7 +300,7 @@
                 <div class="modal-footer border-secondary p-3 bg-black">
                     <div class="w-100 d-flex justify-content-between align-items-center">
                         <span class="text-white-50 small">Lucro Líquido Acumulado (Avulsos):</span>
-                        <h4 class="text-success fw-bold mb-0 text-nowrap">@lucroAvulsoTotal.ToString("C2")</h4>
+                        <h4 class="text-success fw-bold mb-0 text-nowrap">R$ @lucroAvulsoTotal.ToString("N2")</h4>
                     </div>
                 </div>
             </div>
@@ -390,6 +394,7 @@
                         {
                             totalSaidasEstoque += item.Price;
                             produtosSaidaList.Add(new ProductExit {
+                                OsId = os.Id,
                                 Data = dataConclusao,
                                 Descricao = item.Description,
                                 Cliente = os.Vehicle?.CustomerName ?? "Consumidor",
@@ -406,6 +411,7 @@
                         {
                             lucroAvulsoTotal += (item.Price - item.CostPrice);
                             avulsosList.Add(new AvulsoExit {
+                                OsId = os.Id,
                                 Data = dataConclusao,
                                 Descricao = item.Description,
                                 Cliente = os.Vehicle?.CustomerName ?? "Consumidor",
@@ -436,7 +442,7 @@
         return max == 0 ? 0 : (int)((valor / max) * 180);
     }
 
-    public class ProductExit { public DateTime Data { get; set; } public string Descricao { get; set; } = ""; public string Cliente { get; set; } = ""; public int Quantidade { get; set; } public decimal ValorTotal { get; set; } }
-    public class AvulsoExit { public DateTime Data { get; set; } public string Descricao { get; set; } = ""; public string Cliente { get; set; } = ""; public decimal ValorVenda { get; set; } public decimal ValorCusto { get; set; } public decimal Lucro => ValorVenda - ValorCusto; }
+    public class ProductExit { public int OsId { get; set; } public DateTime Data { get; set; } public string Descricao { get; set; } = ""; public string Cliente { get; set; } = ""; public int Quantidade { get; set; } public decimal ValorTotal { get; set; } }
+    public class AvulsoExit { public int OsId { get; set; } public DateTime Data { get; set; } public string Descricao { get; set; } = ""; public string Cliente { get; set; } = ""; public decimal ValorVenda { get; set; } public decimal ValorCusto { get; set; } public decimal Lucro => ValorVenda - ValorCusto; }
     public class PontoGrafico { public DateTime DataOriginal { get; set; } public string DataRotulo { get; set; } = ""; public decimal Valor { get; set; } }
 }
