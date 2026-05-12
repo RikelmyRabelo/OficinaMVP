@@ -27,7 +27,7 @@ namespace OficinaAPI.Controllers
         {
             return await _context.Products
                 .AsNoTracking()
-                .Where(p => !p.IsDeleted && p.StockQuantity <= 3)
+                .Where(p => !p.IsDeleted && p.StockQuantity <= p.MinimumStock)
                 .OrderBy(p => p.StockQuantity)
                 .ToListAsync();
         }
@@ -56,7 +56,7 @@ namespace OficinaAPI.Controllers
 
             var exitedItemsValue = await _context.ServiceItems
                 .Include(si => si.Product)
-                .Where(si => si.ProductId != null && !si.Product.IsExternal)
+                .Where(si => si.ProductId != null && si.Product != null && !si.Product.IsExternal)
                 .SumAsync(si => si.Quantity * si.Price);
 
             return Ok(new
@@ -74,7 +74,7 @@ namespace OficinaAPI.Controllers
                 .AsNoTracking()
                 .Include(si => si.ServiceOrder)
                 .Include(si => si.Product)
-                .Where(si => si.ProductId != null && !si.Product.IsExternal)
+                .Where(si => si.ProductId != null && si.Product != null && !si.Product.IsExternal)
                 .Select(si => new
                 {
                     OsId = si.ServiceOrderId,
@@ -101,6 +101,7 @@ namespace OficinaAPI.Controllers
                     existing.IsDeleted = false;
                     existing.Name = product.Name;
                     existing.SalePrice = product.SalePrice;
+                    existing.CostPrice = product.CostPrice;
                     existing.StockQuantity = product.StockQuantity;
                     existing.MinimumStock = product.MinimumStock;
                     existing.IsExternal = product.IsExternal;

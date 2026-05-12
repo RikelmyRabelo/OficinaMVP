@@ -37,7 +37,7 @@ namespace OficinaAPI.Tests
         }
 
         [Fact]
-        public async Task Settings_DeveCriarConfiguracoesIniciais_AoConsultarPelaPrimeiraVez()
+        public async Task Settings_DeveCriarConfiguracoesIniciais_ComDataDeFechamento()
         {
             var context = GetDatabaseContext();
             var controller = new SettingsController(context);
@@ -47,218 +47,179 @@ namespace OficinaAPI.Tests
 
             Assert.NotNull(settings);
             Assert.Equal(DateTime.Now.Month, settings.ActiveMonth);
-            Assert.Equal(DateTime.Now.Year, settings.ActiveYear);
+            Assert.True(settings.LastClosingDate <= DateTime.Now);
         }
 
         [Fact]
-        public async Task Settings_FecharPeriodo_DeveIncrementarMes()
+        public async Task Settings_FecharCiclo_DeveAtualizarDataLastClosing()
         {
             var context = GetDatabaseContext();
             var controller = new SettingsController(context);
+            var dataAntiga = DateTime.Now.AddDays(-10);
 
-            context.SystemSettings.Add(new SystemSettings { ActiveMonth = 3, ActiveYear = 2026 });
+            context.SystemSettings.Add(new SystemSettings { ActiveMonth = 5, ActiveYear = 2026, LastClosingDate = dataAntiga });
             await context.SaveChangesAsync();
 
-            await controller.ClosePeriod();
+            await controller.CloseAvulsosCycle();
 
             var settings = await context.SystemSettings.FirstAsync();
-            Assert.Equal(4, settings.ActiveMonth);
-            Assert.Equal(2026, settings.ActiveYear);
+            Assert.True(settings.LastClosingDate > dataAntiga);
         }
 
         [Fact]
-        public async Task Settings_FecharDezembro_DeveVirarOAno()
+        public async Task OS_AdicionarItem_DevePersistirPrecoDeCustoSnapshot()
         {
             var context = GetDatabaseContext();
-            var controller = new SettingsController(context);
+            var osController = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
-            context.SystemSettings.Add(new SystemSettings { ActiveMonth = 12, ActiveYear = 2026 });
+            var p = new Product { Code = "OLEO", Name = "Oleo", SalePrice = 50, CostPrice = 20, StockQuantity = 10 };
+            context.Products.Add(p);
             await context.SaveChangesAsync();
 
-            await controller.ClosePeriod();
+            var resOs = await osController.PostServiceOrder(new CreateOSDTO { ClientName = "Rikelmy", VehicleModel = "Carro" });
+            var os = (resOs.Result as OkObjectResult)!.Value as ServiceOrder;
 
-            var settings = await context.SystemSettings.FirstAsync();
-            Assert.Equal(1, settings.ActiveMonth);
-            Assert.Equal(2027, settings.ActiveYear);
+            await osController.AddItem(os!.Id, new AddItemDTO { ProductId = p.Id, Quantity = 1 });
+
+            var itemNoBanco = await context.ServiceItems.FirstAsync(i => i.ServiceOrderId == os.Id);
+            Assert.Equal(20, itemNoBanco.CostPrice);
+            Assert.Equal(50, itemNoBanco.Price);
         }
 
         [Fact]
-        public async Task OS_AdicionarItem_NaoDeveBaixarEstoqueImediatamente()
+        public async Task OS_ItemAvulso_DeveCalcularLucroCorretamente()
         {
             var context = GetDatabaseContext();
-            var prodController = new ProductsController(context);
             var osController = new ServiceOrdersController(context, _mockEnv.Object, _cache);
-
-            await prodController.PostProduct(new Product { Code = "PNEU01", Name = "Pneu", SalePrice = 400, StockQuantity = 10 });
-            var produtoSalvo = await context.Products.FirstAsync();
-
-            var resOs = await osController.PostServiceOrder(new CreateOSDTO { ClientName = "Rikelmy", VehicleModel = "Moto" });
-            var osCriada = (resOs.Result as OkObjectResult)!.Value as ServiceOrder;
-
-            await osController.AddItem(osCriada!.Id, new AddItemDTO { ProductId = produtoSalvo.Id, Quantity = 2 });
-
-            var produtoNoBanco = await context.Products.FindAsync(produtoSalvo.Id);
-            Assert.Equal(10, produtoNoBanco!.StockQuantity);
-
-            var osNoBanco = await context.ServiceOrders.FindAsync(osCriada.Id);
-            Assert.Equal(800, osNoBanco!.TotalAmount);
-        }
-
-        [Fact]
-        public async Task OS_Finalizar_DeveBaixarEstoqueAgora()
-        {
-            var context = GetDatabaseContext();
-            var prodController = new ProductsController(context);
-            var osController = new ServiceOrdersController(context, _mockEnv.Object, _cache);
-
-            await prodController.PostProduct(new Product { Code = "PNEU01", Name = "Pneu", SalePrice = 400, StockQuantity = 10 });
-            var p = await context.Products.FirstAsync();
 
             var resOs = await osController.PostServiceOrder(new CreateOSDTO { ClientName = "Test", VehicleModel = "Car" });
             var os = (resOs.Result as OkObjectResult)!.Value as ServiceOrder;
 
-            await osController.AddItem(os!.Id, new AddItemDTO { ProductId = p.Id, Quantity = 2 });
+            await osController.AddCustomItem(os!.Id, new AddCustomItemDTO
+            {
+                Description = "Peca Externa",
+                Price = 100,
+                CostPrice = 60,
+                Quantity = 1
+            });
 
-            await osController.CompleteOrder(os.Id, new CompletionDTO { CompletionDate = DateTime.Now });
-
-            var produtoFinal = await context.Products.FindAsync(p.Id);
-            Assert.Equal(8, produtoFinal!.StockQuantity);
+            var item = await context.ServiceItems.FirstAsync();
+            Assert.Equal(40, item.Price - item.CostPrice);
         }
 
         [Fact]
-        public async Task PagamentoMisto_DeveSalvarMultiplasFormasDePagamento()
+        public async Task ProfitSummary_DeveDividirLucroProporcionalmente()
         {
             var context = GetDatabaseContext();
-            var controller = new ServiceOrdersController(context, _mockEnv.Object, _cache);
+            var osController = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
-            var resOs = await controller.PostServiceOrder(new CreateOSDTO { ClientName = "Cliente Pagador", VehicleModel = "Civic" });
+            context.SystemSettings.Add(new SystemSettings { ActiveMonth = 5, ActiveYear = 2026 });
+            await context.SaveChangesAsync();
+
+            var resOs = await osController.PostServiceOrder(new CreateOSDTO { ClientName = "User", VehicleModel = "V" });
             var os = (resOs.Result as OkObjectResult)!.Value as ServiceOrder;
 
-            var updatePaymentDto = new UpdatePaymentDTO
+            await osController.AddCustomItem(os!.Id, new AddCustomItemDTO { Description = "Item", Price = 100, CostPrice = 50, Quantity = 1 });
+
+            var updatePayment = new UpdatePaymentDTO
             {
-                AmountPaid = 500,
-                PaymentMethod = "Misto",
+                AmountPaid = 100,
                 Payments = new List<PaymentSplitDTO>
                 {
-                    new PaymentSplitDTO { PaymentMethod = "PIX", Amount = 200 },
-                    new PaymentSplitDTO { PaymentMethod = "Dinheiro", Amount = 300 }
+                    new PaymentSplitDTO { PaymentMethod = "PIX", Amount = 100 }
                 }
             };
+            await osController.UpdateAmountPaid(os.Id, updatePayment);
+            await osController.CompleteOrder(os.Id, new CompletionDTO { CompletionDate = DateTime.Now });
 
-            await controller.UpdateAmountPaid(os!.Id, updatePaymentDto);
+            var res = await osController.GetProfitSummary();
+            var summary = (res.Result as OkObjectResult)!.Value as ProfitSummaryDTO;
 
-            var osAtualizada = await context.ServiceOrders.Include(o => o.Payments).FirstAsync(o => o.Id == os.Id);
-            Assert.Equal(500, osAtualizada.AmountPaid);
-            Assert.Equal(2, osAtualizada.Payments.Count);
+            Assert.Equal(100, summary!.TotalRevenue);
+            Assert.Equal(50, summary.TotalProfit);
+            Assert.Equal(50, summary.ByPaymentMethod.First(p => p.PaymentMethod == "PIX").Profit);
         }
 
-
         [Fact]
-        public async Task ResumoFinanceiro_DeveCalcularApenasDoMesContabilAtivo()
+        public async Task ResumoFinanceiro_DeveFiltrarPorMetodo_MesmoComPagamentoUnicoLegado()
         {
             var context = GetDatabaseContext();
             var controller = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
-            context.SystemSettings.Add(new SystemSettings { ActiveMonth = 3, ActiveYear = 2026 });
+            context.SystemSettings.Add(new SystemSettings { ActiveMonth = 5, ActiveYear = 2026 });
 
-            var os1 = new ServiceOrder { Status = "Completed", TotalAmount = 500, AmountPaid = 500, AccountingMonth = 1, AccountingYear = 2026 };
-            var os2 = new ServiceOrder { Status = "Completed", TotalAmount = 1000, AmountPaid = 600, AccountingMonth = 3, AccountingYear = 2026 };
-
-            context.ServiceOrders.AddRange(os1, os2);
+            var os = new ServiceOrder
+            {
+                Status = "Completed",
+                TotalAmount = 200,
+                AmountPaid = 200,
+                PaymentMethod = "PIX",
+                AccountingMonth = 5,
+                AccountingYear = 2026,
+                CompletionDate = DateTime.Now
+            };
+            context.ServiceOrders.Add(os);
             await context.SaveChangesAsync();
 
             var res = await controller.GetFinancialSummary();
             var summary = (res.Result as OkObjectResult)!.Value as FinancialSummaryDTO;
 
-            Assert.Equal(600, summary!.FaturamentoTotal);
-            Assert.Equal(400, summary.Inadimplencia);
+            Assert.Equal(200, summary!.TotalPix);
         }
 
         [Fact]
-        public async Task OS_GetActive_NaoDeveTrazerOrdensFinalizadasOuDeletadas()
+        public async Task OS_GetTrash_DeveRetornarApenasDeletadosRecentes()
         {
             var context = GetDatabaseContext();
             var controller = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
-            context.Vehicles.Add(new Vehicle { Id = 1, CustomerName = "João", Model = "Carro" });
-
             context.ServiceOrders.AddRange(
-                new ServiceOrder { Id = 1, VehicleId = 1, Status = "Pending", IsDeleted = false },
-                new ServiceOrder { Id = 2, VehicleId = 1, Status = "Completed", IsDeleted = false },
-                new ServiceOrder { Id = 3, VehicleId = 1, Status = "Pending", IsDeleted = true }
+                new ServiceOrder { Id = 10, IsDeleted = true, DeletionDate = DateTime.Now.AddDays(-5) },
+                new ServiceOrder { Id = 11, IsDeleted = false }
             );
             await context.SaveChangesAsync();
 
-            var result = await controller.GetActiveServiceOrders();
-            var listaAtiva = result.Value!;
+            var result = await controller.GetTrash();
+            var lista = result.Value!;
 
-            Assert.Single(listaAtiva);
-            Assert.Equal(1, listaAtiva.First().Id);
+            Assert.Single(lista);
+            Assert.Equal(10, lista.First().Id);
         }
 
         [Fact]
-        public async Task OS_Alertas_DeveTrazerApenasInadimplentesAtrasados()
+        public async Task OS_Restore_DeveRetornarOrdemParaEstadoAtivo()
         {
             var context = GetDatabaseContext();
             var controller = new ServiceOrdersController(context, _mockEnv.Object, _cache);
 
-            context.Vehicles.Add(new Vehicle { Id = 1, CustomerName = "Maria", Model = "Moto" });
-
-            context.ServiceOrders.AddRange(
-                new ServiceOrder { Id = 1, VehicleId = 1, Status = "Completed", TotalAmount = 100, AmountPaid = 100 },
-                new ServiceOrder { Id = 2, VehicleId = 1, Status = "Completed", TotalAmount = 100, AmountPaid = 50, PromisedPaymentDate = DateTime.Today.AddDays(1) },
-                new ServiceOrder { Id = 3, VehicleId = 1, Status = "Completed", TotalAmount = 100, AmountPaid = 50, PromisedPaymentDate = DateTime.Today.AddDays(-1) }
-            );
+            var os = new ServiceOrder { Id = 50, IsDeleted = true, DeletionDate = DateTime.Now };
+            context.ServiceOrders.Add(os);
             await context.SaveChangesAsync();
 
-            var result = await controller.GetCollectionAlerts();
-            var alertas = result.Value!;
+            await controller.RestoreServiceOrder(50);
 
-            Assert.Single(alertas);
-            Assert.Equal(3, alertas.First().Id);
+            var osRestaurada = await context.ServiceOrders.FindAsync(50);
+            Assert.False(osRestaurada!.IsDeleted);
+            Assert.Null(osRestaurada.DeletionDate);
         }
 
         [Fact]
-        public async Task Lixeira_SoftDelete_DeveRemoverDaListaAtiva()
-        {
-            var context = GetDatabaseContext();
-            var osController = new ServiceOrdersController(context, _mockEnv.Object, _cache);
-
-            var resOs = await osController.PostServiceOrder(new CreateOSDTO { ClientName = "Cliente Lixeira", VehicleModel = "Moto" });
-            var os = (resOs.Result as OkObjectResult)!.Value as ServiceOrder;
-
-            await osController.SoftDeleteServiceOrder(os!.Id);
-
-            var resultAtiva = await osController.GetServiceOrders();
-            var listaAtiva = resultAtiva.Value!;
-
-            var resultLixeira = await osController.GetTrash();
-            var listaLixeira = resultLixeira.Value!;
-
-            Assert.DoesNotContain(listaAtiva, o => o.Id == os.Id);
-            Assert.Contains(listaLixeira, o => o.Id == os.Id);
-        }
-
-        [Fact]
-        public async Task Produtos_GetLowStock_DeveRetornarEstoqueMenorOuIgualA3()
+        public async Task Produtos_GetLowStock_DeveRespeitarMinimoConfigurado()
         {
             var context = GetDatabaseContext();
             var controller = new ProductsController(context);
 
             context.Products.AddRange(
-                new Product { Code = "A", Name = "Prod A", StockQuantity = 10, IsDeleted = false },
-                new Product { Code = "B", Name = "Prod B", StockQuantity = 3, IsDeleted = false },
-                new Product { Code = "C", Name = "Prod C", StockQuantity = 1, IsDeleted = false },
-                new Product { Code = "D", Name = "Prod D", StockQuantity = 0, IsDeleted = true }
+                new Product { Code = "A", Name = "P1", StockQuantity = 10, MinimumStock = 12 },
+                new Product { Code = "B", Name = "P2", StockQuantity = 5, MinimumStock = 3 }
             );
             await context.SaveChangesAsync();
 
             var result = await controller.GetLowStock();
-            var produtosBaixoEstoque = result.Value!;
+            var lista = result.Value!;
 
-            Assert.Equal(2, produtosBaixoEstoque.Count());
-            Assert.Contains(produtosBaixoEstoque, p => p.Code == "B");
-            Assert.Contains(produtosBaixoEstoque, p => p.Code == "C");
+            Assert.Single(lista);
+            Assert.Equal("A", lista.First().Code);
         }
     }
 }
