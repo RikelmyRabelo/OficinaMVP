@@ -11,6 +11,9 @@ namespace OficinaWeb.Models
 
         [JsonPropertyName("activeYear")]
         public int? ActiveYear { get; set; }
+
+        [JsonPropertyName("lastClosingDate")]
+        public DateTime? LastClosingDate { get; set; }
     }
 
     public class FinancialSummaryDTO
