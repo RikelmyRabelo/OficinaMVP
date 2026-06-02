@@ -5,6 +5,7 @@
 @using System.Globalization
 @using Microsoft.AspNetCore.Components.Web.Virtualization
 @inject ServiceOrderService OSByService
+@inject HttpClient Http
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject IConfiguration Config
@@ -122,6 +123,19 @@
                             </div>
                         </div>
                     </Virtualize>
+
+                    @if (mostrarFinalizadas && temMaisFinalizadas && !carregandoMais)
+                    {
+                        <button class="btn btn-outline-warning btn-sm w-100 my-2 fw-bold" @onclick="CarregarMaisFinalizadas">
+                            <i class="bi bi-plus-circle me-1"></i> CARREGAR MAIS HISTÓRICO
+                        </button>
+                    }
+                    else if (carregandoMais)
+                    {
+                        <div class="text-center text-warning small py-2">
+                            <span class="spinner-border spinner-border-sm me-1"></span> Buscando registros antigos...
+                        </div>
+                    }
                 }
                 else if (carregandoLista)
                 {
@@ -580,7 +594,6 @@
     private const string TIPO_AVULSO = "avulso";
     private const string TIPO_SERVICO = "servico";
 
-
     private List<ServiceOrderDTO> TodasOsParaRelatorio => (osAtivas ?? new()).Concat(osFinalizadas ?? new()).ToList();
 
     private decimal TotalGeralPecasRelatorio => TodasOsParaRelatorio
@@ -635,7 +648,13 @@
     List<ProductListDTO>? produtos;
     List<LaborServiceDTO>? catalogoServicos;
     List<ServiceOrderDTO>? osAtivas;
-    List<ServiceOrderDTO>? osFinalizadas;
+    
+    List<ServiceOrderDTO> osFinalizadas = new();
+    private int finalizadasCarregadasCount = 0;
+    private const int PageSize = 50;
+    private bool temMaisFinalizadas = true;
+    private bool carregandoMais = false;
+
     List<ServiceOrderDTO>? alertasInadimplencia;
     bool carregandoLista = false;
     bool mostrarFinalizadas = false;
@@ -711,27 +730,64 @@
     }
 
     async Task CarregarOSAtivas() => osAtivas = await OSByService.GetActiveOrdersAsync();
-    async Task CarregarOSFinalizadas() => osFinalizadas = await OSByService.GetCompletedOrdersAsync(50);
     async Task CarregarAlertas() => alertasInadimplencia = await OSByService.GetAlertsAsync();
 
     async Task AlternarAba(bool paraFinalizadas)
     {
         mostrarFinalizadas = paraFinalizadas;
-        if (paraFinalizadas && osFinalizadas == null)
+        if (paraFinalizadas && !osFinalizadas.Any())
         {
             carregandoLista = true;
-            await CarregarOSFinalizadas();
+            osFinalizadas.Clear();
+            finalizadasCarregadasCount = 0;
+            temMaisFinalizadas = true;
+            await CarregarMaisFinalizadas();
             carregandoLista = false;
+        }
+    }
+
+    async Task CarregarMaisFinalizadas()
+    {
+        if (!temMaisFinalizadas || carregandoMais) return;
+        carregandoMais = true;
+        StateHasChanged();
+
+        try
+        {
+            var novasFinalizadas = await Http.GetFromJsonAsync<List<ServiceOrderDTO>>($"{ApiUrl}/api/serviceorders/completed?skip={finalizadasCarregadasCount}&take={PageSize}") ?? new();
+            
+            if (novasFinalizadas.Count < PageSize)
+            {
+                temMaisFinalizadas = false;
+            }
+
+            osFinalizadas.AddRange(novasFinalizadas);
+            finalizadasCarregadasCount += novasFinalizadas.Count;
+        }
+        catch
+        {
+            MostrarErro("Erro ao buscar histórico antigo.");
+        }
+        finally
+        {
+            carregandoMais = false;
+            StateHasChanged();
         }
     }
 
     async Task AtualizarTela()
     {
         await Task.WhenAll(CarregarOSAtivas(), CarregarAlertas());
-        if (mostrarFinalizadas) await CarregarOSFinalizadas();
+        if (mostrarFinalizadas)
+        {
+            osFinalizadas.Clear();
+            finalizadasCarregadasCount = 0;
+            temMaisFinalizadas = true;
+            await CarregarMaisFinalizadas();
+        }
         
         if (sel != null) {
-            var osAtualizada = osAtivas?.FirstOrDefault(o => o.Id == sel.Id) ?? osFinalizadas?.FirstOrDefault(o => o.Id == sel.Id);
+            var osAtualizada = osAtivas?.FirstOrDefault(o => o.Id == sel.Id) ?? osFinalizadas.FirstOrDefault(o => o.Id == sel.Id);
             if (osAtualizada != null) { osAtualizada.Attachments = sel.Attachments; sel = osAtualizada; }
         }
     }

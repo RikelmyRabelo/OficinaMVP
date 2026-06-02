@@ -82,7 +82,7 @@ namespace OficinaAPI.Controllers
         }
 
         [HttpGet("completed")]
-        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetCompletedServiceOrders([FromQuery] int take = 50)
+        public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetCompletedServiceOrders([FromQuery] int skip = 0, [FromQuery] int take = 50)
         {
             return await _context.ServiceOrders
                 .AsNoTracking()
@@ -92,6 +92,7 @@ namespace OficinaAPI.Controllers
                 .AsSplitQuery()
                 .Where(o => !o.IsDeleted && o.Status == "Completed")
                 .OrderByDescending(o => o.Id)
+                .Skip(skip)
                 .Take(take)
                 .ToListAsync();
         }
@@ -246,8 +247,8 @@ namespace OficinaAPI.Controllers
             {
                 ServiceOrderId = id,
                 Description = customDto.Description,
-                Price = customDto.Price,
-                CostPrice = customDto.CostPrice,
+                Price = customDto.Price * customDto.Quantity,
+                CostPrice = customDto.CostPrice * customDto.Quantity,
                 WarrantyPeriod = customDto.WarrantyPeriod,
                 Quantity = customDto.Quantity,
                 ItemType = "Custom"
@@ -268,7 +269,7 @@ namespace OficinaAPI.Controllers
 
             var settings = await GetCachedSettingsAsync();
             os.Status = "Completed";
-            os.CompletionDate = DateTime.Now;
+            os.CompletionDate = completion.CompletionDate != DateTime.MinValue ? completion.CompletionDate : DateTime.Now;
 
             if (settings != null)
             {
