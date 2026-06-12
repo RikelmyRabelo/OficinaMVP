@@ -847,8 +847,13 @@
     async Task AdicionarItem()
     {
         if (novoItem.ProductId == 0) { MostrarErro("Selecione um produto."); return; }
-        var precoFinal = novoItem.Price > 0 ? novoItem.Price * (novoItem.Quantity > 0 ? novoItem.Quantity : 1) : novoItem.Price;
-        var payload = new AddItemInput { ProductId = novoItem.ProductId, Quantity = novoItem.Quantity, Price = precoFinal, WarrantyPeriod = novoItem.WarrantyPeriod };
+        
+        var payload = new AddItemInput { 
+            ProductId = novoItem.ProductId, 
+            Quantity = novoItem.Quantity, 
+            Price = novoItem.Price > 0 ? novoItem.Price : null, 
+            WarrantyPeriod = novoItem.WarrantyPeriod 
+        };
         
         if (await OSByService.AddItemAsync(sel!.Id, payload))
         {
@@ -860,9 +865,14 @@
     async Task AdicionarItemAvulso()
     {
         if (string.IsNullOrEmpty(novoItemAvulso.Description)) { MostrarErro("Descrição obrigatória."); return; }
-        var precoFinal = novoItemAvulso.Price > 0 ? novoItemAvulso.Price * (novoItemAvulso.Quantity > 0 ? novoItemAvulso.Quantity : 1) : novoItemAvulso.Price;
-        var custoFinal = novoItemAvulso.CostPrice > 0 ? novoItemAvulso.CostPrice * (novoItemAvulso.Quantity > 0 ? novoItemAvulso.Quantity : 1) : novoItemAvulso.CostPrice;
-        var payload = new AddCustomItemInput { Description = novoItemAvulso.Description, Quantity = novoItemAvulso.Quantity, Price = precoFinal, CostPrice = custoFinal, WarrantyPeriod = novoItemAvulso.WarrantyPeriod };
+        
+        var payload = new AddCustomItemInput { 
+            Description = novoItemAvulso.Description, 
+            Quantity = novoItemAvulso.Quantity, 
+            Price = novoItemAvulso.Price, 
+            CostPrice = novoItemAvulso.CostPrice, 
+            WarrantyPeriod = novoItemAvulso.WarrantyPeriod 
+        };
         
         if (await OSByService.AddCustomItemAsync(sel!.Id, payload))
         {
