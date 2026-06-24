@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OficinaAPI.Data;
 using System.Text.Json.Serialization;
+using OficinaAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,7 @@ builder.Services.AddCors(options =>
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddDbContext<OficinaContext>(options =>
     options.UseSqlServer(connectionString));
 
@@ -28,6 +30,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddMemoryCache();
 
+//registo da parte de armazenameno
+builder.Services.AddScoped<IStorageService, LocalDiskStorageService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -37,13 +42,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
-
 app.UseHttpsRedirection();
-
 app.UseCors("AllowAll");
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

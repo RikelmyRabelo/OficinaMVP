@@ -2,10 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using OficinaAPI.Data;
 using OficinaAPI.Models;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using System.IO;
 using Microsoft.Extensions.Caching.Memory;
+using OficinaAPI.Services;
 
 namespace OficinaAPI.Controllers
 {
@@ -14,14 +12,14 @@ namespace OficinaAPI.Controllers
     public class ServiceOrdersController : ControllerBase
     {
         private readonly OficinaContext _context;
-        private readonly IWebHostEnvironment _env;
         private readonly IMemoryCache _cache;
+        private readonly IStorageService _storageService;
 
-        public ServiceOrdersController(OficinaContext context, IWebHostEnvironment env, IMemoryCache cache)
+        public ServiceOrdersController(OficinaContext context, IMemoryCache cache, IStorageService storageService)
         {
             _context = context;
-            _env = env;
             _cache = cache;
+            _storageService = storageService;
         }
 
         private async Task<SystemSettings?> GetCachedSettingsAsync()
@@ -57,8 +55,6 @@ namespace OficinaAPI.Controllers
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items)
                 .Include(o => o.Payments)
-                .AsSplitQuery()
-                .Where(o => !o.IsDeleted)
                 .OrderByDescending(o => o.Id)
                 .Skip(skip)
                 .Take(take)
@@ -73,8 +69,7 @@ namespace OficinaAPI.Controllers
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items)
                 .Include(o => o.Payments)
-                .AsSplitQuery()
-                .Where(o => !o.IsDeleted && o.Status != "Completed")
+                .Where(o => o.Status != "Completed")
                 .OrderByDescending(o => o.Id)
                 .Skip(skip)
                 .Take(take)
@@ -89,8 +84,7 @@ namespace OficinaAPI.Controllers
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items)
                 .Include(o => o.Payments)
-                .AsSplitQuery()
-                .Where(o => !o.IsDeleted && o.Status == "Completed")
+                .Where(o => o.Status == "Completed")
                 .OrderByDescending(o => o.Id)
                 .Skip(skip)
                 .Take(take)
@@ -105,8 +99,7 @@ namespace OficinaAPI.Controllers
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items)
                 .Include(o => o.Payments)
-                .AsSplitQuery()
-                .Where(o => !o.IsDeleted && o.AccountingMonth == mes && o.AccountingYear == ano)
+                .Where(o => o.AccountingMonth == mes && o.AccountingYear == ano)
                 .OrderByDescending(o => o.Id)
                 .ToListAsync();
         }
@@ -118,8 +111,7 @@ namespace OficinaAPI.Controllers
             return await _context.ServiceOrders
                 .AsNoTracking()
                 .Include(o => o.Vehicle)
-                .Where(o => !o.IsDeleted &&
-                            o.Status == "Completed" &&
+                .Where(o => o.Status == "Completed" &&
                             (o.TotalAmount - o.AmountPaid) > 0 &&
                             o.PromisedPaymentDate != null &&
                             o.PromisedPaymentDate.Value.Date <= today)
@@ -131,7 +123,11 @@ namespace OficinaAPI.Controllers
         public async Task<ActionResult<IEnumerable<ServiceOrder>>> GetTrash()
         {
             var threshold = DateTime.Now.AddDays(-30);
-            var expiredOrders = await _context.ServiceOrders.Where(o => o.IsDeleted && o.DeletionDate < threshold).ToListAsync();
+
+            var expiredOrders = await _context.ServiceOrders
+                .IgnoreQueryFilters()
+                .Where(o => o.IsDeleted && o.DeletionDate != null && o.DeletionDate < threshold)
+                .ToListAsync();
 
             if (expiredOrders.Any())
             {
@@ -140,11 +136,11 @@ namespace OficinaAPI.Controllers
             }
 
             return await _context.ServiceOrders
+                .IgnoreQueryFilters()
                 .AsNoTracking()
                 .Include(o => o.Vehicle)
                 .Include(o => o.Items)
                 .Include(o => o.Payments)
-                .AsSplitQuery()
                 .Where(o => o.IsDeleted)
                 .OrderByDescending(o => o.DeletionDate)
                 .ToListAsync();
@@ -173,8 +169,8 @@ namespace OficinaAPI.Controllers
                 Status = "Pending",
                 TotalAmount = 0,
                 AmountPaid = 0,
-                AccountingMonth = settings?.ActiveMonth ?? DateTime.Now.Month,
-                AccountingYear = settings?.ActiveYear ?? DateTime.Now.Year
+                AccountingMonth = settings != null ? settings.ActiveMonth : DateTime.Now.Month,
+                AccountingYear = settings != null ? settings.ActiveYear : DateTime.Now.Year
             };
 
             _context.ServiceOrders.Add(os);
@@ -304,7 +300,7 @@ namespace OficinaAPI.Controllers
         [HttpDelete("{id}/permanent")]
         public async Task<IActionResult> PermanentDeleteServiceOrder(int id)
         {
-            var os = await _context.ServiceOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
+            var os = await _context.ServiceOrders.IgnoreQueryFilters().Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
 
             if (os.Status == "Completed")
@@ -313,7 +309,7 @@ namespace OficinaAPI.Controllers
                 {
                     if (item.ProductId != null)
                     {
-                        var p = await _context.Products.FindAsync(item.ProductId);
+                        var p = await _context.Products.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Id == item.ProductId);
                         if (p != null) p.StockQuantity += item.Quantity;
                     }
                 }
@@ -327,7 +323,7 @@ namespace OficinaAPI.Controllers
         [HttpPut("{id}/restore")]
         public async Task<IActionResult> RestoreServiceOrder(int id)
         {
-            var os = await _context.ServiceOrders.FindAsync(id);
+            var os = await _context.ServiceOrders.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Id == id);
             if (os == null) return NotFound();
             os.IsDeleted = false;
             os.DeletionDate = null;
@@ -461,19 +457,17 @@ namespace OficinaAPI.Controllers
         {
             var os = await _context.ServiceOrders.FindAsync(id);
             if (os == null) return NotFound();
-            if (file == null || file.Length == 0) return BadRequest("Nenhum arquivo enviado.");
 
-            var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "attachments");
-            if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+            var fileUrl = await _storageService.SaveFileAsync(file, "attachments");
+            if (string.IsNullOrEmpty(fileUrl)) return BadRequest("Nenhum arquivo enviado.");
 
-            var extension = Path.GetExtension(file.FileName);
-            var uniqueFileName = $"{Guid.NewGuid()}{extension}";
-            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create)) { await file.CopyToAsync(stream); }
-
-            var fileUrl = $"/uploads/attachments/{uniqueFileName}";
-            _context.Set<ServiceOrderAttachment>().Add(new ServiceOrderAttachment { ServiceOrderId = id, FileName = file.FileName, FileType = file.ContentType, Base64Content = fileUrl });
+            _context.Set<ServiceOrderAttachment>().Add(new ServiceOrderAttachment
+            {
+                ServiceOrderId = id,
+                FileName = file.FileName,
+                FileType = file.ContentType,
+                Base64Content = fileUrl
+            });
             await _context.SaveChangesAsync();
             return Ok();
         }
@@ -484,12 +478,7 @@ namespace OficinaAPI.Controllers
             var a = await _context.Set<ServiceOrderAttachment>().FirstOrDefaultAsync(x => x.Id == attachmentId && x.ServiceOrderId == id);
             if (a == null) return NotFound();
 
-            if (!string.IsNullOrEmpty(a.Base64Content) && a.Base64Content.StartsWith("/uploads"))
-            {
-                var relativePath = a.Base64Content.TrimStart('/');
-                var fullPath = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), relativePath);
-                if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
-            }
+            _storageService.DeleteFile(a.Base64Content);
 
             _context.Set<ServiceOrderAttachment>().Remove(a);
             await _context.SaveChangesAsync();
@@ -503,13 +492,13 @@ namespace OficinaAPI.Controllers
             if (settings == null) return BadRequest("Configurações não encontradas.");
 
             var query = _context.ServiceOrders.AsNoTracking()
-                .Where(o => o.Status == "Completed" && !o.IsDeleted &&
+                .Where(o => o.Status == "Completed" &&
                             o.AccountingMonth == settings.ActiveMonth &&
                             o.AccountingYear == settings.ActiveYear);
 
             var osData = await query.Select(o => new { o.Id, o.TotalAmount, o.AmountPaid, o.PaymentMethod, Data = o.CompletionDate ?? DateTime.MinValue }).ToListAsync();
             var multiPayments = await _context.ServiceOrderPayments.AsNoTracking().Include(p => p.ServiceOrder)
-                .Where(p => p.ServiceOrder != null && p.ServiceOrder.Status == "Completed" && !p.ServiceOrder.IsDeleted &&
+                .Where(p => p.ServiceOrder != null && p.ServiceOrder.Status == "Completed" &&
                             p.ServiceOrder.AccountingMonth == settings.ActiveMonth &&
                             p.ServiceOrder.AccountingYear == settings.ActiveYear)
                 .Select(p => new { p.ServiceOrderId, Metodo = (p.PaymentMethod ?? "").ToUpper(), p.Amount }).ToListAsync();
@@ -552,7 +541,7 @@ namespace OficinaAPI.Controllers
                 .Include(o => o.Items)
                 .Include(o => o.Payments)
                 .AsNoTracking()
-                .Where(o => o.Status == "Completed" && !o.IsDeleted &&
+                .Where(o => o.Status == "Completed" &&
                             o.AccountingMonth == settings.ActiveMonth &&
                             o.AccountingYear == settings.ActiveYear)
                 .ToListAsync();

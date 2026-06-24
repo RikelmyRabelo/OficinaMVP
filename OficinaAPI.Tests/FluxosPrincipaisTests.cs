@@ -2,6 +2,7 @@
 using OficinaAPI.Controllers;
 using OficinaAPI.Data;
 using OficinaAPI.Models;
+using OficinaAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
@@ -9,19 +10,18 @@ using System.Collections.Generic;
 using System.Linq;
 using Xunit;
 using Moq;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace OficinaAPI.Tests
 {
     public class FluxosPrincipaisTests
     {
-        private readonly Mock<IWebHostEnvironment> _mockEnv;
+        private readonly Mock<IStorageService> _mockStorage;
         private readonly IMemoryCache _cache;
 
         public FluxosPrincipaisTests()
         {
-            _mockEnv = new Mock<IWebHostEnvironment>();
+            _mockStorage = new Mock<IStorageService>();
             _cache = new MemoryCache(new MemoryCacheOptions());
         }
 
@@ -70,7 +70,7 @@ namespace OficinaAPI.Tests
         public async Task OS_AdicionarItem_DevePersistirPrecoDeCustoSnapshot()
         {
             var context = GetDatabaseContext();
-            var osController = new ServiceOrdersController(context, _mockEnv.Object, _cache);
+            var osController = new ServiceOrdersController(context, _cache, _mockStorage.Object);
 
             var p = new Product { Code = "OLEO", Name = "Oleo", SalePrice = 50, CostPrice = 20, StockQuantity = 10 };
             context.Products.Add(p);
@@ -90,7 +90,7 @@ namespace OficinaAPI.Tests
         public async Task OS_ItemAvulso_DeveCalcularLucroCorretamente()
         {
             var context = GetDatabaseContext();
-            var osController = new ServiceOrdersController(context, _mockEnv.Object, _cache);
+            var osController = new ServiceOrdersController(context, _cache, _mockStorage.Object);
 
             var resOs = await osController.PostServiceOrder(new CreateOSDTO { ClientName = "Test", VehicleModel = "Car" });
             var os = (resOs.Result as OkObjectResult)!.Value as ServiceOrder;
@@ -111,7 +111,7 @@ namespace OficinaAPI.Tests
         public async Task ProfitSummary_DeveDividirLucroProporcionalmente()
         {
             var context = GetDatabaseContext();
-            var osController = new ServiceOrdersController(context, _mockEnv.Object, _cache);
+            var osController = new ServiceOrdersController(context, _cache, _mockStorage.Object);
 
             context.SystemSettings.Add(new SystemSettings { ActiveMonth = 5, ActiveYear = 2026 });
             await context.SaveChangesAsync();
@@ -144,7 +144,7 @@ namespace OficinaAPI.Tests
         public async Task ResumoFinanceiro_DeveFiltrarPorMetodo_MesmoComPagamentoUnicoLegado()
         {
             var context = GetDatabaseContext();
-            var controller = new ServiceOrdersController(context, _mockEnv.Object, _cache);
+            var controller = new ServiceOrdersController(context, _cache, _mockStorage.Object);
 
             context.SystemSettings.Add(new SystemSettings { ActiveMonth = 5, ActiveYear = 2026 });
 
@@ -171,34 +171,36 @@ namespace OficinaAPI.Tests
         public async Task OS_GetTrash_DeveRetornarApenasDeletadosRecentes()
         {
             var context = GetDatabaseContext();
-            var controller = new ServiceOrdersController(context, _mockEnv.Object, _cache);
+            var controller = new ServiceOrdersController(context, _cache, _mockStorage.Object);
 
-            context.ServiceOrders.AddRange(
-                new ServiceOrder { Id = 10, IsDeleted = true, DeletionDate = DateTime.Now.AddDays(-5) },
-                new ServiceOrder { Id = 11, IsDeleted = false }
-            );
-            await context.SaveChangesAsync();
+            var resOs1 = await controller.PostServiceOrder(new CreateOSDTO { ClientName = "Deletada", VehicleModel = "Carro A" });
+            var os1 = (resOs1.Result as OkObjectResult)!.Value as ServiceOrder;
+
+            var resOs2 = await controller.PostServiceOrder(new CreateOSDTO { ClientName = "Ativa", VehicleModel = "Carro B" });
+            var os2 = (resOs2.Result as OkObjectResult)!.Value as ServiceOrder;
+
+            await controller.SoftDeleteServiceOrder(os1!.Id);
 
             var result = await controller.GetTrash();
             var lista = result.Value!;
 
             Assert.Single(lista);
-            Assert.Equal(10, lista.First().Id);
+            Assert.Equal(os1.Id, lista.First().Id);
         }
 
         [Fact]
         public async Task OS_Restore_DeveRetornarOrdemParaEstadoAtivo()
         {
             var context = GetDatabaseContext();
-            var controller = new ServiceOrdersController(context, _mockEnv.Object, _cache);
+            var controller = new ServiceOrdersController(context, _cache, _mockStorage.Object);
 
-            var os = new ServiceOrder { Id = 50, IsDeleted = true, DeletionDate = DateTime.Now };
-            context.ServiceOrders.Add(os);
-            await context.SaveChangesAsync();
+            var resOs = await controller.PostServiceOrder(new CreateOSDTO { ClientName = "Restaurada", VehicleModel = "Carro C" });
+            var os = (resOs.Result as OkObjectResult)!.Value as ServiceOrder;
 
-            await controller.RestoreServiceOrder(50);
+            await controller.SoftDeleteServiceOrder(os!.Id);
+            await controller.RestoreServiceOrder(os.Id);
 
-            var osRestaurada = await context.ServiceOrders.FindAsync(50);
+            var osRestaurada = await context.ServiceOrders.FindAsync(os.Id);
             Assert.False(osRestaurada!.IsDeleted);
             Assert.Null(osRestaurada.DeletionDate);
         }
