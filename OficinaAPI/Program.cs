@@ -5,6 +5,7 @@ using OficinaAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configuração de CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -15,11 +16,12 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Configuração do Contexto do Banco de Dados
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
 builder.Services.AddDbContext<OficinaContext>(options =>
     options.UseSqlServer(connectionString));
 
+// Configuração de Controladores e Serialização JSON
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
@@ -30,8 +32,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddMemoryCache();
 
-//registo da parte de armazenameno
+// Injeção de Dependência
 builder.Services.AddScoped<IStorageService, LocalDiskStorageService>();
+builder.Services.AddScoped<IOSService, OSService>();
 
 var app = builder.Build();
 
