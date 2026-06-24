@@ -11,4 +11,6 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 
 builder.Services.AddScoped<ServiceOrderService>();
 
+builder.Services.AddScoped<ApiService>();
+
 await builder.Build().RunAsync();

@@ -1,5 +1,6 @@
 ﻿@page "/estoque"
-@inject HttpClient Http
+@using OficinaWeb.Services
+@inject ApiService Api
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @using System.Net.Http.Json
@@ -479,150 +480,93 @@
 </style>
 
 @code {
-    private string ApiUrl = "https://localhost:7082";
-    private string abaAtiva = "pecas";
+        private string abaAtiva = "pecas";
+        private HashSet<string> expandedNames = new();
 
-    private HashSet<string> expandedNames = new();
+        // DTOs
+        public class ProductDTO { public int id { get; set; } public string code { get; set; } = ""; public string name { get; set; } = ""; public decimal? salePrice { get; set; } public decimal? costPrice { get; set; } public int? stockQuantity { get; set; } public int minimumStock { get; set; } = 5; public bool isExternal { get; set; } }
+        public class LaborServiceDTO { public int Id { get; set; } public string Name { get; set; } = ""; public decimal DefaultPrice { get; set; } }
+        public class HistoricalValueDTO { public decimal currentInventoryValue { get; set; } public decimal totalExitedValue { get; set; } public decimal totalHistoricalValue { get; set; } }
+        public class AuditItemDTO { public int osId { get; set; } public DateTime data { get; set; } public string descricao { get; set; } = ""; public int quantidade { get; set; } public decimal valorTotal { get; set; } }
 
-    private void ToggleGroup(string nameKey)
-    {
-        if (expandedNames.Contains(nameKey)) expandedNames.Remove(nameKey);
-        else expandedNames.Add(nameKey);
-    }
+        private List<ProductDTO>? produtos;
+        private List<LaborServiceDTO>? servicosCatalogo;
+        private HistoricalValueDTO? valoresHistoricos;
+        private List<AuditItemDTO>? listaAuditoria;
 
-    public class ProductDTO { 
-        public int id { get; set; } 
-        public string code { get; set; } = "";
-        public string name { get; set; } = ""; 
-        public decimal? salePrice { get; set; } 
-        public decimal? costPrice { get; set; } 
-        public int? stockQuantity { get; set; } 
-        public int minimumStock { get; set; } = 5;
-        public bool isExternal { get; set; }
-    }
-    public class LaborServiceDTO { public int Id { get; set; } public string Name { get; set; } = ""; public decimal DefaultPrice { get; set; } }
-    public class HistoricalValueDTO { public decimal currentInventoryValue { get; set; } public decimal totalExitedValue { get; set; } public decimal totalHistoricalValue { get; set; } }
-    public class AuditItemDTO { public int osId { get; set; } public DateTime data { get; set; } public string descricao { get; set; } = ""; public int quantidade { get; set; } public decimal valorTotal { get; set; } }
+        private ProductDTO novoProduto = new();
+        private ProductDTO produtoEmEdicao = new();
+        private LaborServiceDTO novoServico = new();
 
-    private List<ProductDTO>? produtos;
-    private List<LaborServiceDTO>? servicosCatalogo;
-    private HistoricalValueDTO? valoresHistoricos;
-    private List<AuditItemDTO>? listaAuditoria;
+        bool mostrarToast = false, mostrarModalExclusao = false, mostrarModalEdicao = false;
+        string toastMensagem = "", toastTipo = "sucesso", termoBusca = "";
+        ProductDTO? produtoParaExcluir;
 
-    private ProductDTO novoProduto = new();
-    private ProductDTO produtoEmEdicao = new();
-    private LaborServiceDTO novoServico = new();
+        List<ProductDTO> produtosFiltrados => produtos?.Where(p => string.IsNullOrEmpty(termoBusca) || p.code.Contains(termoBusca, StringComparison.OrdinalIgnoreCase) || p.name.Contains(termoBusca, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
 
-    bool mostrarToast = false;
-    string toastMensagem = "";
-    string toastTipo = "sucesso";
-    bool mostrarModalExclusao = false;
-    bool mostrarModalEdicao = false;
-    ProductDTO? produtoParaExcluir;
-    string termoBusca = "";
+        protected override async Task OnInitializedAsync() => await CarregarTudo();
 
-    List<ProductDTO> produtosFiltrados => produtos?
-        .Where(p => string.IsNullOrEmpty(termoBusca) || p.code.Contains(termoBusca, StringComparison.OrdinalIgnoreCase) || p.name.Contains(termoBusca, StringComparison.OrdinalIgnoreCase))
-        .ToList() ?? new();
-
-    protected override async Task OnInitializedAsync()
-    {
-        await Carregar();
-        await CarregarServicos();
-        await CarregarValoresHistoricos();
-        await CarregarAuditoria();
-    }
-
-    private async Task Carregar() => produtos = await Http.GetFromJsonAsync<List<ProductDTO>>($"{ApiUrl}/api/products");
-    private async Task CarregarServicos() => servicosCatalogo = await Http.GetFromJsonAsync<List<LaborServiceDTO>>($"{ApiUrl}/api/laborservices");
-    private async Task CarregarValoresHistoricos() => valoresHistoricos = await Http.GetFromJsonAsync<HistoricalValueDTO>($"{ApiUrl}/api/products/historical-value");
-    private async Task CarregarAuditoria() => listaAuditoria = await Http.GetFromJsonAsync<List<AuditItemDTO>>($"{ApiUrl}/api/products/audit-exited-items");
-
-    private async void MostrarSucesso(string msg)
-    {
-        toastMensagem = msg;
-        toastTipo = "sucesso"; mostrarToast = true; StateHasChanged();
-        await Task.Delay(3000); mostrarToast = false; StateHasChanged();
-    }
-
-    private async Task SalvarProduto()
-    {
-        if (string.IsNullOrWhiteSpace(novoProduto.code) || novoProduto.salePrice == null) return;
-        novoProduto.code = novoProduto.code.ToUpper();
-        await Http.PostAsJsonAsync($"{ApiUrl}/api/products", novoProduto);
-        novoProduto = new(); 
-        await Carregar(); 
-        await CarregarValoresHistoricos();
-        await CarregarAuditoria();
-        MostrarSucesso("Peça cadastrada!");
-    }
-
-    private async Task AjustarEstoque(ProductDTO p, int delta)
-    {
-        p.stockQuantity = (p.stockQuantity ?? 0) + delta;
-        await Http.PutAsJsonAsync($"{ApiUrl}/api/products/{p.id}", p);
-        await CarregarValoresHistoricos();
-        StateHasChanged();
-    }
-
-    private void AbrirModalEdicao(ProductDTO p)
-    {
-        produtoEmEdicao = new ProductDTO
+        private async Task CarregarTudo()
         {
-            id = p.id,
-            code = p.code,
-            name = p.name,
-            salePrice = p.salePrice,
-            costPrice = p.costPrice,
-            stockQuantity = p.stockQuantity,
-            minimumStock = p.minimumStock,
-            isExternal = p.isExternal
-        };
-        mostrarModalEdicao = true;
-    }
-
-    private async Task ConfirmarEdicao()
-    {
-        if (string.IsNullOrWhiteSpace(produtoEmEdicao.code)) return;
-        var res = await Http.PutAsJsonAsync($"{ApiUrl}/api/products/{produtoEmEdicao.id}", produtoEmEdicao);
-        if (res.IsSuccessStatusCode)
-        {
-            mostrarModalEdicao = false;
-            await Carregar();
-            await CarregarValoresHistoricos();
-            await CarregarAuditoria();
-            MostrarSucesso("Produto atualizado!");
+            produtos = await Api.GetAsync<List<ProductDTO>>("api/products") ?? new();
+            servicosCatalogo = await Api.GetAsync<List<LaborServiceDTO>>("api/laborservices") ?? new();
+            valoresHistoricos = await Api.GetAsync<HistoricalValueDTO>("api/products/historical-value");
+            listaAuditoria = await Api.GetAsync<List<AuditItemDTO>>("api/products/audit-exited-items") ?? new();
         }
-    }
 
-    private void SolicitarExclusao(ProductDTO p) { produtoParaExcluir = p; mostrarModalExclusao = true; }
+        private async Task CarregarServicos() => servicosCatalogo = await Api.GetAsync<List<LaborServiceDTO>>("api/laborservices") ?? new();
 
-    private async Task ConfirmarExclusao()
-    {
-        await Http.DeleteAsync($"{ApiUrl}/api/products/{produtoParaExcluir?.id}");
-        mostrarModalExclusao = false; 
-        await Carregar(); 
-        await CarregarValoresHistoricos();
-        await CarregarAuditoria();
-        MostrarSucesso("Produto removido.");
-    }
+        private async Task SalvarProduto()
+        {
+            if (string.IsNullOrWhiteSpace(novoProduto.code)) return;
+            novoProduto.code = novoProduto.code.ToUpper();
+            await Api.PostAsync("api/products", novoProduto);
+            novoProduto = new();
+            await CarregarTudo();
+            MostrarSucesso("Peça cadastrada!");
+        }
 
-    private async Task SalvarServico()
-    {
-        if (string.IsNullOrWhiteSpace(novoServico.Name)) return;
-        await Http.PostAsJsonAsync($"{ApiUrl}/api/laborservices", novoServico);
-        novoServico = new(); await CarregarServicos(); MostrarSucesso("Serviço adicionado ao catálogo!");
-    }
+        private async Task AjustarEstoque(ProductDTO p, int delta)
+        {
+            p.stockQuantity = (p.stockQuantity ?? 0) + delta;
+            await Api.PutAsync($"api/products/{p.id}", p);
+            await CarregarTudo();
+        }
 
-    private async Task ExcluirServico(int id)
-    {
-        await Http.DeleteAsync($"{ApiUrl}/api/laborservices/{id}");
-        await CarregarServicos(); MostrarSucesso("Serviço removido.");
-    }
+        private async Task ConfirmarEdicao()
+        {
+            var res = await Api.PutAsync($"api/products/{produtoEmEdicao.id}", produtoEmEdicao);
+            if (res.IsSuccessStatusCode) { mostrarModalEdicao = false; await CarregarTudo(); MostrarSucesso("Produto atualizado!"); }
+        }
 
-    private async Task ImprimirRelatorio()
-    {
-        await Task.Delay(200);
-        await JS.InvokeVoidAsync("window.print");
+        private async Task ConfirmarExclusao()
+        {
+            await Api.DeleteAsync($"api/products/{produtoParaExcluir?.id}");
+            mostrarModalExclusao = false;
+            await CarregarTudo();
+            MostrarSucesso("Produto removido.");
+        }
+
+        private async Task SalvarServico()
+        {
+            if (string.IsNullOrWhiteSpace(novoServico.Name)) return;
+            await Api.PostAsync("api/laborservices", novoServico);
+            novoServico = new();
+            await CarregarServicos();
+            MostrarSucesso("Serviço adicionado!");
+        }
+
+        private async Task ExcluirServico(int id)
+        {
+            await Api.DeleteAsync($"api/laborservices/{id}");
+            await CarregarServicos();
+            MostrarSucesso("Serviço removido.");
+        }
+
+        private void ToggleGroup(string nameKey) => _ = expandedNames.Contains(nameKey) ? expandedNames.Remove(nameKey) : expandedNames.Add(nameKey);
+        private void AbrirModalEdicao(ProductDTO p) { produtoEmEdicao = p; mostrarModalEdicao = true; }
+        private void SolicitarExclusao(ProductDTO p) { produtoParaExcluir = p; mostrarModalExclusao = true; }
+        private async Task ImprimirRelatorio() => await JS.InvokeVoidAsync("window.print");
+        private async void MostrarSucesso(string msg) { toastMensagem = msg; toastTipo = "sucesso"; mostrarToast = true; StateHasChanged(); await Task.Delay(3000); mostrarToast = false; StateHasChanged(); }
     }
 }
