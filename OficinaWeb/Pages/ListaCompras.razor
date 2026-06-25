@@ -1,5 +1,7 @@
 ﻿@page "/lista-compras"
-@inject HttpClient Http
+@using OficinaWeb.Services
+@using OficinaWeb.Models
+@inject ApiService Api
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 
@@ -70,20 +72,15 @@
             </div>
         </div>
 
+        @* Coluna da Direita: Lista *@
         <div class="col-md-6">
             <div class="card border-0 shadow-lg mb-4" style="background: #111; border-top: 4px solid #00ffff !important;">
                 <div class="card-body p-4 text-white">
                     <h5 class="mb-3 fw-bold" style="color: #00ffff;">Item não cadastrado</h5>
                     <div class="row g-2">
-                        <div class="col-7">
-                            <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Nome do item..." @bind="newItemName" />
-                        </div>
-                        <div class="col-3">
-                            <input type="number" class="form-control bg-dark text-white border-secondary" placeholder="Preço" @bind="newItemPrice" />
-                        </div>
-                        <div class="col-2">
-                            <button class="btn btn-info fw-bold w-100" @onclick="AddManualItem">ADD</button>
-                        </div>
+                        <div class="col-7"><input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Nome do item..." @bind="newItemName" /></div>
+                        <div class="col-3"><input type="number" class="form-control bg-dark text-white border-secondary" placeholder="Preço" @bind="newItemPrice" /></div>
+                        <div class="col-2"><button class="btn btn-info fw-bold w-100" @onclick="AddManualItem">ADD</button></div>
                     </div>
                 </div>
             </div>
@@ -109,27 +106,15 @@
                         <tbody>
                             @if (!itemsParaComprar.Any())
                             {
-                                <tr>
-                                    <td colspan="4" class="text-center py-4 text-white-50">NENHUM ITEM SELECIONADO</td>
-                                </tr>
+                                <tr><td colspan="4" class="text-center py-4 text-white-50">NENHUM ITEM SELECIONADO</td></tr>
                             }
                             @foreach (var item in itemsParaComprar)
                             {
                                 <tr class="border-secondary align-middle">
                                     <td class="ps-3 text-white fw-bold">@item.Name</td>
-                                    <td>
-                                        <input type="number" class="form-control form-control-sm bg-dark text-info border-0 fw-bold"
-                                               @bind="item.Price" @bind:event="oninput" />
-                                    </td>
-                                    <td>
-                                        <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary"
-                                               placeholder="Obs..." @bind="item.Observation" />
-                                    </td>
-                                    <td class="pe-2 text-center">
-                                        <button class="btn btn-link text-danger p-0" @onclick="() => RemoverDaLista(item.Name)">
-                                            <i class="bi bi-trash3-fill"></i>
-                                        </button>
-                                    </td>
+                                    <td><input type="number" class="form-control form-control-sm bg-dark text-info border-0 fw-bold" @bind="item.Price" @bind:event="oninput" /></td>
+                                    <td><input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Obs..." @bind="item.Observation" /></td>
+                                    <td class="pe-2 text-center"><button class="btn btn-link text-danger p-0" @onclick="() => RemoverDaLista(item.Name)"><i class="bi bi-trash3-fill"></i></button></td>
                                 </tr>
                             }
                         </tbody>
@@ -145,106 +130,24 @@
     </div>
 </div>
 
-@* ÁREA DE IMPRESSÃO *@
-<div id="print-section" class="d-none d-print-block" style="position: relative; width: 210mm; min-height: 297mm; background-color: white; color: black !important; padding: 20mm; font-family: Arial, sans-serif;">
-    <div style="border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
-        <h1 style="margin: 0; font-size: 24pt;">FREITAS AUTOCENTER</h1>
-        <h3 style="margin: 5px 0; color: #333;">REQUISIÇÃO DE COMPRAS E VALORES</h3>
-        <p style="font-size: 10pt;">Data: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
-    </div>
-
-    <table style="width: 100%; border-collapse: collapse; color: black !important; margin-top: 10px;">
-        <thead>
-            <tr style="background-color: #f2f2f2;">
-                <th style="border: 1px solid black; padding: 10px; width: 50px;">[ OK ]</th>
-                <th style="border: 1px solid black; padding: 10px; text-align: left;">DESCRIÇÃO DO ITEM</th>
-                <th style="border: 1px solid black; padding: 10px; width: 120px;">VALOR REF.</th>
-                <th style="border: 1px solid black; padding: 10px; width: 150px;">QTD / OBS</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in itemsParaComprar)
-            {
-                <tr>
-                    <td style="border: 1px solid black; padding: 12px; text-align: center;">☐</td>
-                    <td style="border: 1px solid black; padding: 12px; font-weight: bold;">@item.Name</td>
-                    <td style="border: 1px solid black; padding: 12px; text-align: center;">R$ @item.Price.ToString("N2")</td>
-                    <td style="border: 1px solid black; padding: 12px; text-align: center;">@item.Observation</td>
-                </tr>
-            }
-        </tbody>
-        <tfoot>
-            <tr style="background-color: #eee;">
-                <td colspan="2" style="border: 1px solid black; padding: 15px; text-align: right; font-weight: bold; font-size: 12pt;">TOTAL ESTIMADO DA REQUISIÇÃO:</td>
-                <td colspan="2" style="border: 1px solid black; padding: 15px; font-size: 14pt; font-weight: bold;">
-                    R$ @itemsParaComprar.Sum(i => i.Price).ToString("N2")
-                </td>
-            </tr>
-        </tfoot>
-    </table>
-</div>
-
-<style>
-    @@media print {
-        body {
-            background-color: white !important;
-            margin: 0 !important;
-        }
-
-        .no-print {
-            display: none !important;
-        }
-
-        .d-print-block {
-            display: block !important;
-        }
-    }
-</style>
-
 @code {
-    public class ShoppingItem
-    {
-        public string Name { get; set; } = "";
-        public string Observation { get; set; } = "";
-        public decimal Price { get; set; }
-    }
-
-    public class LocalProduct
-    {
-        public string code { get; set; } = "";
-        public string name { get; set; } = "";
-        public int stockQuantity { get; set; }
-        public decimal salePrice { get; set; }
-    }
+    public class ShoppingItem { public string Name { get; set; } = ""; public string Observation { get; set; } = ""; public decimal Price { get; set; } }
+    public class LocalProduct { public string code { get; set; } = ""; public string name { get; set; } = ""; public int stockQuantity { get; set; } public decimal salePrice { get; set; } }
 
     private List<LocalProduct> allProducts = new();
     private List<ShoppingItem> itemsParaComprar = new();
-    private string searchTerm = "";
-    private string newItemName = "";
+    private string searchTerm = "", newItemName = "";
     private decimal newItemPrice = 0;
 
-    private List<LocalProduct> filteredProducts => allProducts?
-        .Where(p => string.IsNullOrEmpty(searchTerm) || p.name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
+    private List<LocalProduct> filteredProducts => allProducts?.Where(p => string.IsNullOrEmpty(searchTerm) || p.name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
 
     protected override async Task OnInitializedAsync()
     {
-        try { allProducts = await Http.GetFromJsonAsync<List<LocalProduct>>("https://localhost:7082/api/products") ?? new(); } catch { }
+        allProducts = await Api.GetAsync<List<LocalProduct>>("api/products") ?? new();
     }
 
-    private void AddToList(string name, decimal price)
-    {
-        if (!itemsParaComprar.Any(i => i.Name == name)) itemsParaComprar.Add(new ShoppingItem { Name = name, Price = price });
-    }
-
-    private void AddManualItem()
-    {
-        if (!string.IsNullOrWhiteSpace(newItemName))
-        {
-            itemsParaComprar.Add(new ShoppingItem { Name = newItemName.ToUpper(), Price = newItemPrice });
-            newItemName = ""; newItemPrice = 0;
-        }
-    }
-
+    private void AddToList(string name, decimal price) { if (!itemsParaComprar.Any(i => i.Name == name)) itemsParaComprar.Add(new ShoppingItem { Name = name, Price = price }); }
+    private void AddManualItem() { if (!string.IsNullOrWhiteSpace(newItemName)) { itemsParaComprar.Add(new ShoppingItem { Name = newItemName.ToUpper(), Price = newItemPrice }); newItemName = ""; newItemPrice = 0; } }
     private void RemoverDaLista(string name) => itemsParaComprar.RemoveAll(i => i.Name == name);
     private async Task ImprimirLista() => await JS.InvokeVoidAsync("window.print");
 }
