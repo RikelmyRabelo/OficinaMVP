@@ -569,4 +569,3 @@
         private async Task ImprimirRelatorio() => await JS.InvokeVoidAsync("window.print");
         private async void MostrarSucesso(string msg) { toastMensagem = msg; toastTipo = "sucesso"; mostrarToast = true; StateHasChanged(); await Task.Delay(3000); mostrarToast = false; StateHasChanged(); }
     }
-}

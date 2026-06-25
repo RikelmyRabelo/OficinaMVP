@@ -27,6 +27,11 @@ namespace OficinaWeb.Services
             return await _http.GetFromJsonAsync<T>(GetBaseUrl() + GetCleanEndpoint(endpoint));
         }
 
+        public async Task<HttpResponseMessage> PostAsync(string endpoint)
+        {
+            return await _http.PostAsync(GetBaseUrl() + GetCleanEndpoint(endpoint), null);
+        }
+
         public async Task<HttpResponseMessage> PostAsync<T>(string endpoint, T data)
         {
             return await _http.PostAsJsonAsync(GetBaseUrl() + GetCleanEndpoint(endpoint), data);
